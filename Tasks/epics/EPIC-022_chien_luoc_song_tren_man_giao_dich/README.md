@@ -93,3 +93,11 @@ thật hơn). Đây là phần sửa phát hiện #4 ở §1.
 | **D** | [UI: card CHIẾN LƯỢC + dialog Thông số Chiến lược trên màn Giao dịch](completed/EPIC-022D_ui_chon_chien_luoc.md) | A, B, C | ✅ |
 | **E** | [Vẽ chiến lược lên chart live + card TÍN HIỆU GẦN NHẤT](completed/EPIC-022E_ve_chien_luoc_len_chart_live.md) | C, D | ✅ |
 | **F** | [Nhớ cấu hình giữa các phiên — không tự nạp, không tự bật](completed/EPIC-022F_nho_cau_hinh_giua_cac_phien.md) | D | ✅ |
+
+> **Bug sinh ra từ epic này, đã đóng:**
+> [`BUG-107`](../../bug_report/completed/BUG-107_arm_strategy_button_calls_a_tracker_method_that_never_existed.md)
+> (2026-09-07) — nút "Nạp chiến lược" của **D** gọi `ActionOwnershipTracker.start_action()`, một
+> method chưa từng tồn tại (API thật là `begin_action(kind, config, previous_state)`), nên mọi lần
+> bấm đều `AttributeError` trước cả dòng logic đầu tiên. Lọt qua được vì `mypy` loại toàn bộ
+> `src/presentation/` và vì 12 test của card đều gọi `arm()` — method **nằm dưới** nút — chứ chưa
+> test nào chạm `on_arm_clicked()`. Đã bổ sung 5 test đi qua đúng entry point của nút.

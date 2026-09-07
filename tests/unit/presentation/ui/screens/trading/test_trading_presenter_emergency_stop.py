@@ -24,19 +24,6 @@ from unittest.mock import MagicMock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-import pytest
-from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
-    EquityCurveRecorder,
-)
-from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
-    LiveStrategySession,
-)
-from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
-    StrategyRegistry,
-)
-from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
-    TradingSessionState,
-)
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.emergency_stop import (
     EmergencyStopCommand,
     EmergencyStopResult,
@@ -46,13 +33,6 @@ from Sagittarius_Elite_Warrior.src.domain.trading.live_position import LivePosit
 from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_status import (
     MarginType,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.trading_presenter import (
-    TradingPresenter,
-)
-from sagittarius_engine.extensions.pyside_mvc.base_view import DEV_MODE_CONFIG_KEY
-from sagittarius_engine.interfaces.i_config import IConfig
-from sagittarius_engine.interfaces.i_dispatcher import IDispatcher
-from sagittarius_engine.interfaces.i_thread_manager import IThreadManager
 
 _SUCCESS = EmergencyStopStepResult(succeeded=True, detail="OK")
 
@@ -93,57 +73,6 @@ def _result(
         final_open_orders=final_open_orders,
         final_state_confirmed=final_state_confirmed,
     )
-
-
-@pytest.fixture
-def mock_config():
-    config = MagicMock()
-    config.get_all.return_value = {
-        "DEFAULT_SYMBOLS": ["BTCUSDT"],
-        "DEFAULT_INTERVAL": "1m",
-    }
-    config.get.side_effect = lambda key, default=None, cast=None: (
-        True if key == DEV_MODE_CONFIG_KEY else default
-    )
-    return config
-
-
-@pytest.fixture
-def container(
-    mock_config,
-    mock_dispatcher,
-    mock_thread_manager,
-    session_state,
-    equity_recorder,
-    strategy_session,
-    strategy_registry,
-    make_container,
-):
-    # `BOT-125` review — one shared fake, so adding a Presenter
-    # dependency stops costing one edit per test module.
-    return make_container(
-        {
-            IConfig: mock_config,
-            IDispatcher: mock_dispatcher,
-            IThreadManager: mock_thread_manager,
-            TradingSessionState: session_state,
-            EquityCurveRecorder: equity_recorder,
-            LiveStrategySession: strategy_session,
-            StrategyRegistry: strategy_registry,
-        }
-    )
-
-
-@pytest.fixture
-def view():
-    return MagicMock()
-
-
-@pytest.fixture
-def presenter(qapp, view, container, mock_thread_manager):
-    p = TradingPresenter(view, container)
-    mock_thread_manager.submit.reset_mock()
-    return p
 
 
 def test_the_button_submits_the_worker(presenter, mock_thread_manager):

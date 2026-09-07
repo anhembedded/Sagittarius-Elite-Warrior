@@ -132,7 +132,7 @@ class StrategyArmingCoordinator:
         available_strategies: Callable[[], Mapping[str, type]],
         get_active_symbol: Callable[[], str],
         get_armed_config: Callable[[], LiveStrategyConfig | None],
-        tracker: ActionOwnershipTracker,
+        tracker: ActionOwnershipTracker[str, None, None],
         arm_action_kind: str,
         set_status: Callable[[str, bool], None],
         append_log: Callable[[str], None],
@@ -265,10 +265,15 @@ class StrategyArmingCoordinator:
         hands it in, which §2 explicitly sanctions ("a single shared
         tracker the Presenter owns and hands to every Coordinator") and
         distinguishes from a Coordinator minting its own action ids.
+
+        `begin_action` is that tracker's real entry point and it always
+        returns a context — `BUG-107` called an invented `start_action`
+        and then tested the result for `None` as if a second click could
+        be refused here. Neither existed: arming is synchronous on the UI
+        thread, so there is no in-flight action to collide with, and
+        superseding is `begin_action`'s own job when there ever is one.
         """
-        action = self._tracker.start_action(self._arm_action_kind, None)
-        if action is None:
-            return
+        action = self._tracker.begin_action(self._arm_action_kind, None, None)
         self._report_state(busy=True)
         try:
             result = self.arm()
