@@ -1,128 +1,315 @@
-# Binance Trading Bot 🤖
+# Sagittarius Elite Warrior
 
-Dự án này là một Trading Bot chuyên nghiệp được xây dựng dựa trên **Sagittarius Engine** và tuân thủ tuyệt đối **Clean Architecture**.
+Trading bot cho **Binance USD-M Futures**, gồm một **ứng dụng desktop PySide6** và một **CLI
+headless**, xây trên framework [Sagittarius Engine](https://github.com/anhembedded/Sagittarius_Engine)
+theo **Clean Architecture** (Domain → Application → Infrastructure/Presentation).
 
-Hiện tại, dự án đã hoàn thành **Phase 1: Data Synchronizer** và **Phase 2: Live Market Stream**.
+> [!IMPORTANT]
+> **Rào an toàn vốn:** bot **chỉ** đặt lệnh trên **Binance USD-M Futures Testnet**. Đường đi lệnh
+> tiền thật **không tồn tại trong code** — value object
+> [`TradingVenue`](src/domain/value_objects/trading_venue.py) cố ý **không có member `MAINNET`**:
+> mở giao dịch thật là một epic phải thêm member đó và chịu review, không phải một cờ cấu hình
+> ai cũng bật được.
 
-- Nó có khả năng đồng bộ dữ liệu nến (OHLCV) tĩnh từ sàn Binance về lưu trữ cục bộ tại SQLite (sử dụng WAL mode).
-- Nó có khả năng kết nối Websocket Async để hứng sự kiện thị trường biến động theo thời gian thực (Real-time).
+| | |
+| :--- | :--- |
+| **Python** | ≥ 3.12 (sàn thật, được `tests/sanity/test_python_floor.py` canh — xem [`install-rule.md`](.agents/rules/install-rule.md) §1b) |
+| **UI** | PySide6 (QtWidgets) + pyqtgraph cho chart; QML nhúng theo từng widget |
+| **Lưu trữ** | SQLite (WAL) qua SQLAlchemy |
+| **Cổng kiểm thử bắt buộc** | [`scripts/ci-local.ps1 -Full`](scripts/ci-local.ps1) + [GitHub Actions](.github/workflows/ci.yml) |
+| **Trạng thái / lộ trình** | [`Tasks/ROADMAP.md`](Tasks/ROADMAP.md) · [`Tasks/epics/README.md`](Tasks/epics/README.md) · [Bug Board](Tasks/bug_report/README.md) |
 
 ---
 
-## 📂 Cấu trúc Thư mục
+## 1. Bot làm được gì hôm nay
 
-Dự án được phân rã thành các lớp độc lập:
+| Năng lực | Mô tả |
+| :--- | :--- |
+| **Đồng bộ dữ liệu lịch sử** | Tải nến OHLCV từ Binance về SQLite (WAL mode, sharding theo symbol/timeframe), lưu mốc thời gian chuẩn UTC. |
+| **Luồng thị trường realtime** | Websocket async, phát `MarketTickEvent` lên Event Bus cho chart và chiến lược. |
+| **Indicator & Strategy Engine** | EMA/WMA/RSI/MACD/Support-Resistance; các chiến lược dùng chung cho cả backtest lẫn live (`src/domain/strategies/`), tham số khai báo qua parameter schema chứ không hard-code. |
+| **Backtest** | `PaperExchange` mô phỏng khớp lệnh futures (SHORT + đòn bẩy), phí, exit reason, equity curve, bộ metrics, và tách **out-of-sample** để kiểm định chiến lược. |
+| **Ứng dụng desktop** | 5 màn hình: Dashboard/Dev Board, Backtest, Data Management, **Giao dịch**, Settings — chung `PageShell` (header / context bar / workspace + rail / console). |
+| **Giao dịch trên Futures Testnet** | Kiểm tra kết nối, chuẩn hoá lệnh theo filter của sàn (step/tick/minNotional), dry-run qua `POST /fapi/v1/order/test`, đặt lệnh thật trên testnet, User Data Stream nối vào `OrderFeed`; banner môi trường hiện ở mọi màn hình (qua `PageShell`), **Emergency Stop** nằm trên màn Giao dịch. |
+| **Chiến lược sống trên màn Giao dịch** | Chọn chiến lược + Thông số Chiến lược lúc đang chạy, vẽ chỉ báo/vùng xu hướng của chính chiến lược đó lên chart live; chưa nạp chiến lược thì **không bật được** giao dịch. |
+
+**Chưa có (có chủ đích):** giao dịch tiền thật (mainnet); daemon giao dịch chạy liên tục —
+`trade-once` chạy đúng **một** vòng đánh giá rồi thoát.
+
+---
+
+## 2. Kiến trúc
+
+Bốn lớp, phụ thuộc luôn hướng vào trong. Chi tiết và lý do từng quyết định nằm ở
+[`.agents/rules/architecture-rule.md`](.agents/rules/architecture-rule.md) và
+[`Docs/Diagrams/architecture.md`](Docs/Diagrams/architecture.md).
+
+```text
+Presentation  (PySide6 UI, CLI)          ─┐
+Infrastructure (Binance, SQLAlchemy,      │  adapter — biết framework
+                engine adapters)          │
+Application   (use case CQRS, port)      ─┤  hợp đồng — không biết framework
+Domain        (entity, indicator,        ─┘  thuần Python
+               strategy, backtest)
+```
+
+Ba ràng buộc quyết định phần lớn cách code được tổ chức:
+
+1. **Shared Kernel đúng 2 symbol.** `src/domain/` và `src/application/` chỉ được import
+   `IDomainEvent` và `BaseEvent` từ engine; mọi thứ khác phải đi qua một **port** trong
+   `src/application/ports/` với adapter trong `src/infrastructure/engine_adapters/`. Có test khoá
+   allow-list này.
+2. **Hợp đồng phải tường minh** — cấm duck-typing ngầm. `abc.ABC` là mặc định; `typing.Protocol`
+   chỉ khi kế thừa bất khả thi (lớp `QObject`, đã có base khác, lớp bên thứ ba) và docstring phải
+   nói rõ lý do nào.
+3. **Tách theo mức trừu tượng.** Hai thứ khác mức trừu tượng không chung file, cũng không chung
+   thư mục; file > 400 dòng hoặc class > 15 public method là bắt buộc phải tách.
+
+**Hai repository độc lập, không phải submodule.** `Sagittarius_Engine` (framework) và
+`Sagittarius_Elite_Warrior` (app này) có remote riêng, `.agents/` riêng, task board riêng — commit
+và push tách bạch, không có bước "bump" con trỏ nào cả.
+
+---
+
+## 3. Cấu trúc thư mục
 
 ```text
 Sagittarius_Elite_Warrior/
-├── src/                        # 🟢 Chứa toàn bộ mã nguồn bot
-│   ├── domain/                 # Các thực thể cốt lõi (MarketData, TimeFrame, MarketTickEvent)
-│   ├── application/            # Logic nghiệp vụ (Use cases) và cấu hình DI (extensions)
-│   ├── infrastructure/         # Các Adapter kết nối (python-binance, SQLAlchemy, WebSocket)
-│   ├── presentation/           # (Tương lai) Các API FastAPI / Streamlit
-│   └── main.py                 # File thực thi chính để khởi chạy CLI
-├── tests/                      # 🔵 Chứa toàn bộ test
-│   ├── unit/                   # Unit Tests soi gương cấu trúc src/
-│   └── integration/            # Integration Tests chia theo Adapter
-├── Tasks/                      # 🟡 Quản lý tiến độ (Kanban)
-└── database/                   # 🔴 Nơi lưu trữ data (trading.db)
+├── src/
+│   ├── domain/              # Thuần Python: entity, value object, indicator, strategy,
+│   │                        # backtesting (PaperExchange, metrics, out-of-sample), trading
+│   ├── application/         # Use case (CQRS: command/query/handler), port, service,
+│   │                        # event handler — không biết framework nào
+│   ├── infrastructure/      # Adapter: binance/, persistence/ (SQLAlchemy), credentials/,
+│   │                        # engine_adapters/
+│   ├── presentation/
+│   │   ├── cli/             # Parser theo cấu hình JSON, interactive shell, các lệnh headless
+│   │   └── ui/              # PySide6: app_bootstrapper, main_window, screens/, components/,
+│   │                        # kit/ (widget dùng chung), registry/, state/
+│   ├── config/              # app_config.json, user_config.json, cli_commands.json
+│   └── main.py              # Entry point CLI (headless + interactive shell)
+├── tests/                   # unit/ · integration/ · sanity/ · testnet/ (opt-in)
+├── scripts/                 # ci-local.ps1, run.ps1, run-ui.ps1, preview-qml.ps1, probe/benchmark
+├── Tasks/                   # ROADMAP.md, epics/, bug_report/, backlog/, completed/, reports/
+├── Docs/                    # Sơ đồ kiến trúc, ý định dự án, thiết kế chi tiết
+├── .agents/                 # ONBOARDING.md + rules/ — quy trình bắt buộc cho người & AI agent
+└── database/                # trading.db (không commit)
 ```
 
 ---
 
-## 🚀 Hướng dẫn Chạy thử (Dual-Mode CLI)
+## 4. Cài đặt
 
-Dự án hỗ trợ 2 chế độ khởi chạy linh hoạt: **Interactive Menu** (cho người dùng cá nhân) và **Headless Mode** (cho môi trường Server/Docker).
+**Lưu ý quan trọng về `PYTHONPATH`:** code import theo package tuyệt đối
+(`Sagittarius_Elite_Warrior.src...`), nên `PYTHONPATH` phải trỏ tới **thư mục cha** chứa repo này,
+và tên thư mục repo phải là `Sagittarius_Elite_Warrior` (dùng dấu gạch dưới).
 
-### Chế độ 1: Interactive Terminal Menu
-
-Khi khởi chạy không có tham số, Bot sẽ tự động mở Menu tương tác trực quan:
-
-```powershell
-$env:PYTHONPATH="."
-python Sagittarius_Elite_Warrior/src/main.py
-```
-
-*Kết quả:* Bạn sẽ được đưa vào vòng lặp Menu:
-
-```text
-========================================
- 🤖 BINANCE TRADING BOT - INTERACTIVE 
-========================================
-1. Sync Market Data (Historical)
-2. Start Live Stream (Websocket)
-3. Stop Live Stream
-4. Exit
-```
-
-### Chế độ 2: Headless CLI (Tự động hóa)
-
-Nếu bạn truyền tham số, Bot sẽ bỏ qua Menu và chạy thẳng lệnh tương ứng, rất phù hợp cho Crontab hoặc Background Tasks.
-
-**1. Đồng bộ dữ liệu (Sync):**
+### Windows (PowerShell) — script tự lo môi trường
 
 ```powershell
-$env:PYTHONPATH="."
-python Sagittarius_Elite_Warrior/src/main.py sync --symbols BTCUSDT,ETHUSDT --interval 1m --days 1
+.\scripts\run.ps1        # tạo .venv, cài dependency + engine, chạy CLI
+.\scripts\run-ui.ps1     # như trên, nhưng khởi chạy ứng dụng desktop
 ```
 
-**2. Khởi chạy nền Live Stream:**
+### Thủ công (Linux/macOS/Windows)
 
-```powershell
-$env:PYTHONPATH="."
-python Sagittarius_Elite_Warrior/src/main.py stream
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate                 # Windows: .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install git+https://github.com/anhembedded/Sagittarius_Engine.git
 ```
+
+Khi cần phát triển/debug engine song song với app, cài bản local thay vì bản GitHub:
+
+```bash
+pip install -e ../Sagittarius_Engine        # chạy từ thư mục workspace cha
+```
+
+Trên Linux còn cần `pwsh` để chạy được **cổng kiểm thử bắt buộc**, và vài thư viện hệ thống cho Qt
+chạy `offscreen` (`libegl1`, `libgl1`, `libxkbcommon0`, `libfontconfig1`, `libdbus-1-3` trên một
+container sạch — cứ để `ImportError` gọi tên file `.so` còn thiếu). Hướng dẫn đầy đủ:
+[`.agents/rules/install-rule.md`](.agents/rules/install-rule.md) §2b, §3.
+
+### Khai báo API key cho Futures Testnet
+
+Thứ tự ưu tiên: **biến môi trường trước, file sau** — biến môi trường luôn thắng, để chạy headless
+(CI/VPS) mà không bao giờ ghi secret xuống đĩa.
+
+```bash
+export BINANCE_FUTURES_TESTNET_API_KEY=...
+export BINANCE_FUTURES_TESTNET_API_SECRET=...
+```
+
+Không đặt biến môi trường thì app đọc `src/config/secrets.local.json` (đã nằm trong `.gitignore`;
+màn hình Settings ghi vào đúng file này). Tên biến gắn chặt với **venue** chứ không đặt tên chung
+chung — nhầm key giữa các môi trường là đúng thứ rào chắn này sinh ra để chặn.
 
 ---
 
-## 🚫 Lầm tưởng Kiến trúc (Anti-patterns đã được né tránh)
+## 5. Chạy ứng dụng
 
-Khi triển khai các hệ thống vòng lặp (CLI menu, Background loops) cho Trading Bot, người mới rất dễ mắc các sai lầm kiến trúc sau đây. Dự án này đã xử lý triệt để:
-
-1. **God Object ở Presentation Layer:**
-   - *Sai lầm:* Nhồi nhét logic hỏi/đáp của toàn bộ 10 tính năng vào một file `menu.py` khổng lồ, vi phạm Single Responsibility Principle (SRP).
-   - *Cách giải quyết:* Áp dụng Command/Handler pattern, chia Menu thành `SyncMenuHandler` và `StartStreamMenuHandler`. `TerminalMenuService` chỉ đóng vai trò Router điều hướng giao diện.
-2. **Loại bỏ CLI Parser khi làm UI:**
-   - *Sai lầm:* Khi nâng cấp lên UI hoặc Interactive Menu, lập trình viên thường xóa luôn `argparse` dẫn tới việc mất khả năng chạy Headless Mode (cực kỳ quan trọng để deploy bot lên Cloud VPS).
-   - *Cách giải quyết:* Kiến trúc **Dual-Mode**, hỗ trợ cả tương tác trực tiếp lẫn truyền tham số từ script automation.
-3. **Blocking I/O gây chết luồng:**
-   - *Sai lầm:* Chạy hàm `input()` (Synchronous Blocking) trên luồng chính của ứng dụng, khiến ứng dụng không thể nhận tín hiệu Graceful Shutdown (Ctrl+C).
-   - *Cách giải quyết:* Tách Terminal Menu ra một `IHostedService` chạy trên `ThreadPool`. Xử lý exception `KeyboardInterrupt` triệt để nhằm đảm bảo mọi Data Base connection và Websocket connection được dọn dẹp (clean up) trước khi thoát.
-
----
-
-## 🕵️ Hướng dẫn Khám phá Database
-
-Toàn bộ dữ liệu bạn tải về được lưu tại `Sagittarius_Elite_Warrior/database/trading.db`.
-
-Để xem dữ liệu, bạn có thể:
-
-1. Cài đặt Extension **SQLite Viewer** trong VS Code.
-2. Bấm chuột phải vào file `trading.db` -> Chọn **Open to the Side** (hoặc mở bằng SQLite Viewer).
-3. Xem bảng `klines` để thấy danh sách hàng ngàn cây nến đã được lưu cực kỳ ngăn nắp với định dạng UTC Timezone.
-
----
-
-## 🧪 Hướng dẫn Chạy Kiểm thử (Tests)
-
-Dự án có bộ Test rất nghiêm ngặt (gần 100% Coverage). Để chạy lại toàn bộ Unit Test và Integration Test:
+### 5.1 Ứng dụng desktop (PySide6)
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-$env:PYTHONPATH="."
-pytest Sagittarius_Elite_Warrior/tests -v
+.\scripts\run-ui.ps1                 # bình thường
+.\scripts\run-ui.ps1 -Dev            # log DEBUG → logs/dev-<timestamp>.log, bật đo FPS/click log
+.\scripts\run-ui.ps1 -Debug          # log TRACE → logs/debug-<timestamp>.log (bao hàm luôn -Dev)
 ```
 
-Hoặc để xem độ phủ mã (Coverage):
+Tương đương thủ công (chạy từ thư mục workspace cha):
+
+```bash
+PYTHONPATH=. python -m Sagittarius_Elite_Warrior.src.presentation.ui.app_bootstrapper
+```
+
+Cờ `--self-check` boot app thật, quay vòng lặp sự kiện đúng một nhịp rồi thoát với mã thoát thật —
+dùng để kiểm chứng app thực sự khởi động và **thực sự thoát** được, không phải chỉ trong tiến trình
+pytest.
+
+### 5.2 CLI
+
+Không truyền tham số → **interactive shell** (`cmd`-based, gõ `help` để xem lệnh, hiện định tuyến
+`sync`, `stream`, `exchange-status`). Có tham số → chạy thẳng lệnh rồi thoát, hợp cho cron/VPS.
+
+```bash
+PYTHONPATH=. python Sagittarius_Elite_Warrior/src/main.py            # interactive
+PYTHONPATH=. python Sagittarius_Elite_Warrior/src/main.py <lệnh> ... # headless
+```
+
+| Lệnh | Việc nó làm |
+| :--- | :--- |
+| `sync --symbols BTCUSDT,ETHUSDT --interval 1m --days 30` | Đồng bộ nến lịch sử về SQLite. |
+| `stream start --symbols BTCUSDT --interval 1m` / `stream stop` | Bật/tắt luồng websocket realtime. |
+| `exchange-status` | Kiểm tra kết nối Futures Testnet: chữ ký, lệch đồng hồ, số dư, position mode. |
+| `order-preview --symbol BTCUSDT --side BUY --qty 0.0137 --price 60000 [--json]` | Chuẩn hoá lệnh theo filter sàn (làm tròn step/tick, kiểm `minNotional`) — **không gửi đi đâu cả**. |
+| `order-dry-run --symbol ... --side ... --qty ... --price ...` | Gửi tới `POST /fapi/v1/order/test`: sàn xác thực chữ ký/quyền/payload, **không tạo lệnh nào**. |
+| `trade-once --symbol BTCUSDT --interval 1m --strategy <key> [--live]` | Chạy **một** vòng đánh giá chiến lược, đi trọn pipeline an toàn. Mặc định dry-run; `--live` mới thật sự đặt lệnh (trên testnet). |
+
+Danh sách lệnh và tham số được sinh từ [`src/config/cli_commands.json`](src/config/cli_commands.json)
+— thêm lệnh là sửa file cấu hình cộng một handler, không phải sửa parser.
+
+### 5.3 Xem trước một màn hình UI, không boot cả app
 
 ```powershell
-pytest Sagittarius_Elite_Warrior/tests -v --cov=Sagittarius_Elite_Warrior.src
+.\scripts\preview-qml.ps1 --list
+.\scripts\preview-qml.ps1 <tên-màn-hình>
 ```
+
+Mọi package UI đều phải có `preview.py` khai báo `build_preview() -> QWidget`; có test canh đúng
+điều đó.
 
 ---
 
-## 📈 Lộ trình Tiếp theo
+## 6. Kiểm thử & CI
 
-- **Phase 3:** Strategy Engine (Xử lý tín hiệu mua bán với Sliding Window).
-- **Phase 4:** Backtesting Engine (vectorbt).
-- **Phase 5:** UI Dashboard (FastAPI + Streamlit).
+### Cổng bắt buộc
+
+```powershell
+cd Sagittarius_Elite_Warrior
+.\scripts\ci-local.ps1 -Full          # Linux: pwsh -NoProfile -File scripts/ci-local.ps1 -Full
+```
+
+`-Full` chạy: `ruff check` + `ruff format --check` (đã bật thêm nhóm `S`/`PLR2004`/`B`/`SIM`/`ERA`/`N`
+— tương đương lớp bảo mật/chất lượng kiểu Bandit), `mypy` trên `src` **và** `scripts` **trong cùng
+một lệnh**, guard tham chiếu của `.agents/Skills/`, toàn bộ test, tầng Sanity chạy tuần tự riêng, và
+ngưỡng coverage 80%. Các cờ `-UnitOnly`/`-SanityOnly`/`-SkipLint`/`-SkipTests` là **công cụ chẩn
+đoán**, không được dùng để đi vòng qua một cổng đang đỏ.
+
+> [!WARNING]
+> **Đừng đọc console — đọc file log.** Ở chế độ offscreen, Qt đổ rất nhiều lỗi vô hại ra stderr
+> **sau** dòng tổng kết của pytest, nên `| tail` cho bạn xem đúng phần nhiễu đó và có thể **giấu
+> mất** dòng lỗi thật. Luôn `> logfile 2>&1`, rồi `grep` file đó tìm
+> `FAILED|ERROR|Traceback|ResourceWarning`. Hai bug thật (`BUG-029`/`BUG-030`) chỉ lộ ra nhờ có file
+> log đầy đủ để đọc lại.
+
+### Bốn tầng kiểm thử
+
+| Tầng | Chứng minh điều gì |
+| :--- | :--- |
+| **Unit** (`tests/unit/`) | Hàm thuần, hợp đồng dữ liệu, bất biến, hành vi tất định của từng thành phần. |
+| **Integration** (`tests/integration/`) | Hành trình người dùng/ứng dụng thật qua các collaborator thật, biên ngoài được seed/fake cục bộ. |
+| **Sanity** (`tests/sanity/`) | App boot thật, DI ráp thật, **và im lặng** — `diagnostic_guard` fail khi có bất kỳ Qt message, log ≥ WARNING hay `warnings.warn` nào. Thêm màn hình mới **không** thêm test ở đây. |
+| **Desktop E2E** | Hành trình thật trên phiên đồ hoạ thật (không offscreen), input Qt thật — opt-in, bắt buộc với thay đổi rendering hoặc lỗi GUI được báo. |
+
+`tests/testnet/` **không** phải tầng thứ năm: nó chạm sàn thật bằng credential thật, bị chặn **hai
+lớp** (`-Full` luôn `--ignore` nó, và chính tier tự gate bằng `SEW_TESTNET_TESTS=1` + credential
+phân giải được):
+
+```powershell
+$env:SEW_TESTNET_TESTS = "1"
+.\scripts\ci-local.ps1 -TestnetOnly
+```
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) chạy trên mọi push/PR vào `master-warrior`.
+Hai cổng này **không phải bản sao của nhau** (song song vs tuần tự, cách tách job Sanity) — đừng coi
+cổng nào bao hàm cổng nào.
+
+---
+
+## 7. Dữ liệu
+
+Toàn bộ nến tải về nằm ở `database/trading.db` (SQLite, WAL mode; thư mục cấu hình bằng key
+`database.dir`, không được commit). Xem nhanh bằng extension **SQLite Viewer** của VS Code: chuột
+phải file `.db` → *Open to the Side*, mở bảng `klines`.
+
+Màn hình **Data Management** trong app làm được nhiều hơn: quét dữ liệu đã có theo symbol/timeframe
+và soi **khoảng trống (gap)** trước khi backtest hay bật live stream.
+
+---
+
+## 8. Đóng góp — đọc trước khi viết dòng code đầu tiên
+
+Repo này có quy trình bắt buộc, áp dụng cho cả người lẫn AI agent. Điểm vào duy nhất:
+**[`.agents/ONBOARDING.md`](.agents/ONBOARDING.md)** — bố cục 2 repo, vòng đời task/bug, lệnh kiểm
+chứng thật trên Linux, cách ghi sổ `ROADMAP.md`, và §8 liệt kê những cái bẫy **đã thật sự tạo ra
+code hỏng** ở đây.
+
+| Việc | Đọc file |
+| :--- | :--- |
+| Quyết một mình hay phải hỏi | [`ONBOARDING.md`](.agents/ONBOARDING.md) §7 |
+| Kiến trúc: lớp, Port/ABC, Shared Kernel, đặt event ở đâu | [`architecture-rule.md`](.agents/rules/architecture-rule.md) |
+| Chất lượng code: typing, magic number, cohesion, lazy import | [`code-quality-rule.md`](.agents/rules/code-quality-rule.md) |
+| Trước khi tuyên bố "xong" | [`ci-rule.md`](.agents/rules/ci-rule.md) |
+| Trước mỗi commit | [`commit-rule.md`](.agents/rules/commit-rule.md) |
+| Khi có bug được báo (**bắt buộc**) | [`bug-fix-rule.md`](.agents/rules/bug-fix-rule.md) |
+| Thêm/sửa log | [`logging-rule.md`](.agents/rules/logging-rule.md) |
+| Viết test | [`testing-rule.md`](.agents/rules/testing-rule.md) |
+| Làm UI: bố cục màn hình, `preview.py`, icon, cột bảng | [`ui-presentation-rule.md`](.agents/rules/ui-presentation-rule.md) |
+| Bất kỳ file `.qml` nào, hoặc chọn QML vs QtWidgets | [`qml-rule.md`](.agents/rules/qml-rule.md) |
+| Tác vụ nền khởi động từ UI: sở hữu action, huỷ, tách Coordinator | [`async-ui-action-rule.md`](.agents/rules/async-ui-action-rule.md) |
+| Đụng `src/domain/**` hoặc `src/application/**`: dữ liệu trung thực | [`domain-truth-rule.md`](.agents/rules/domain-truth-rule.md) |
+| Dựng môi trường, thiếu công cụ | [`install-rule.md`](.agents/rules/install-rule.md) |
+
+Bốn điều dễ mất nửa ngày nếu làm sai:
+
+1. **Không bao giờ `git push` nếu user không yêu cầu rõ ràng.** `commit` là hỏi-trước-mặc-định;
+   `push` là cấm-mặc-định. Mỗi repository là một lần xác nhận riêng.
+2. **Đọc file log, đừng tin console** (xem cảnh báo ở §6).
+3. **Hai repository độc lập**, không phải submodule — commit/push tách bạch.
+4. **Công việc hay bị để lại chưa commit giữa các phiên.** Task board trông như chưa ai đụng
+   **cộng với** working tree bẩn nghĩa là việc **đã làm rồi**, chỉ chưa ghi sổ. Chạy `git status` ở
+   **cả hai** repo và đọc diff trước khi kết luận.
+
+### Ngôn ngữ
+
+Tài liệu trong `.agents/`: **tiếng Anh**. Code, định danh, docstring, comment, commit subject:
+**tiếng Anh**. Hội thoại với user, file task, bug report, tài liệu trong `Tasks/`, và chuỗi hiển thị
+trên UI: **tiếng Việt**.
+
+---
+
+## 9. Trạng thái & lộ trình
+
+Các con số (số task, số test, số bug) **luôn trôi** — đừng tin con số chép trong tài liệu, hãy đọc
+thẳng nguồn sự thật:
+
+| Câu hỏi | Nguồn |
+| :--- | :--- |
+| Epic nào đang chạy, đi tới đâu | [`Tasks/epics/README.md`](Tasks/epics/README.md) |
+| Bug nào đang mở | [`Tasks/bug_report/README.md`](Tasks/bug_report/README.md) |
+| Task board tổng thể | [`Tasks/ROADMAP.md`](Tasks/ROADMAP.md) |
+| Vừa xảy ra chuyện gì, vì sao | `git log` (phần thân commit ở repo này có ghi lý do) |
+| Đang dở dang cái gì | `git status` + diff, ở **cả hai** repo |
+
+Ý định sản phẩm và user story đầy đủ: [`Docs/PROJECT_INTENT_AND_USER_STORIES.md`](Docs/PROJECT_INTENT_AND_USER_STORIES.md).
