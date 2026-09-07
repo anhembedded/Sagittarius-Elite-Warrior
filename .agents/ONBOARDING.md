@@ -29,11 +29,10 @@ A map of the process, not a copy of the rules: it tells you *when* to read *whic
 | 11 | `.agents/rules/domain-truth-rule.md` | When touching `src/domain/`, `src/application/` |
 | 12 | `.agents/rules/ui-presentation-rule.md` | When touching `src/presentation/` (Python) |
 | 13 | `.agents/rules/qml-rule.md` | When touching `.qml` files |
-| 14 | `.agents/Handover.md` | **Immediately after this file** — where the previous session stopped, which decisions not to re-derive |
 | — | `Tasks/ROADMAP.md` | Where the system stands, which tasks exist |
 | — | `Tasks/bug_report/README.md` | Bug Board — which bugs are open |
 | — | `Tasks/epics/README.md` | Epic list (each Epic has its own directory + README, §3) |
-| — | **§12 of this file** | **Picking up work in progress**. The *state* lives in `Handover.md`, not here |
+| — | **§12 of this file** | **Picking up work in progress** — and §12.2 for where live state actually lives |
 
 Count the real number of rule files with `ls .agents/rules/` — **do not load them all**, each file has its own `trigger`. `install-rule.md` covers installation specifically; read it when a task actually touches that scope. `code-rule.md` is **only a navigation stub** (the real content was split into the files above); the stub is kept because `.agents/Skills/` still points at it (`grep -rl code-rule .agents/Skills/`). Security rules live in `.agents/Skills/sentinel.prompt.md` + `Tasks/epics/EPIC-004_static_security_and_quality_analysis/`, **not** in `rules/`.
 
@@ -238,7 +237,7 @@ All of them really happened in this repo; none are hypothetical.
 
 When working in the app, **always give this repo's rules priority**. `Sagittarius_Engine`'s rules apply only when you are genuinely changing framework code — and then it is a completely separate commit/push (§2). The two task boards have nothing to do with each other — don't record app tasks in the engine's `Tasks/README.md`, or vice versa.
 
-The per-session sections in `Handover.md` are a **historical record** (that file warns about this itself in the `[!IMPORTANT]` block at the top); the current state is in §12.
+Per-session narrative summaries are not kept anywhere any more (§12.2) — the current state is what §12.1's commands print.
 
 Note: **every rule file in both repos only lists PowerShell commands**. On Linux, use the commands in §5.
 
@@ -272,13 +271,33 @@ cat Tasks/epics/README.md
 
 **Work on this project is often left uncommitted between sessions** — per §7, agents don't commit on their own. So `git status` is not a formality: a task board that looks untouched **plus** a dirty working tree means the work is **already done**, just not recorded. Read the diff before concluding a task is untouched. Trust the output of those 3 commands, not any paragraph describing the state.
 
-### 12.2 Where things stand → [`Handover.md`](Handover.md), not here
+### 12.2 Where things stand → the boards and git, never a hand-written summary
 
-**This section deliberately does NOT list which epic is running or which task is next** (the previous version had that table and it was wrong within hours). Live state lives in **one** place: [`.agents/Handover.md`](Handover.md) §1, a file that is **replaced** every session. Only the invariants are kept here:
+**This section deliberately does NOT list which epic is running or which task is next.** Two
+attempts at holding that here, and a third in a separate `Handover.md`, all went stale — the
+Handover was frozen at `2026-08-25` and still opened with *"Next up: `EPIC-007A`"* long after
+`EPIC-007` closed 8/8, `EPIC-021` closed 13/13 and `EPIC-022` closed 6/6. It was deleted on
+2026-09-07 rather than rewritten again (user's decision), because the problem was never the
+writing: **a hand-maintained copy of state that already exists elsewhere drifts, always.**
+
+State now has exactly four sources, none of which can drift because each one *is* the thing it
+describes:
+
+| Question | Source |
+| :--- | :--- |
+| Which epic is running, how far along | [`Tasks/epics/README.md`](../Tasks/epics/README.md) — status column |
+| Which bugs are open | [`Tasks/bug_report/README.md`](../Tasks/bug_report/README.md) — the Bug Board |
+| What just happened, and why | `git log` (commit bodies here carry the reasoning) |
+| What is half-done right now | `git status` + the diff, in **both** repos (§12.1) |
+
+Those are the same commands §12.1 already tells you to run. That is the point: §12.1 was always
+the real handover, and the file merely repeated it less accurately.
+
+Invariants that do belong here:
 
 - **Mandatory: read the epic's `README.md` + its `DECISION_*.md` (ADR) files before doing any sub-task.** ADRs record decisions already argued out with the user — including several that **reverse** an earlier approach. Re-deriving them costs a session and usually reaches a different answer. If an epic has `design/*.puml`, look at the diagrams before touching code.
 - **The sub-task table in each epic has a `Repo` column.** A task marked `Engine` must be committed in the Engine repo (§2, §9). The table is ordered by increasing risk and states which item blocks which — don't skip ahead.
-- **The status written in a task file can be older than the code.** Before believing "this task hasn't been done", check against the code itself (`find`, `grep`, run the tests) — tasks have turned out to be already finished by another epic, and others have had **nothing left** to do.
+- **The status written in a task file can be older than the code.** Before believing "this task hasn't been done", check against the code itself (`find`, `grep`, run the tests) — tasks have turned out to be already finished by another epic, and others have had **nothing left** to do. A count in a README drifts the same way: `EPIC-021`'s own README said 10/13 while its `completed/` directory held 13.
 
 ### 12.3 The next sub-task and its ordering
 

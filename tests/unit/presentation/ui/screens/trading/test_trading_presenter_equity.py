@@ -71,26 +71,6 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_dispatcher():
-    return MagicMock()
-
-
-@pytest.fixture
-def mock_thread_manager():
-    return MagicMock()
-
-
-@pytest.fixture
-def session_state():
-    return TradingSessionState()
-
-
-@pytest.fixture
-def equity_recorder():
-    return EquityCurveRecorder()
-
-
-@pytest.fixture
 def mock_event_bus():
     return MagicMock()
 

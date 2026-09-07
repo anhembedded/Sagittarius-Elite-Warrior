@@ -132,8 +132,11 @@ def test_default_build_buttons_is_an_empty_row(qtbot):
 
     overlay = _NoButtonsOverlay("No buttons")
     qtbot.addWidget(overlay)
-    # Constructs without error, matching the "not @abstractmethod" call in
-    # Overlay._build_buttons()'s own docstring.
+
+    # The name claims an EMPTY row, so assert emptiness — constructing
+    # without error only proved `_build_buttons()` is not abstract, which
+    # is a weaker promise than the test's own name makes.
+    assert overlay._build_buttons().count() == 0
 
 
 def test_the_header_labels_carry_roles(qtbot, fake_theme_bridge):

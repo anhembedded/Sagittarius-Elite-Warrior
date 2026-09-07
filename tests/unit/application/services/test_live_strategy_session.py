@@ -102,9 +102,14 @@ def test_arming_builds_the_pair_and_exposes_the_config():
 
 
 def test_re_arming_rebuilds_rather_than_reusing_the_running_engine():
-    """A strategy swap must start from clean indicator state — reusing an
-    engine warmed on the previous strategy's parameters would produce
-    readings that belong to neither."""
+    """A strategy swap must build a NEW engine, and route ticks to it.
+
+    @details Asserted as the two observable facts, not as a claim about
+    indicator state the test cannot see: the factory was asked to build
+    twice, and after the second arm the FIRST engine receives nothing
+    while the second receives the tick. (Reworded from a docstring that
+    promised "clean indicator state" — a promise this body does not check
+    and could not, since the engines here are doubles.)"""
     first_engine, second_engine = Mock(), Mock()
     first_engine.on_tick.return_value = None
     second_engine.on_tick.return_value = None

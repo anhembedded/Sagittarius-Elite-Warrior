@@ -17,6 +17,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+    EquityCurveRecorder,
+)
 from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory import (
     LiveStrategyFactory,
 )
@@ -25,6 +28,9 @@ from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session im
 )
 from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
     StrategyRegistry,
+)
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
 )
 from Sagittarius_Elite_Warrior.src.domain.strategies.ema_crossover_strategy import (
     EmaCrossoverStrategy,
@@ -55,3 +61,33 @@ def strategy_session(strategy_registry: StrategyRegistry) -> LiveStrategySession
         MagicMock(),
     )
     return LiveStrategySession(factory)
+
+
+# --------------------------------------------------------------------- #
+# Collaborators the three Presenter modules each declared identically
+#
+# `test-health` C7: the same four fixtures were byte-identical in
+# `test_trading_presenter_toggle.py`, `..._emergency_stop.py` and
+# `..._equity.py`. Not four opinions about a session state — one, copied
+# three times, with nothing keeping the copies in step.
+# --------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def session_state() -> TradingSessionState:
+    return TradingSessionState()
+
+
+@pytest.fixture
+def equity_recorder() -> EquityCurveRecorder:
+    return EquityCurveRecorder()
+
+
+@pytest.fixture
+def mock_thread_manager() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def mock_dispatcher() -> MagicMock:
+    return MagicMock()
