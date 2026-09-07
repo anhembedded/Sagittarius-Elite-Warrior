@@ -1,6 +1,6 @@
 # Epic EPIC-003 — Phân rã Presenter/File quá tải (God Object/God File Decomposition)
 
-**Trạng thái:** 🟡 Đang làm — 9/12 xong, **1 huỷ** (`003D`). `003F` (vòng thiết kế) đã chốt hướng C;
+**Trạng thái:** 🟡 Đang làm — 13/16 xong, **1 huỷ** (`003D`). `003F` (vòng thiết kế) đã chốt hướng C;
 **cả 5 lát cắt của nó đã xong** (`003F1`…`003F5`, 2026-09-02 → 2026-09-07) và nhóm cuối ("UI lặt
 vặt") đã kết luận **không tách** — xem [`EPIC-003F5`](completed/EPIC-003F5_run_progress_and_result_sub_view_models_facade.md) §4.
 `003F` bản thân **vẫn mở**: việc còn lại duy nhất là bước cuối cùng ở §4.3 của nó — **gỡ facade**,
@@ -92,9 +92,12 @@ dòng.
 | :--- | :--- | :---: | :---: |
 | **[EPIC-003A](completed/EPIC-003A_shared_action_ownership_tracker.md)** | Trích xuất cơ chế Action-Ownership dùng chung | 🟡 | ✅ Xong (21/08) — 172 test pass, `mypy`/`ruff` sạch |
 | **[EPIC-003B](completed/EPIC-003B_data_management_coordinator_pilot.md)** | `DataManagementPresenter` → Coordinator Pattern (pilot) | 🟡 | ✅ Xong (21/08) — 57 test pass, `mypy`/`ruff` sạch |
+| **[EPIC-003B2](completed/EPIC-003B2_data_management_ui_mode_transitions.md)** | 12 `add_transition` trong `__init__` → bảng `logic/ui_mode_transitions.py` | 🟢 | ✅ Xong (07/09) — 874→857 dòng, **`tests/` diff rỗng**, +6 test |
 | **[EPIC-003C](completed/EPIC-003C_paper_exchange_policy_split.md)** | `PaperExchange` → Domain Policy (Margin/Matching/Fee) | 🟢 | ✅ Xong (22/08) — 119 test pass, `mypy`/`ruff` sạch |
 | **[EPIC-003D](cancelled/EPIC-003D_qml_component_split.md)** | Dọn 9 file misplaced (Phase 1) + tách 3 file QML lớn (Phase 2) + danh mục `components/README.md` có test enforce (Phase 3) | 🟢 | ❌ **HUỶ 2026-08-25** — Phase 1+2 hết đối tượng (`EPIC-006F` xoá sạch `.qml`); Phase 3 gộp vào `EPIC-007G` |
 | **[EPIC-003E](completed/EPIC-003E_backtest_presenter_coordinator.md)** | `BacktestPresenter` → Coordinator Pattern | 🔴 | ✅ Xong 2026-08-26 — 6 coordinator, 2.803 → 2.135 dòng |
+| **[EPIC-003E2](completed/EPIC-003E2_run_config_builder_logic.md)** | `_build_run_config` (107 dòng) + `_get_current_config` (36) → `logic/run_config_builder.py`, hàm thuần trả về `RunConfigOutcome` | 🟡 | ✅ Xong (07/09) — 1.966→1.828 dòng, **`tests/` diff rỗng**, +15 test |
+| **[EPIC-003E3](completed/EPIC-003E3_backtest_screen_config.md)** | 5 lần đọc `IConfig` rải rác trong `__init__` → `logic/backtest_screen_config.py`; tìm ra lỗ `int(True)==1` ở fetch-limit | 🟢 | ✅ Xong (07/09) — 1.828→1.776 dòng, `__init__` 272→237, **`tests/` diff rỗng**, +10 test |
 | **[EPIC-003F](incomplete/EPIC-003F_backtest_viewmodel_composite_design_review.md)** | `BackTestViewModel` → Composite ViewModel — **vòng thiết kế trước**, chưa code | 🔴 | 🟡 **Đã mở khoá 27/08** — lý do chặn cũ (binding QML) chết theo `EPIC-006`; đo lại rủi ro thật, chốt hướng facade. Task con triển khai chưa mở. Xem [`DOCTOR-002`](../../completed/DOCTOR-002_epic_003f_blocker_is_dead.md) |
 | **[EPIC-003F1](completed/EPIC-003F1_trade_log_sub_view_model_facade.md)** | Lát cắt đầu tiên của `003F`: `TradeLogViewModel` + facade chuyển tiếp (6 property / 6 signal) | 🟡 | ✅ Xong (02/09) — `backtest_view_model.py` 1.435→1.426 dòng, `tests/` diff rỗng tuyệt đối, mutation-verify đã làm thật |
 | **[EPIC-003F2](completed/EPIC-003F2_strategy_params_sub_view_model_facade.md)** | Lát cắt 2 của `003F`: `StrategyParamsViewModel` + facade (6 property / 5 signal / `step_bot_param_value`) | 🟡 | ✅ Xong (07/09) — 1.426→1.417 dòng, **`tests/` diff rỗng tuyệt đối**, CI 3.639 passed. Phạm vi thu hẹp có lý do: 2 signal `open*Requested` ở lại khối 10 signal "mở modal" |
@@ -102,6 +105,7 @@ dòng.
 | **[EPIC-003F4](completed/EPIC-003F4_broker_sim_sub_view_model_facade.md)** | Lát cắt 4: `BrokerSimViewModel` + facade (12 property / 12 signal / 10 slot); clamp và mặc định thành hằng số có tên | 🟡 | ✅ Xong (07/09) — 1.405→1.379 dòng, **`tests/` diff rỗng**, +10 test mới |
 | **[EPIC-003F5](completed/EPIC-003F5_run_progress_and_result_sub_view_models_facade.md)** | Lát cắt 5: `RunProgressViewModel` + `RunResultViewModel` + facade. Kết luận nhóm cuối: **không tách** | 🟡 | ✅ Xong (07/09) — 1.379→1.351 dòng, **`tests/` diff rỗng**, +15 test mới |
 | **[EPIC-003G](completed/EPIC-003G_dashboard_presenter_coordinator.md)** | `DashboardPresenter` → trích `IndicatorCoordinator` (fetch-limit + script dispatch) | 🟢 | ✅ Xong 2026-08-30 — 1.158→1.134 dòng, 13 test coordinator riêng, 787 test tổng xanh |
+| **[EPIC-003G2](completed/EPIC-003G2_dashboard_chart_zoom_limits.md)** | `DashboardPresenter` → `logic/chart_zoom_limits.py`; xoá 2 bản sao của giới hạn zoom + 2 import trong thân hàm | 🟢 | ✅ Xong (07/09) — 1.222→1.207 dòng, **`tests/` diff rỗng**, +3 test |
 
 > ### ❌ `EPIC-003D` đã huỷ (2026-08-25, user duyệt)
 >

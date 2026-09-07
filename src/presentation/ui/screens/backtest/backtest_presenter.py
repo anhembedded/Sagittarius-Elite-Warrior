@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QModelIndex, Signal, Slot
@@ -22,7 +22,6 @@ from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import
 from Sagittarius_Elite_Warrior.src.application.use_cases.backtest.run_static_backtest import (
     BacktestCancelled,
 )
-from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
 from Sagittarius_Elite_Warrior.src.domain.backtesting.backtest_result import (
     BacktestResult,
 )
@@ -37,16 +36,8 @@ from Sagittarius_Elite_Warrior.src.domain.events.backtest_failed_event import (
 from Sagittarius_Elite_Warrior.src.domain.events.signal_generated_event import (
     SignalGeneratedEvent,
 )
-from Sagittarius_Elite_Warrior.src.domain.value_objects.broker_simulation_config import (
-    BrokerSimulationConfig,
-)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.commission_type import (
     CommissionType,
-)
-from Sagittarius_Elite_Warrior.src.domain.value_objects.currency import Currency
-from Sagittarius_Elite_Warrior.src.domain.value_objects.position_sizing import (
-    PositionSizing,
-    PositionSizingType,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.infrastructure.persistence.symbol_market_metadata_cache import (
@@ -54,9 +45,6 @@ from Sagittarius_Elite_Warrior.src.infrastructure.persistence.symbol_market_meta
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
     ActionOwnershipTracker,
-)
-from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
-    default_symbol,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_display import (
     humanize_strategy_key,
@@ -126,15 +114,15 @@ from .logic.backtest_fsm_matrix import (
     BacktestUiState,
 )
 from .logic.backtest_limitations_view import build_backtest_limitations
+from .logic.backtest_screen_config import BacktestScreenConfig
 from .logic.extended_metrics_snapshot import ExtendedMetricsSnapshot
-from .logic.pre_backtest_assertions import (
-    PreBacktestAssertionPipeline,
-    PreBacktestInput,
-    parse_custom_datetime,
-)
 from .logic.result_formatter import format_result_summary
-from .logic.time_range_preset import TimeRangePreset, resolve_time_range
-from .logic.timeframe_parsing import timeframe_or_fallback
+from .logic.run_config_builder import (
+    build_run_config,
+    published_candle_cutoff,
+    snapshot_current_config,
+)
+from .logic.time_range_preset import TimeRangePreset
 from .ports.i_backtest_view import IBacktestView
 from .signal_wiring import (
     connect_chart_controls,
@@ -162,7 +150,6 @@ _TRACE_PREFIX = "BACKTEST_TRACE"
 _FALLBACK_SYMBOL = "ETHUSDT"
 
 
-_NO_STRATEGY_MESSAGE = "Chưa có chiến lược nào được đăng ký."
 _RUNNING_MESSAGE = "Đang chạy backtest..."
 _CANCELLING_MESSAGE = "Đang hủy backtest..."
 _CANCELLING_SYNC_MESSAGE = "Đang hủy đồng bộ..."
@@ -183,37 +170,6 @@ _ZERO_TRADES_MESSAGE = (
 _EXPORT_DIALOG_TITLE = "Xuất Trade Logs"
 _EXPORT_DEFAULT_FILENAME = "trade_logs.csv"
 _EXPORT_FILE_FILTER = "CSV Files (*.csv)"
-
-#: Default safety cap on chart candles, overridable via
-#: ConfigKeys.BACKTEST_CHART_KLINES_FETCH_LIMIT.
-#:
-#: This used to be 5 000, which silently truncated the chart to the most
-#: recent slice of a much longer run: a 52 000-candle backtest drew its 960
-#: trade markers across the full range while only the last 5 000 candles
-#: existed on the chart, so panning left ran out of candles and older markers
-#: stood over empty space. Measured cost of lifting it: a 52 147-candle load
-#: takes 179ms once (vs 63ms for 5 000) and pans at 18.2ms/frame — identical
-#: to 5 000, because viewport windowing draws only the visible ~200 bars.
-#: Range coverage itself is still checked by a compact SQLite aggregate and is
-#: not inferred from this window.
-_DEFAULT_CHART_KLINES_FETCH_LIMIT = 200_000
-
-#: A kline can be closed locally yet still be absent from the exchange's
-#: historical endpoint for a short publication window.  Live-ended backtests
-#: therefore stop one full bar behind ``now``; this is a deterministic data
-#: watermark, not a claim that the chart has no newer in-progress candle.
-_LIVE_BACKTEST_END_DELAY_INTERVALS = 1
-
-
-def _parse_custom_datetime(raw: str) -> datetime | None:
-    """Compatibility seam; parsing belongs to BOT-095E's assertion module."""
-    return parse_custom_datetime(raw)
-
-
-def _published_candle_cutoff(now: datetime, timeframe: TimeFrame) -> datetime:
-    """Return the latest live boundary safe for historical backtesting."""
-    delay_seconds = timeframe.to_seconds() * _LIVE_BACKTEST_END_DELAY_INTERVALS
-    return now - timedelta(seconds=delay_seconds)
 
 
 class BackTestPresenter(BasePresenter):
@@ -314,12 +270,17 @@ class BackTestPresenter(BasePresenter):
         # constant that happened to coincidentally match what Dev Board
         # syncs by default — read once at construction, same as
         # SettingsPresenter._load_from_config does for its own fields.
-        config_values = self.config.get_all()
-        # EPIC-010H part 2 finished: this screen was the last one still reading
-        # DEFAULT_SYMBOLS by hand. Its own floor is unchanged — only where the
-        # configured value is read and validated is now shared.
-        self._symbol: str = default_symbol(config_values, _FALLBACK_SYMBOL)
-        default_interval = config_values.get("DEFAULT_INTERVAL") or ""
+        #
+        # EPIC-003E3: every config key this screen depends on is read in
+        # one place now (`logic/backtest_screen_config.py`), with its
+        # fallback, instead of five reads scattered through this method.
+        self._screen_config = BacktestScreenConfig.read_from(
+            self.config,
+            fallback_symbol=_FALLBACK_SYMBOL,
+            default_log_max_entries=DEFAULT_LOG_MAX_ENTRIES,
+        )
+        self._symbol: str = self._screen_config.symbol
+        default_interval = self._screen_config.default_interval
 
         # BOT-059: set only by _on_backtest_empty (a real "no historical
         # data" result), cleared by any successful run or successful sync —
@@ -420,13 +381,7 @@ class BackTestPresenter(BasePresenter):
         )
         self._chart_script_keys: list[str] = []
         self._current_raw_klines: list[MarketData] = []
-        self._chart_klines_fetch_limit = int(
-            self.config.get(
-                ConfigKeys.BACKTEST_CHART_KLINES_FETCH_LIMIT.value,
-                _DEFAULT_CHART_KLINES_FETCH_LIMIT,
-            )
-            or _DEFAULT_CHART_KLINES_FETCH_LIMIT
-        )
+        self._chart_klines_fetch_limit = self._screen_config.chart_klines_fetch_limit
         try:
             resolved_cache = container.resolve(ISymbolMarketMetadataCache)
             self._market_metadata_cache: ISymbolMarketMetadataCache = (
@@ -440,18 +395,8 @@ class BackTestPresenter(BasePresenter):
         self._view_model = BackTestViewModel()
         view.set_view_model(self._view_model)
 
-        self._is_dev_mode: bool = bool(self.config.get(DEV_MODE_CONFIG_KEY, False))
-        raw_max_entries = self.config.get(
-            ConfigKeys.BACKTEST_LOG_MAX_ENTRIES.value, DEFAULT_LOG_MAX_ENTRIES
-        )
-        try:
-            self._log_max_entries = (
-                int(raw_max_entries)
-                if not isinstance(raw_max_entries, bool)
-                else DEFAULT_LOG_MAX_ENTRIES
-            )
-        except (ValueError, TypeError):
-            self._log_max_entries = DEFAULT_LOG_MAX_ENTRIES
+        self._is_dev_mode: bool = self._screen_config.is_dev_mode
+        self._log_max_entries = self._screen_config.log_max_entries
         self._logger = BacktestEventLogger(
             log_model=self._view_model.log_model,
             is_dev_mode=self._is_dev_mode,
@@ -531,35 +476,11 @@ class BackTestPresenter(BasePresenter):
         # After render_symbol_cards(): view.chart_controls doesn't exist
         # until the ChartCard it's attached to has been built.
         view.set_chart_dev_mode(self._is_dev_mode)
-        view.set_chart_opengl_enabled(
-            bool(
-                self.config.get(
-                    ConfigKeys.BACKTEST_CHART_OPENGL_ENABLED.value,
-                    False,
-                )
-            )
-        )
-        # BUG-009: defaults to OFF. The cached-frame preview replaces live
-        # rendering with a translated snapshot of the last frame, and every
-        # symptom the user reported follows from that one decision — the
-        # snapshot holds no pixels past its own edge (blank band), its Y axis
-        # cannot re-autoscale (vertical jump on release), and its indicator
-        # and volume windows are frozen at capture time. None of that is
-        # fixable while the frame is a snapshot.
-        #
-        # Its premise no longer holds either: CHART_CARD_MAX_ZOOM_OUT_CANDLES
-        # caps the plot at ~200 visible candles, so a real pan re-render costs
-        # ~32ms regardless of how much history is loaded — bounded, not
-        # unbounded. Dragging from the volume subplot already bypasses the
-        # preview and pans natively, and that path was confirmed defect-free
-        # in use. Set this key to true to opt back in.
+        view.set_chart_opengl_enabled(self._screen_config.chart_opengl_enabled)
+        # Defaults to OFF — see `BUG-009` in `backtest_screen_config.py` for
+        # why the cached-frame preview is opt-in.
         view.set_chart_cached_interaction_enabled(
-            bool(
-                self.config.get(
-                    ConfigKeys.BACKTEST_CHART_CACHED_INTERACTION_ENABLED.value,
-                    False,
-                )
-            )
+            self._screen_config.chart_cached_interaction_enabled
         )
         # EPIC-014 — the shared symbol favourites/recents store. Optional
         # exactly like the UiStateCoordinator above: presenters are built
@@ -724,39 +645,13 @@ class BackTestPresenter(BasePresenter):
         self._action_tracker.log_stale_callback(callback, action_id, kind)
 
     def _get_current_config(self) -> BacktestRunConfig:
-        tf = timeframe_or_fallback(self._view_model.selectedTimeframe)
-
-        try:
-            balance = float(self._view_model.initialCapitalText)
-        except (ValueError, TypeError):
-            balance = 10000.0
-
-        try:
-            currency = Currency(self._view_model.selectedCurrency)
-        except ValueError:
-            currency = Currency.USD
-
-        preset = self._view_model.timeRangePreset
-        if preset == TimeRangePreset.CUSTOM.value:
-            start_dt = _parse_custom_datetime(self._view_model.customStartText)
-            end_dt = _parse_custom_datetime(self._view_model.customEndText)
-        else:
-            try:
-                start_dt, end_dt = resolve_time_range(
-                    TimeRangePreset(preset), datetime.now(UTC)
-                )
-            except ValueError:
-                start_dt, end_dt = None, None
-
-        return BacktestRunConfig(
-            strategy_key=self._view_model.selectedStrategyKey,
-            timeframe=tf,
-            initial_balance=balance,
-            start_time=start_dt,
-            end_time=end_dt,
-            strategy_params=self._strategy_params,
-            currency=currency,
+        """The lenient snapshot behind the dirty-tracking label — see
+        `logic/run_config_builder.snapshot_current_config()` for why it is
+        deliberately NOT the same function as `_build_run_config`."""
+        return snapshot_current_config(
+            self._view_model,
             symbol=self._symbol,
+            strategy_params=self._strategy_params,
             execution_mode=self._get_execution_mode_from_view_model(),
         )
 
@@ -835,7 +730,7 @@ class BackTestPresenter(BasePresenter):
         if config.end_time is None:
             config = replace(
                 config,
-                end_time=_published_candle_cutoff(datetime.now(UTC), config.timeframe),
+                end_time=published_candle_cutoff(datetime.now(UTC), config.timeframe),
             )
         self._active_preview_id = 0
         removed_strategy_lines = len(self._active_strategy_lines)
@@ -1761,110 +1656,25 @@ class BackTestPresenter(BasePresenter):
     def _build_run_config(self) -> BacktestRunConfig | None:
         """Reads and validates the toolbar fields. Returns `None` (having
         already reported the error) rather than raising — mirrors
-        `SettingsPresenter._on_save`'s validate-before-any-side-effect shape."""
-        view_model = self._view_model
+        `SettingsPresenter._on_save`'s validate-before-any-side-effect shape.
 
-        preset = TimeRangePreset(view_model.timeRangePreset)
-        assertions = PreBacktestAssertionPipeline.default().validate(
-            PreBacktestInput(
-                capital_text=view_model.initialCapitalText,
-                is_custom_range=preset is TimeRangePreset.CUSTOM,
-                custom_start_text=view_model.customStartText,
-                custom_end_text=view_model.customEndText,
-                is_unbounded_range=preset is TimeRangePreset.ALL_HISTORY,
-                is_tick_mode=self._get_execution_mode_from_view_model()
-                is BacktestExecutionMode.HISTORICAL_TICK,
-            )
-        )
-        if assertions:
-            issue = assertions[0]
-            self._log_dev_trace(
-                "run_config_invalid",
-                reason=issue.field.value,
-                capital=view_model.initialCapitalText,
-            )
-            view_model.set_result(issue.message, is_error=True)
-            return None
-
-        initial_balance = float(view_model.initialCapitalText)
-
-        if not view_model.selectedStrategyKey:
-            self._log_dev_trace("run_config_invalid", reason="missing_strategy")
-            view_model.set_result(_NO_STRATEGY_MESSAGE, is_error=True)
-            return None
-
-        custom_start: datetime | None = None
-        custom_end: datetime | None = None
-        if preset is TimeRangePreset.CUSTOM:
-            custom_start = _parse_custom_datetime(view_model.customStartText)
-            custom_end = _parse_custom_datetime(view_model.customEndText)
-
-        range_now = datetime.now(UTC)
-        if preset is not TimeRangePreset.CUSTOM:
-            range_now = _published_candle_cutoff(
-                range_now, TimeFrame(view_model.selectedTimeframe)
-            )
-        start_time, end_time = resolve_time_range(
-            preset, range_now, custom_start, custom_end
-        )
-
-        self._log_dev_trace(
-            "run_config_built",
+        `EPIC-003E2`: the reading and validating is now
+        `logic/run_config_builder.build_run_config()`, a pure function that
+        *returns* what happened. What stays here is what only a Presenter
+        may do — write the error to the ViewModel, and emit the dev traces,
+        in the same order as before."""
+        outcome = build_run_config(
+            self._view_model,
             symbol=self._symbol,
-            strategy=view_model.selectedStrategyKey,
-            timeframe=view_model.selectedTimeframe,
-            start=start_time,
-            end=end_time,
-            has_params=bool(self._strategy_params),
-        )
-
-        try:
-            order_sizing_type = PositionSizingType(view_model.orderSizeType)
-        except ValueError:
-            order_sizing_type = PositionSizingType.PERCENT_OF_EQUITY
-
-        position_sizing = PositionSizing(
-            type=order_sizing_type,
-            value=view_model.orderSizeValue,
-        )
-
-        try:
-            commission_type = CommissionType(view_model.commissionType)
-        except ValueError:
-            commission_type = CommissionType.PERCENT
-
-        take_profit_pct: float | None = None
-        if view_model.takeProfitPctEnabled:
-            try:
-                parsed_take_profit_pct = float(view_model.takeProfitPctText)
-            except ValueError:
-                parsed_take_profit_pct = 0.0
-            if parsed_take_profit_pct > 0:
-                take_profit_pct = parsed_take_profit_pct
-
-        broker_config = BrokerSimulationConfig(
-            pyramiding=view_model.pyramiding,
-            slippage_ticks=view_model.slippageTicks,
-            commission_type=commission_type,
-            commission_value=view_model.commissionValue,
-            long_leverage=view_model.longLeverage,
-            short_leverage=view_model.shortLeverage,
-            take_profit_pct=take_profit_pct,
-        )
-
-        return BacktestRunConfig(
-            strategy_key=view_model.selectedStrategyKey,
-            timeframe=TimeFrame(view_model.selectedTimeframe),
-            initial_balance=initial_balance,
-            start_time=start_time,
-            end_time=end_time,
             strategy_params=self._strategy_params,
-            currency=Currency(view_model.selectedCurrency),
-            symbol=self._symbol,
             execution_mode=self._get_execution_mode_from_view_model(),
-            position_sizing=position_sizing,
-            broker_config=broker_config,
         )
+        for trace in outcome.traces:
+            self._log_dev_trace(trace.event, **trace.fields)
+        if outcome.config is None:
+            self._view_model.set_result(outcome.error_message, is_error=True)
+            return None
+        return outcome.config
 
     def _get_execution_mode_from_view_model(self) -> BacktestExecutionMode:
         return self._execution.execution_mode_from_view_model()

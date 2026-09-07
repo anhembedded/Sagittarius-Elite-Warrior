@@ -77,6 +77,7 @@ from .dashboard_view_model import (
     DashboardQmlViewModel,
 )
 from .history_pagination_controller import HistoryPaginationController
+from .logic.chart_zoom_limits import max_visible_x_range
 from .stream_lifecycle_controller import StreamLifecycleController
 
 logger = logging.getLogger("App.Dashboard")
@@ -920,19 +921,11 @@ class DashboardPresenter(BasePresenter):
         chart_cards = self.view.render_symbol_cards(symbols)
         self.active_charts.clear()
 
-        from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
-        from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import (
-            TimeFrame,
-        )
-
-        bar_seconds = TimeFrame(self._active_interval).to_seconds()
-        max_candles = self.config.get(
-            ConfigKeys.CHART_CARD_MAX_ZOOM_OUT_CANDLES.value, 2000, cast=int
-        )
+        x_range = max_visible_x_range(self.config, self._active_interval)
 
         for card in chart_cards:
             self.active_charts[card.symbol] = card
-            card.set_max_visible_x_range(max_candles * bar_seconds)
+            card.set_max_visible_x_range(x_range)
             # BOT-033 — freshly-created cards only; render_symbol_cards()
             # tears down and rebuilds the old ones on every call, so a
             # connection made here would otherwise accumulate on a widget
@@ -1008,17 +1001,9 @@ class DashboardPresenter(BasePresenter):
     def _on_timeframe_changed(self, timeframe: str) -> None:
         self._stream_controller._on_timeframe_changed(timeframe)
 
-        from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
-        from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import (
-            TimeFrame,
-        )
-
-        bar_seconds = TimeFrame(timeframe).to_seconds()
-        max_candles = self.config.get(
-            ConfigKeys.CHART_CARD_MAX_ZOOM_OUT_CANDLES.value, 2000, cast=int
-        )
+        x_range = max_visible_x_range(self.config, timeframe)
         for card in self.active_charts.values():
-            card.set_max_visible_x_range(max_candles * bar_seconds)
+            card.set_max_visible_x_range(x_range)
 
         # EPIC-010D — the interval lives on this presenter, not the
         # ViewModel, so there is no *Changed signal to hang the debounce off;

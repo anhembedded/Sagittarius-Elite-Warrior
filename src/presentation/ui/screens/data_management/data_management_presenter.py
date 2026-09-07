@@ -62,6 +62,7 @@ from sagittarius_engine.runtime.tasks.cancellation_token import CancellationToke
 
 from .data_management_signal_payloads import GapInspectorPayload, StatusRowUpdate
 from .data_management_view_model import DataManagementViewModel
+from .logic.ui_mode_transitions import install_transitions
 from .signal_log_handler import SignalLogHandler
 
 if TYPE_CHECKING:
@@ -188,28 +189,10 @@ class DataManagementPresenter(BasePresenter):
         view.destroyed.connect(self._log_handler.detach)
 
         if self.fsm:
-            # Transitions from IDLE to new states
-            self.fsm.add_transition(UIMode.IDLE, UIMode.SCANNING)
-            self.fsm.add_transition(UIMode.IDLE, UIMode.SYNCING)
-            self.fsm.add_transition(UIMode.IDLE, UIMode.CLEARING)
-
-            # Transitions back to IDLE
-            self.fsm.add_transition(UIMode.SCANNING, UIMode.IDLE)
-            self.fsm.add_transition(UIMode.SYNCING, UIMode.IDLE)
-            self.fsm.add_transition(UIMode.CLEARING, UIMode.IDLE)
-
-            # Transitions for cancellation
-            self.fsm.add_transition(UIMode.SCANNING, UIMode.CANCELLING)
-            self.fsm.add_transition(UIMode.SYNCING, UIMode.CANCELLING)
-            self.fsm.add_transition(UIMode.CANCELLING, UIMode.IDLE)
-            self.fsm.add_transition(UIMode.CANCELLING, UIMode.ERROR)
-
-            # Transitions to ERROR
-            self.fsm.add_transition(UIMode.SCANNING, UIMode.ERROR)
-            self.fsm.add_transition(UIMode.SYNCING, UIMode.ERROR)
-            self.fsm.add_transition(UIMode.CLEARING, UIMode.ERROR)
-
-            self.fsm.add_transition(UIMode.ERROR, UIMode.IDLE)
+            # EPIC-003B2 — the legal moves are a table, in
+            # `logic/ui_mode_transitions.py`, not twelve calls in the
+            # middle of a composition root.
+            install_transitions(self.fsm)
 
         # Initialize Coordinators (EPIC-003B)
         self._scan_coordinator = ScanCoordinator(
