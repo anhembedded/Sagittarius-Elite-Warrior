@@ -38,6 +38,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_credentials_provider import (
     IExchangeCredentialsProvider,
 )
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
+)
 from Sagittarius_Elite_Warrior.src.infrastructure.credentials.env_first_credentials_provider import (
     EnvFirstCredentialsProvider,
 )
@@ -100,7 +103,15 @@ def credentials_provider(tmp_path):
 
 
 @pytest.fixture
-def mock_container(mock_config, credentials_provider):
+def session_state() -> TradingSessionState:
+    """`BOT-125` — a real session state so `_venues_locked()` reads a real
+    bool. Starts disabled, which is what `TradingSessionState` guarantees
+    for a fresh instance (`EPIC-021G` §2.3)."""
+    return TradingSessionState()
+
+
+@pytest.fixture
+def mock_container(mock_config, credentials_provider, session_state):
     container = Mock()
 
     def resolve_mock(interface):
@@ -110,6 +121,11 @@ def mock_container(mock_config, credentials_provider):
             return mock_config
         if interface == IExchangeCredentialsProvider:
             return credentials_provider
+        if interface is TradingSessionState:
+            # `BOT-125` — real, not a Mock: the presenter reads `.enabled`
+            # to decide whether the venue combos are editable, and a Mock's
+            # truthy attribute would lock them in every test.
+            return session_state
         return Mock()
 
     container.resolve.side_effect = resolve_mock
@@ -166,6 +182,9 @@ def test_an_env_var_locks_the_field_and_wins_over_the_file(
         if interface.__name__ == "IConfig"
         else credentials_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
     view = SettingsView()
@@ -203,6 +222,9 @@ def test_missing_config_keys_load_safely(
         if interface.__name__ == "IConfig"
         else empty_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
     view = SettingsView()
@@ -299,6 +321,9 @@ def test_save_writes_a_new_key_to_the_real_secrets_file(qapp, tmp_path, request)
         if interface.__name__ == "IConfig"
         else credentials_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
 
@@ -345,6 +370,9 @@ def test_save_does_not_touch_the_secrets_file_when_an_env_var_is_locking_it(
         if interface.__name__ == "IConfig"
         else credentials_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
     view = SettingsView()
@@ -416,6 +444,9 @@ def test_env_locked_credentials_disable_the_input_fields(
         if interface.__name__ == "IConfig"
         else credentials_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
     view = SettingsView()

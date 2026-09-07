@@ -22,11 +22,11 @@ Sagittarius_Elite_Warrior/Tasks/
 
 | Trạng thái | Số lượng Task | Tỷ lệ |
 | :--- | :---: | :---: |
-| 🟢 **Completed** | 122 | 67.4% |
+| 🟢 **Completed** | 124 | 67.8% |
 | 🟡 **In Progress** | 0 | 0.0% |
-| 🔴 **Backlog** | 53 | 29.3% |
+| 🔴 **Backlog** | 53 | 29.0% |
 | ❌ **Cancelled** | 6 | 3.3% |
-| 📈 **Tổng số Task** | **181** | **100%** |
+| 📈 **Tổng số Task** | **183** | **100%** |
 
 > 🐞 **Lỗi (bug) không tính trong bảng trên** — theo dõi riêng ở [Bug Board](bug_report/README.md), nơi liệt kê cả bug **đang mở** lẫn đã sửa.
 
@@ -249,6 +249,7 @@ Sagittarius_Elite_Warrior/Tasks/
 
 | Priority | Task ID | Tên Nhiệm vụ | Độ phức tạp / Agent | Dependencies | Mô tả ngắn |
 | :---: | :--- | :--- | :---: | :---: | :--- |
+| ✅ | **[BOT-125](completed/BOT-125_ui_bat_tat_2_venue_trong_settings.md)** | **2 control bật/tắt môi trường sàn trong Settings** | 🟢 **S (Small)** | — | **Đã hoàn thành (07/09).** `exchange.market_data_venue`/`exchange.trading_venue` trước đó là config sửa-file-rồi-khởi-động-lại, **không có UI nào chạm được** (`environment_banner_content.py` đã ghi thẳng điều đó trong docstring của chính nó) — nên xong `EPIC-022` user vẫn không bật nổi giao dịch nếu không mở `app_config.json` sửa tay. Thêm 2 `QComboBox` vào Settings, danh sách sinh từ chính enum (nên `TradingVenue` không có `MAINNET` thì UI cũng không thể có). Giữ **2 control riêng**, không gộp thành 1 công tắc: ADR §2 cố ý cho phép tổ hợp giá mainnet + lệnh testnet, và banner đỏ tồn tại chính vì tổ hợp đó. Nói thẳng trên UI là **cần khởi động lại** (2 giá trị chỉ đọc lúc boot, `ITradingClient` chỉ được đăng ký DI khi venue ≠ DISABLED); **từ chối lưu** khi đang giao dịch thay vì lưu một nửa. 7 test mới. |
 | ✅ | **[BOT-124](completed/BOT-124_trich_datatable_dung_chung_cho_qml.md)** | **Trích `DataTable` dùng chung cho `ui/qml/`, gộp 3 bản sao đang có** | 🟡 **`M (Standard)`** | — | **Đã hoàn thành (02/09).** `DataTable.qml` dùng chung thay thế phần đuôi gần-giống-từng-ký-tự của `TradeLogTable`/`KlineInspectorTable`/`DatabaseStatusTable` — 3 wrapper 420→253 dòng, **0 assert bị sửa** (đối chiếu `git stash`-diff `--collect-only`: 0 test ID thêm/bớt). Mở khoá `EPIC-021I`. |
 | ~~P1~~ **Hoãn có chủ đích** | **[BOT-008](backlog/BOT-008_live_trading_strategy_execution.md)** | **Live Trading Strategy Execution** | 🔴 **`L (Thinking)`** | `BOT-001` ✅, `BOT-005` ✅ | Tính toán chỉ báo (RSI, EMA, MACD) từ Live Stream & phát tín hiệu đặt lệnh qua Binance API. Mọi phụ thuộc kỹ thuật đã xong — `BOT-078` (out-of-sample) **đã xong** (14/08) nhưng **chưa tự động mở khoá**: cần quyết định tường minh của user, không suy ra từ việc code xong, vì `PythonBinanceClient` nối thẳng mainnet thật, không có testnet. Xem ghi chú định hướng ở đầu file. |
 | **P1** | **[Nhóm Engine Hardening](reports/engine_defect_class_analysis.md)** *(`BOT-066`…`BOT-071`)* | **6 cơ chế engine chặn 6 lớp lỗi tái phát** | 🟡 **`M`** / 🔴 **`L`** | — | Sinh ra từ rà soát toàn bộ lịch sử bug: gom thành 6 **lớp lỗi** rồi hỏi "cơ chế nào khiến cả lớp đó không xảy ra được nữa". Xem bảng chi tiết bên dưới. 📄 [Phân tích Lớp Lỗi Engine](reports/engine_defect_class_analysis.md). |

@@ -23,6 +23,9 @@ import pytest
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_credentials_provider import (
     IExchangeCredentialsProvider,
 )
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
+)
 from Sagittarius_Elite_Warrior.src.infrastructure.credentials.env_first_credentials_provider import (
     EnvFirstCredentialsProvider,
 )
@@ -116,6 +119,9 @@ def container(config, coordinator, credentials_provider):
         if interface is UiStateCoordinator
         else credentials_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
     c.registrations.return_value = {UiStateCoordinator: object()}
@@ -178,6 +184,9 @@ def test_saving_without_a_coordinator_still_works(
         if interface is IConfig
         else credentials_provider
         if interface is IExchangeCredentialsProvider
+        else TradingSessionState()
+        if interface is TradingSessionState
+        # `BOT-125` — a real one: the presenter reads `.enabled` as a bool.
         else Mock()
     )
     container.registrations.return_value = {}

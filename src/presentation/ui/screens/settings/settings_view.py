@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -16,6 +17,12 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QVBoxLayout,
     QWidget,
+)
+from Sagittarius_Elite_Warrior.src.domain.value_objects.market_data_venue import (
+    MarketDataVenue,
+)
+from Sagittarius_Elite_Warrior.src.domain.value_objects.trading_venue import (
+    TradingVenue,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
     Palette,
@@ -36,6 +43,13 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeframePicker.timeframe
     TimeframePickerDialog,
 )
 from sagittarius_engine.extensions.pyside_mvc import BaseView
+
+from .venue_labels import market_data_venue_label, trading_venue_label
+
+#: `BOT-125` — shown instead of letting the combos be edited mid-session.
+_VENUES_LOCKED_TEXT = (
+    "Đang giao dịch — tắt giao dịch ở màn Giao dịch trước khi đổi 2 mục này."
+)
 
 if TYPE_CHECKING:
     from .settings_view_model import SettingsViewModel
@@ -112,6 +126,11 @@ class SettingsView(BaseView):
             view_model.connectionResultText,
             view_model.connectionResultIsError,
         )
+        self._apply_venues(
+            view_model.marketDataVenue,
+            view_model.tradingVenue,
+            view_model.venuesLocked,
+        )
 
         self._api_key_field.textEdited.connect(self._on_api_key_edited)
         self._api_secret_field.textEdited.connect(self._on_api_secret_edited)
@@ -119,6 +138,23 @@ class SettingsView(BaseView):
         self._sync_days_spin.valueChanged.connect(self._on_sync_days_changed)
         self._save_button.clicked.connect(view_model.requestSave)
         self._check_connection_button.clicked.connect(view_model.requestCheckConnection)
+        self._market_data_venue_combo.currentIndexChanged.connect(
+            lambda _index: view_model.requestMarketDataVenue(
+                self._market_data_venue_combo.currentData() or ""
+            )
+        )
+        self._trading_venue_combo.currentIndexChanged.connect(
+            lambda _index: view_model.requestTradingVenue(
+                self._trading_venue_combo.currentData() or ""
+            )
+        )
+        view_model.venueChanged.connect(
+            lambda: self._apply_venues(
+                view_model.marketDataVenue,
+                view_model.tradingVenue,
+                view_model.venuesLocked,
+            )
+        )
 
         view_model.apiKeyChanged.connect(
             lambda: self._api_key_field.setText(view_model.apiKey)
@@ -277,7 +313,9 @@ class SettingsView(BaseView):
         warning = QLabel(
             "Thay đổi được ghi xuống user_config.json ngay khi lưu. "
             "Riêng API Key/Secret ghi vào secrets.local.json (không nằm trong "
-            "git) và cần khởi động lại app để có hiệu lực."
+            "git). API Key/Secret, Nguồn dữ liệu và Nơi đặt lệnh đều cần "
+            "khởi động lại app mới có hiệu lực — chúng chỉ được đọc một lần "
+            "lúc app khởi động."
         )
         warning.setObjectName("lblRestartWarning")
         warning.setWordWrap(True)
@@ -320,6 +358,8 @@ class SettingsView(BaseView):
         self._connection_result_label.setStyleSheet("font-size: 11px;")
         grid.addWidget(self._connection_result_label, row, 0, 1, 2)
         row += 1
+
+        row = self._add_venue_rows(grid, row)
 
         row = self._add_field_row(
             grid, row, "Default Symbols:", "txtDefaultSymbols", "BTCUSDT, ETHUSDT"
@@ -369,6 +409,66 @@ class SettingsView(BaseView):
         grid.addWidget(field, row, 1)
         self._last_field = field
         return row + 1
+
+    def _add_venue_rows(self, grid: QGridLayout, row: int) -> int:
+        """`BOT-125` — the two exchange-environment pickers.
+
+        @details Two separate combos, not one "environment" switch, because
+        `EPIC-021`'s ADR §2 keeps them independent on purpose: mainnet
+        prices with testnet orders is a real, useful, and deliberately
+        warned-about combination (the red banner on every screen exists
+        for exactly it). One merged switch would delete that possibility
+        and the banner's reason to exist along with it.
+
+        The enum drives the item list rather than a hand-written one:
+        `TradingVenue` has no `MAINNET` member by design (ADR §3), and a
+        typed-out list here could grow one by accident.
+        """
+        grid.addWidget(self._field_label("Nguồn dữ liệu (chart):"), row, 0)
+        self._market_data_venue_combo = QComboBox()
+        self._market_data_venue_combo.setObjectName("cboMarketDataVenue")
+        for venue in MarketDataVenue:
+            self._market_data_venue_combo.addItem(
+                market_data_venue_label(venue), venue.value
+            )
+        grid.addWidget(self._market_data_venue_combo, row, 1)
+        row += 1
+
+        grid.addWidget(self._field_label("Nơi đặt lệnh:"), row, 0)
+        self._trading_venue_combo = QComboBox()
+        self._trading_venue_combo.setObjectName("cboTradingVenue")
+        for trading_venue in TradingVenue:
+            self._trading_venue_combo.addItem(
+                trading_venue_label(trading_venue), trading_venue.value
+            )
+        grid.addWidget(self._trading_venue_combo, row, 1)
+        row += 1
+
+        self._venue_lock_label = QLabel()
+        self._venue_lock_label.setObjectName("lblVenueLocked")
+        self._venue_lock_label.setWordWrap(True)
+        self._venue_lock_label.setStyleSheet(
+            f"color: {Palette.WARNING}; font-size: 11px;"
+        )
+        self._venue_lock_label.setVisible(False)
+        grid.addWidget(self._venue_lock_label, row, 0, 1, 2)
+        return row + 1
+
+    def _apply_venues(
+        self, market_data_venue: str, trading_venue: str, locked: bool
+    ) -> None:
+        for combo, value in (
+            (self._market_data_venue_combo, market_data_venue),
+            (self._trading_venue_combo, trading_venue),
+        ):
+            index = combo.findData(value)
+            combo.blockSignals(True)
+            if index >= 0:
+                combo.setCurrentIndex(index)
+            combo.blockSignals(False)
+            combo.setEnabled(not locked)
+        self._venue_lock_label.setText(_VENUES_LOCKED_TEXT if locked else "")
+        self._venue_lock_label.setVisible(locked)
 
     def _add_default_interval_row(self, grid: QGridLayout, row: int) -> int:
         """`DEFAULT_INTERVAL` as a picker, not a text field.

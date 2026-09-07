@@ -29,6 +29,8 @@ class SettingsViewModel(BaseQmlViewModel):
     statusChanged = Signal()
     credentialsSourceChanged = Signal()
     connectionCheckChanged = Signal()
+    #: `BOT-125` — the two exchange-environment pickers.
+    venueChanged = Signal()
 
     #: Emitted when the user clicks Save. The Presenter reads the current
     #: field values off this view model rather than receiving them as
@@ -52,6 +54,9 @@ class SettingsViewModel(BaseQmlViewModel):
         self._connection_checking = False
         self._connection_result_text = ""
         self._connection_result_is_error = False
+        self._market_data_venue = ""
+        self._trading_venue = ""
+        self._venues_locked = False
 
     # ------------------------------------------------------------------ #
     # Editable fields (two-way bound from QML)
@@ -218,14 +223,68 @@ class SettingsViewModel(BaseQmlViewModel):
         default_symbols: str,
         default_interval: str,
         default_sync_days: int,
+        market_data_venue: str = "",
+        trading_venue: str = "",
     ) -> None:
         """Populates every field at once; each setter emits its own change
-        signal so QML bindings refresh."""
+        signal so QML bindings refresh.
+
+        @details The two venue arguments default to `""` so the dozens of
+        existing call sites in tests keep working unchanged — the same
+        "a new field always has a default" rule `ONBOARDING.md` §8 trap 5
+        states for frozen dataclasses, for the same reason.
+        """
         self._set_api_key(api_key)
         self._set_api_secret(api_secret)
         self._set_default_symbols(default_symbols)
         self._set_default_interval(default_interval)
         self._set_default_sync_days(default_sync_days)
+        self.set_venues(market_data_venue, trading_venue)
+
+    # ------------------------------------------------------------------ #
+    # Exchange environment (`BOT-125`) — written from Python, picked from
+    # the two combos. Both take effect only after an app restart; the
+    # View says so, and `venuesLocked` is what stops a change landing
+    # mid-session while trading is on.
+    # ------------------------------------------------------------------ #
+
+    @Property(str, notify=venueChanged)
+    def marketDataVenue(self) -> str:
+        return self._market_data_venue
+
+    @Property(str, notify=venueChanged)
+    def tradingVenue(self) -> str:
+        return self._trading_venue
+
+    @Property(bool, notify=venueChanged)
+    def venuesLocked(self) -> bool:
+        """True while live trading is on — changing where orders go
+        mid-session would redefine what everything already in flight
+        means (`EPIC-022` §4.1, same reasoning)."""
+        return self._venues_locked
+
+    @Slot(str, str)
+    def set_venues(self, market_data_venue: str, trading_venue: str) -> None:
+        self._market_data_venue = market_data_venue
+        self._trading_venue = trading_venue
+        self.venueChanged.emit()
+
+    @Slot(bool)
+    def set_venues_locked(self, locked: bool) -> None:
+        self._venues_locked = locked
+        self.venueChanged.emit()
+
+    @Slot(str)
+    def requestMarketDataVenue(self, venue: str) -> None:
+        if venue and venue != self._market_data_venue:
+            self._market_data_venue = venue
+            self.venueChanged.emit()
+
+    @Slot(str)
+    def requestTradingVenue(self, venue: str) -> None:
+        if venue and venue != self._trading_venue:
+            self._trading_venue = venue
+            self.venueChanged.emit()
 
     @Slot()
     def requestSave(self) -> None:

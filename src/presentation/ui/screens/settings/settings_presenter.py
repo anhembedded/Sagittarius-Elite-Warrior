@@ -8,11 +8,19 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_credentials_prov
     IExchangeCredentialsProvider,
     ResolvedCredentials,
 )
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_exchange_connection_status import (
     GetExchangeConnectionStatusQuery,
 )
+from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
 from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_status import (
     ExchangeConnectionStatus,
+)
+from Sagittarius_Elite_Warrior.src.infrastructure.binance.binance_endpoints import (
+    resolve_market_data_venue,
+    resolve_trading_venue,
 )
 from Sagittarius_Elite_Warrior.src.presentation.cli.exchange_status_formatter import (
     format_exchange_connection_status,
@@ -71,6 +79,11 @@ _SAVED_IN_MEMORY_ONLY_MESSAGE = (
     "user_config.json — thay đổi sẽ mất khi khởi động lại app."
 )
 _EMPTY_SYMBOLS_MESSAGE = "Default Symbols không được để trống."
+#: `BOT-125` — Save is refused outright rather than partially applied.
+_VENUES_LOCKED_MESSAGE = (
+    "Đang giao dịch — tắt giao dịch ở màn Giao dịch trước khi đổi Nguồn dữ "
+    "liệu hoặc Nơi đặt lệnh. Chưa lưu gì cả."
+)
 
 #: `EPIC-021B` §2.3 — human-readable label per `CredentialsSource`, and
 #: whether the field must be locked (an edit that would silently be
@@ -121,6 +134,11 @@ class SettingsPresenter(BasePresenter):
             IExchangeCredentialsProvider
         )
         self._thread_manager: IThreadManager = container.resolve(IThreadManager)
+        # `BOT-125` — read, never written: the venue combos are locked
+        # while a live session is on (see `_venues_locked()`).
+        self._session_state: TradingSessionState = container.resolve(
+            TradingSessionState
+        )
         self._connection_check_tracker: ActionOwnershipTracker[str, None, None] = (
             ActionOwnershipTracker()
         )
@@ -175,8 +193,27 @@ class SettingsPresenter(BasePresenter):
             ),
             default_interval=default_interval(values, fallback=FALLBACK_INTERVAL),
             default_sync_days=int(values.get("DEFAULT_SYNC_DAYS") or 1),
+            # `BOT-125` — resolved, not read raw: a typo in config must
+            # show what the app is ACTUALLY running on (and for trading,
+            # that is `disabled`), not the unusable string that produced
+            # it. Same reason the fields above resolve rather than read.
+            market_data_venue=resolve_market_data_venue(self.config).value,
+            trading_venue=resolve_trading_venue(self.config).value,
         )
+        self._settings_view_model.set_venues_locked(self._venues_locked())
         self._apply_credentials_status(resolution)
+
+    def _venues_locked(self) -> bool:
+        """Whether the two venue combos may be edited right now.
+
+        @details Locked while live trading is on. Changing where orders go
+        in the middle of a running session would redefine what everything
+        already in flight means — the same rule `EPIC-022` §4.1 applies to
+        swapping the strategy, for the same reason. The value only takes
+        effect on the next boot anyway, but saving it mid-session would
+        leave a config on disk that contradicts the session still running.
+        """
+        return self._session_state.enabled
 
     @Slot()
     @safe_ui_action
@@ -213,6 +250,19 @@ class SettingsPresenter(BasePresenter):
                 )
                 view_model.set_status(_SAVED_IN_MEMORY_ONLY_MESSAGE, is_error=True)
                 return
+        # `BOT-125` — refuse rather than silently skip: a Save that wrote
+        # every other field and quietly dropped these two would be the
+        # same "button appears to work" failure `EPIC-022` removed.
+        if self._venues_locked():
+            view_model.set_status(_VENUES_LOCKED_MESSAGE, is_error=True)
+            return
+
+        self.config.set(
+            ConfigKeys.EXCHANGE_MARKET_DATA_VENUE.value, view_model.marketDataVenue
+        )
+        self.config.set(
+            ConfigKeys.EXCHANGE_TRADING_VENUE.value, view_model.tradingVenue
+        )
         self.config.set("DEFAULT_SYMBOLS", symbols)
         self.config.set("DEFAULT_INTERVAL", view_model.defaultInterval.strip())
         self.config.set("DEFAULT_SYNC_DAYS", view_model.defaultSyncDays)

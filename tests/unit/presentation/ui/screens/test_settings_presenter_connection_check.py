@@ -23,6 +23,9 @@ from PySide6.QtWidgets import QLabel, QPushButton
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_credentials_provider import (
     IExchangeCredentialsProvider,
 )
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_exchange_connection_status import (
     GetExchangeConnectionStatusQuery,
 )
@@ -90,7 +93,21 @@ def credentials_provider(tmp_path):
 
 
 @pytest.fixture
-def container(mock_config, mock_dispatcher, mock_thread_manager, credentials_provider):
+def session_state() -> TradingSessionState:
+    """`BOT-125` — a real session state so `_venues_locked()` reads a real
+    bool. Starts disabled, which is what `TradingSessionState` guarantees
+    for a fresh instance (`EPIC-021G` §2.3)."""
+    return TradingSessionState()
+
+
+@pytest.fixture
+def container(
+    mock_config,
+    mock_dispatcher,
+    mock_thread_manager,
+    credentials_provider,
+    session_state,
+):
     from sagittarius_engine.interfaces import IConfig, IDispatcher
 
     c = Mock()
@@ -104,6 +121,8 @@ def container(mock_config, mock_dispatcher, mock_thread_manager, credentials_pro
             return mock_thread_manager
         if interface is IExchangeCredentialsProvider:
             return credentials_provider
+        if interface is TradingSessionState:
+            return session_state
         return Mock()
 
     c.resolve.side_effect = resolve
