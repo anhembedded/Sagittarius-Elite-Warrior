@@ -1,6 +1,6 @@
 # Epic EPIC-003 — Phân rã Presenter/File quá tải (God Object/God File Decomposition)
 
-**Trạng thái:** 🟡 Đang làm — 5/8 xong, **1 huỷ** (`003D`). `003F` (vòng thiết kế) đã chốt hướng C;
+**Trạng thái:** 🟡 Đang làm — 6/9 xong, **1 huỷ** (`003D`). `003F` (vòng thiết kế) đã chốt hướng C;
 lát cắt đầu tiên của nó, [`EPIC-003F1`](completed/EPIC-003F1_trade_log_sub_view_model_facade.md)
 (`TradeLogViewModel` + facade, **trade log**), đã xong 2026-09-02 — `003F` bản thân vẫn đang làm,
 5 lát còn lại vẫn mở, xem `003F1` §7. Cập nhật 2026-09-02.
@@ -96,6 +96,7 @@ dòng.
 | **[EPIC-003E](completed/EPIC-003E_backtest_presenter_coordinator.md)** | `BacktestPresenter` → Coordinator Pattern | 🔴 | ✅ Xong 2026-08-26 — 6 coordinator, 2.803 → 2.135 dòng |
 | **[EPIC-003F](incomplete/EPIC-003F_backtest_viewmodel_composite_design_review.md)** | `BackTestViewModel` → Composite ViewModel — **vòng thiết kế trước**, chưa code | 🔴 | 🟡 **Đã mở khoá 27/08** — lý do chặn cũ (binding QML) chết theo `EPIC-006`; đo lại rủi ro thật, chốt hướng facade. Task con triển khai chưa mở. Xem [`DOCTOR-002`](../../completed/DOCTOR-002_epic_003f_blocker_is_dead.md) |
 | **[EPIC-003F1](completed/EPIC-003F1_trade_log_sub_view_model_facade.md)** | Lát cắt đầu tiên của `003F`: `TradeLogViewModel` + facade chuyển tiếp (6 property / 6 signal) | 🟡 | ✅ Xong (02/09) — `backtest_view_model.py` 1.435→1.426 dòng, `tests/` diff rỗng tuyệt đối, mutation-verify đã làm thật |
+| **[EPIC-003F2](completed/EPIC-003F2_strategy_params_sub_view_model_facade.md)** | Lát cắt 2 của `003F`: `StrategyParamsViewModel` + facade (6 property / 5 signal / `step_bot_param_value`) | 🟡 | ✅ Xong (07/09) — 1.426→1.417 dòng, **`tests/` diff rỗng tuyệt đối**, CI 3.639 passed. Phạm vi thu hẹp có lý do: 2 signal `open*Requested` ở lại khối 10 signal "mở modal" |
 | **[EPIC-003G](completed/EPIC-003G_dashboard_presenter_coordinator.md)** | `DashboardPresenter` → trích `IndicatorCoordinator` (fetch-limit + script dispatch) | 🟢 | ✅ Xong 2026-08-30 — 1.158→1.134 dòng, 13 test coordinator riêng, 787 test tổng xanh |
 
 > ### ❌ `EPIC-003D` đã huỷ (2026-08-25, user duyệt)

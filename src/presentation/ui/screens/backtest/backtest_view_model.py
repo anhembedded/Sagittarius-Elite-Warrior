@@ -14,9 +14,6 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFra
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.indicator_scripts.list_model import (
     IndicatorScriptListModel,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.bot_params_form import (
-    step_numeric_param_value,
-)
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.timeframe_picker import (
     all_options as all_timeframe_options,
 )
@@ -29,6 +26,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.extend
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.time_range_preset import (
     TimeRangePreset,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.strategy_params_view_model import (
+    StrategyParamsViewModel,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.trade_log_view_model import (
     TradeLogViewModel,
@@ -212,8 +212,22 @@ class BackTestViewModel(BaseQmlViewModel):
         super().__init__(parent)
         self._log_model = LogListModel(self)
         self._active_bottom_tab = "trades"
-        self._strategy_options: list[dict[str, str]] = []
-        self._selected_strategy_key = ""
+        # `EPIC-003F2` — strategy selection + "Thông số Chiến lược" state
+        # lives here now; the properties above forward to it. Signals are
+        # connected, never re-emitted by hand: a second emit path is how
+        # `BUG-042`'s duplicate `beginInsertRows` happened.
+        self._strategy_params = StrategyParamsViewModel(parent=self)
+        for source, forwarded in (
+            (self._strategy_params.strategyOptionsChanged, self.strategyOptionsChanged),
+            (
+                self._strategy_params.selectedStrategyKeyChanged,
+                self.selectedStrategyKeyChanged,
+            ),
+            (self._strategy_params.botParamsSchemaChanged, self.botParamsSchemaChanged),
+            (self._strategy_params.botParamsRowsChanged, self.botParamsRowsChanged),
+            (self._strategy_params.botParamsErrorChanged, self.botParamsErrorChanged),
+        ):
+            source.connect(forwarded)
         self._symbol_options: list[str] = []
         self._selected_symbol = ""
         self._initial_capital_text = _DEFAULT_INITIAL_CAPITAL_TEXT
@@ -275,9 +289,6 @@ class BackTestViewModel(BaseQmlViewModel):
         self._trade_log.currentPageChanged.connect(self.tradeLogCurrentPageChanged)
         self._trade_log.queryChanged.connect(self.tradeLogQueryChanged)
         self._trade_log.exportRequested.connect(self.tradeLogExportRequested)
-        self._bot_params_schema: list[dict] = []
-        self._bot_params_rows: list[dict[str, object]] = []
-        self._bot_params_error = ""
         self._config_diff_summary = ""
         self._last_run_summary = ""
         self._script_model = IndicatorScriptListModel(self)
@@ -302,29 +313,27 @@ class BackTestViewModel(BaseQmlViewModel):
     # Strategy selection
     # ------------------------------------------------------------------ #
 
-    def _get_strategy_options(self) -> list[dict[str, str]]:
-        return self._strategy_options
+    # --- `EPIC-003F2` facade -> `StrategyParamsViewModel` ------------- #
+    # Hand-written forwards, not `__getattr__`: `presentation/` is outside
+    # the `mypy` gate, so `__getattr__` would make every misspelling
+    # statically valid AND silent until the UI needed the value.
 
-    #: list[{"key": ..., "name": ...}] — read-only from QML, written once
-    #: (per screen construction) from `StrategyRegistry.available()`.
+    def _get_strategy_options(self) -> list[dict[str, str]]:
+        return self._strategy_params.strategyOptions
+
     strategyOptions = Property(
         "QVariantList", _get_strategy_options, notify=strategyOptionsChanged
     )
 
-    @Slot("QVariantList")
+    @Slot(list)
     def set_strategy_options(self, options: list[dict[str, str]]) -> None:
-        self._strategy_options = options
-        self.strategyOptionsChanged.emit()
-        if options and not self._selected_strategy_key:
-            self._set_selected_strategy_key(options[0]["key"])
+        self._strategy_params.set_strategy_options(options)
 
     def _get_selected_strategy_key(self) -> str:
-        return self._selected_strategy_key
+        return self._strategy_params.selectedStrategyKey
 
     def _set_selected_strategy_key(self, value: str) -> None:
-        if value != self._selected_strategy_key:
-            self._selected_strategy_key = value
-            self.selectedStrategyKeyChanged.emit()
+        self._strategy_params.selectedStrategyKey = value
 
     selectedStrategyKey = Property(
         str,
@@ -334,10 +343,7 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_selected_strategy_name(self) -> str:
-        for opt in self._strategy_options:
-            if opt.get("key") == self._selected_strategy_key:
-                return opt.get("name", self._selected_strategy_key)
-        return self._selected_strategy_key or "Chọn chiến lược"
+        return self._strategy_params.selectedStrategyName
 
     selectedStrategyName = Property(
         str,
@@ -389,58 +395,43 @@ class BackTestViewModel(BaseQmlViewModel):
     # ------------------------------------------------------------------ #
 
     def _get_bot_params_schema(self) -> list[dict]:
-        return self._bot_params_schema
+        return self._strategy_params.botParamsSchema
 
-    #: list[{"group": str, "fields": [...]}] — built by the Presenter from
-    #: the selected strategy's declared `input_*()` parameters
-    #: (`bot_params_form.build_bot_params_schema`). Read-only from QML: the
-    #: form only ever edits its own local copy of each field's value, never
-    #: this property directly (see BotParamsDialog.qml).
     botParamsSchema = Property(
         "QVariantList", _get_bot_params_schema, notify=botParamsSchemaChanged
     )
 
     def _get_bot_params_rows(self) -> list[dict[str, object]]:
-        return self._bot_params_rows
+        return self._strategy_params.botParamsRows
 
-    #: Flat, ready-to-render presentation rows.  Unlike botParamsSchema this
-    #: contains no nested group transformation for QML to perform.
     botParamsRows = Property(
         "QVariantList", _get_bot_params_rows, notify=botParamsRowsChanged
     )
 
-    @Slot("QVariantList")
+    @Slot(list)
     def set_bot_params_schema(self, schema: list[dict]) -> None:
-        self._bot_params_schema = schema
-        self.botParamsSchemaChanged.emit()
+        self._strategy_params.set_bot_params_schema(schema)
 
-    @Slot("QVariantList")
+    @Slot(list)
     def set_bot_params_rows(self, rows: list[dict[str, object]]) -> None:
-        self._bot_params_rows = rows
-        self.botParamsRowsChanged.emit()
+        self._strategy_params.set_bot_params_rows(rows)
 
     @Slot(str, str, int, result=str)
     def step_bot_param_value(
         self, field_name: str, raw_value: str, direction: int
     ) -> str:
-        """Normalise a numeric step against the current schema in Python."""
-        for group in self._bot_params_schema:
-            fields = group.get("fields", [])
-            for field in fields:
-                if field.get("name") == field_name:
-                    return step_numeric_param_value(field, raw_value, direction)
-        return raw_value
+        return self._strategy_params.step_bot_param_value(
+            field_name, raw_value, direction
+        )
 
     def _get_bot_params_error(self) -> str:
-        return self._bot_params_error
+        return self._strategy_params.botParamsError
 
     botParamsError = Property(str, _get_bot_params_error, notify=botParamsErrorChanged)
 
     @Slot(str)
     def set_bot_params_error(self, message: str) -> None:
-        if message != self._bot_params_error:
-            self._bot_params_error = message
-            self.botParamsErrorChanged.emit()
+        self._strategy_params.set_bot_params_error(message)
 
     # ------------------------------------------------------------------ #
     # Capital / timeframe
