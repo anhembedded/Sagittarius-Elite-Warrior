@@ -26,6 +26,17 @@ class BrokerPropertyField:
     key: str
     vm_attribute: str
     coerce: Callable[[Any], Any]
+    #: Which object on the ViewModel owns the attribute — `""` for the
+    #: `BackTestViewModel` itself, otherwise a sub-ViewModel's accessor name.
+    #: `EPIC-003F6` moved ten of these twelve onto `broker_sim`; capital and
+    #: currency stayed on the screen because they are not broker settings,
+    #: they only share this dialog's Properties tab.
+    vm_owner: str = ""
+
+
+def owner_of(view_model: Any, field: BrokerPropertyField) -> Any:
+    """The object that actually holds `field.vm_attribute`."""
+    return getattr(view_model, field.vm_owner) if field.vm_owner else view_model
 
 
 #: Order is cosmetic (matches the dialog's own field order) — lookups are by
@@ -33,14 +44,16 @@ class BrokerPropertyField:
 BROKER_PROPERTY_FIELDS: tuple[BrokerPropertyField, ...] = (
     BrokerPropertyField("initial_capital", "initialCapitalText", str),
     BrokerPropertyField("currency", "selectedCurrency", str),
-    BrokerPropertyField("order_size_type", "orderSizeType", str),
-    BrokerPropertyField("order_size_text", "orderSizeText", str),
-    BrokerPropertyField("pyramiding", "pyramiding", int),
-    BrokerPropertyField("commission_type", "commissionType", str),
-    BrokerPropertyField("commission_text", "commissionText", str),
-    BrokerPropertyField("slippage_ticks", "slippageTicks", int),
-    BrokerPropertyField("long_leverage", "longLeverage", float),
-    BrokerPropertyField("short_leverage", "shortLeverage", float),
-    BrokerPropertyField("take_profit_enabled", "takeProfitPctEnabled", bool),
-    BrokerPropertyField("take_profit_pct_text", "takeProfitPctText", str),
+    BrokerPropertyField("order_size_type", "orderSizeType", str, "broker_sim"),
+    BrokerPropertyField("order_size_text", "orderSizeText", str, "broker_sim"),
+    BrokerPropertyField("pyramiding", "pyramiding", int, "broker_sim"),
+    BrokerPropertyField("commission_type", "commissionType", str, "broker_sim"),
+    BrokerPropertyField("commission_text", "commissionText", str, "broker_sim"),
+    BrokerPropertyField("slippage_ticks", "slippageTicks", int, "broker_sim"),
+    BrokerPropertyField("long_leverage", "longLeverage", float, "broker_sim"),
+    BrokerPropertyField("short_leverage", "shortLeverage", float, "broker_sim"),
+    BrokerPropertyField(
+        "take_profit_enabled", "takeProfitPctEnabled", bool, "broker_sim"
+    ),
+    BrokerPropertyField("take_profit_pct_text", "takeProfitPctText", str, "broker_sim"),
 )

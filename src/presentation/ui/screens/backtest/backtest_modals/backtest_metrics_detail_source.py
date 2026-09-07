@@ -95,5 +95,5 @@ class BacktestMetricsDetailSource:
         return option.seconds if option is not None else _FALLBACK_TIMEFRAME_SECONDS
 
     def _snapshot(self) -> ExtendedMetricsSnapshot:
-        snapshot = self._view_model.extended_metrics_snapshot()
+        snapshot = self._view_model.run_result.extended_metrics_snapshot()
         return snapshot if snapshot is not None else _EMPTY_SNAPSHOT

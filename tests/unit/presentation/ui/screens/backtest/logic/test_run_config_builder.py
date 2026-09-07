@@ -9,7 +9,7 @@ is a plain object with attributes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import pytest
@@ -39,24 +39,19 @@ FIXED_NOW = datetime(2026, 3, 1, 12, 0, tzinfo=UTC)
 
 
 @dataclass
-class FakeInputs:
-    """Every field `RunConfigInputs` declares, with a runnable default.
-
-    The names are `mixedCase` because they are Qt property names on the
-    real ViewModel — renaming them here would make this double stop
-    matching the contract it stands in for, so `N815` is silenced for the
-    block rather than the names changed.
-    """
-
-    # ruff: noqa: N815
-
+class FakeStrategy:
     selectedStrategyKey: str = "ema_crossover"
-    selectedTimeframe: str = TimeFrame.ONE_HOUR.value
-    selectedCurrency: str = Currency.USD.value
-    initialCapitalText: str = "10000"
-    timeRangePreset: str = TimeRangePreset.LAST_30_DAYS.value
+
+
+@dataclass
+class FakeTimeRange:
+    preset: str = TimeRangePreset.LAST_30_DAYS.value
     customStartText: str = ""
     customEndText: str = ""
+
+
+@dataclass
+class FakeBroker:
     orderSizeType: str = PositionSizingType.PERCENT_OF_EQUITY.value
     orderSizeValue: float = 100.0
     pyramiding: int = 1
@@ -67,6 +62,29 @@ class FakeInputs:
     shortLeverage: float = 1.0
     takeProfitPctEnabled: bool = False
     takeProfitPctText: str = "2.0"
+
+
+@dataclass
+class FakeInputs:
+    """Every field `RunConfigInputs` declares, with a runnable default.
+
+    The names are `mixedCase` because they are Qt property names on the
+    real ViewModel — renaming them here would make this double stop
+    matching the contract it stands in for, so `N815` is silenced for the
+    block rather than the names changed.
+
+    Nested since `EPIC-003F6`, mirroring `BackTestViewModel`'s real shape:
+    the three sub-objects are the sub-ViewModels the builder reads through
+    now that the flat facade is going away.
+    """
+
+    # ruff: noqa: N815
+    selectedTimeframe: str = TimeFrame.ONE_HOUR.value
+    selectedCurrency: str = Currency.USD.value
+    initialCapitalText: str = "10000"
+    strategy_params: FakeStrategy = field(default_factory=FakeStrategy)
+    time_range: FakeTimeRange = field(default_factory=FakeTimeRange)
+    broker_sim: FakeBroker = field(default_factory=FakeBroker)
 
 
 def _build(inputs: FakeInputs, **overrides):
@@ -101,7 +119,7 @@ def test_a_valid_toolbar_produces_a_config_and_one_trace() -> None:
 def test_an_empty_strategy_is_refused_rather_than_defaulted() -> None:
     """There is no sensible strategy to guess; running the wrong one is
     worse than not running."""
-    outcome = _build(FakeInputs(selectedStrategyKey=""))
+    outcome = _build(FakeInputs(strategy_params=FakeStrategy(selectedStrategyKey="")))
 
     assert outcome.config is None
     assert outcome.error_message == NO_STRATEGY_MESSAGE
@@ -132,9 +150,11 @@ def test_a_rejected_config_still_reports_why_in_its_trace() -> None:
 def test_a_custom_range_uses_the_typed_boundaries_verbatim() -> None:
     outcome = _build(
         FakeInputs(
-            timeRangePreset=TimeRangePreset.CUSTOM.value,
-            customStartText="2026-01-01 00:00",
-            customEndText="2026-02-01 00:00",
+            time_range=FakeTimeRange(
+                preset=TimeRangePreset.CUSTOM.value,
+                customStartText="2026-01-01 00:00",
+                customEndText="2026-02-01 00:00",
+            )
         )
     )
 
@@ -156,10 +176,26 @@ def test_a_preset_range_stops_one_full_bar_behind_now() -> None:
 
 def test_take_profit_is_off_unless_both_ticked_and_positive() -> None:
     """A take-profit of 0% would close every position at entry."""
-    off = _build(FakeInputs(takeProfitPctEnabled=False, takeProfitPctText="5"))
-    zero = _build(FakeInputs(takeProfitPctEnabled=True, takeProfitPctText="0"))
-    junk = _build(FakeInputs(takeProfitPctEnabled=True, takeProfitPctText="abc"))
-    on = _build(FakeInputs(takeProfitPctEnabled=True, takeProfitPctText="5"))
+    off = _build(
+        FakeInputs(
+            broker_sim=FakeBroker(takeProfitPctEnabled=False, takeProfitPctText="5")
+        )
+    )
+    zero = _build(
+        FakeInputs(
+            broker_sim=FakeBroker(takeProfitPctEnabled=True, takeProfitPctText="0")
+        )
+    )
+    junk = _build(
+        FakeInputs(
+            broker_sim=FakeBroker(takeProfitPctEnabled=True, takeProfitPctText="abc")
+        )
+    )
+    on = _build(
+        FakeInputs(
+            broker_sim=FakeBroker(takeProfitPctEnabled=True, takeProfitPctText="5")
+        )
+    )
 
     assert off.config.broker_config.take_profit_pct is None
     assert zero.config.broker_config.take_profit_pct is None
@@ -171,7 +207,11 @@ def test_an_unknown_sizing_or_commission_type_falls_back_to_the_default() -> Non
     """These values come from a persisted state file. A screen that
     refuses to open is worse than one that opens on the app default."""
     outcome = _build(
-        FakeInputs(orderSizeType="no_such_mode", commissionType="no_such_type")
+        FakeInputs(
+            broker_sim=FakeBroker(
+                orderSizeType="no_such_mode", commissionType="no_such_type"
+            )
+        )
     )
 
     assert outcome.config.position_sizing.type is PositionSizingType.PERCENT_OF_EQUITY
@@ -182,7 +222,11 @@ def test_the_broker_numbers_reach_the_config_unchanged() -> None:
     """The clamping is `BrokerSimViewModel`'s job (`EPIC-003F4`); the
     builder must not quietly apply a second, different opinion."""
     outcome = _build(
-        FakeInputs(pyramiding=3, slippageTicks=2, longLeverage=5.0, shortLeverage=7.0)
+        FakeInputs(
+            broker_sim=FakeBroker(
+                pyramiding=3, slippageTicks=2, longLeverage=5.0, shortLeverage=7.0
+            )
+        )
     )
 
     broker = outcome.config.broker_config
@@ -220,7 +264,9 @@ def test_the_snapshot_leaves_the_broker_config_at_its_default() -> None:
     """`BackTestPresenter._fee_rate_percent_for_last_run` exists precisely
     because this snapshot must NOT be read for the fee actually applied —
     pinning that here so the two never quietly converge."""
-    config = _snapshot(FakeInputs(commissionValue=0.5, longLeverage=9.0))
+    config = _snapshot(
+        FakeInputs(broker_sim=FakeBroker(commissionValue=0.5, longLeverage=9.0))
+    )
 
     assert config.broker_config.commission_value != 0.5
     assert config.broker_config.long_leverage != 9.0
@@ -229,9 +275,11 @@ def test_the_snapshot_leaves_the_broker_config_at_its_default() -> None:
 def test_an_unparseable_custom_range_becomes_no_range_not_an_error() -> None:
     config = _snapshot(
         FakeInputs(
-            timeRangePreset=TimeRangePreset.CUSTOM.value,
-            customStartText="hôm qua",
-            customEndText="",
+            time_range=FakeTimeRange(
+                preset=TimeRangePreset.CUSTOM.value,
+                customStartText="hôm qua",
+                customEndText="",
+            )
         )
     )
 

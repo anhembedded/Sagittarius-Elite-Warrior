@@ -69,8 +69,8 @@ def test_top_panel_with_cards_shows_header_cards_and_expand_button(
             "badgeTone": Tone.NEUTRAL,
         },
     ]
-    vm.set_stat_cards(primary=primary, extended=[])
-    vm.set_result_warning_text("⚠ Phí giao dịch chiếm phần lớn kết quả.")
+    vm.run_result.set_stat_cards(primary=primary, extended=[])
+    vm.run_result.set_result_warning_text("⚠ Phí giao dịch chiếm phần lớn kết quả.")
     panel._sync_all()
     qapp.processEvents()
 

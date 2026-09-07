@@ -65,7 +65,7 @@ def test_backtest_timezone_integration_updates_trade_log_times(
     presenter._refresh_trade_log()
 
     # 3. Assert initial UTC state: entry at 03:30, exit at 07:45
-    utc_rows = presenter._view_model.tradeLogRows
+    utc_rows = presenter._view_model.trade_log.rows
     assert len(utc_rows) == 1
     assert utc_rows[0]["entryTimeText"] == "2026-08-17 03:30"
     assert utc_rows[0]["exitTimeText"] == "2026-08-17 07:45"
@@ -74,7 +74,7 @@ def test_backtest_timezone_integration_updates_trade_log_times(
     presenter._view_model.setDisplayTimezone("Asia/Ho_Chi_Minh")
 
     # 5. Assert: Table formatted times updated to 10:30 and 14:45
-    vn_rows = presenter._view_model.tradeLogRows
+    vn_rows = presenter._view_model.trade_log.rows
     assert len(vn_rows) == 1
     assert vn_rows[0]["entryTimeText"] == "2026-08-17 10:30"
     assert vn_rows[0]["exitTimeText"] == "2026-08-17 14:45"
@@ -86,13 +86,13 @@ def test_backtest_timezone_integration_updates_trade_log_times(
 
     # 7. Action: User switches to America/New_York (Summer EDT: UTC-4)
     presenter._view_model.setDisplayTimezone("America/New_York")
-    ny_rows = presenter._view_model.tradeLogRows
+    ny_rows = presenter._view_model.trade_log.rows
     assert len(ny_rows) == 1
     assert ny_rows[0]["entryTimeText"] == "2026-08-16 23:30"
     assert ny_rows[0]["exitTimeText"] == "2026-08-17 03:45"
 
     # 8. Clean switch back to UTC
     presenter._view_model.setDisplayTimezone("UTC")
-    restored_rows = presenter._view_model.tradeLogRows
+    restored_rows = presenter._view_model.trade_log.rows
     assert restored_rows[0]["entryTimeText"] == "2026-08-17 03:30"
     assert restored_rows[0]["exitTimeText"] == "2026-08-17 07:45"

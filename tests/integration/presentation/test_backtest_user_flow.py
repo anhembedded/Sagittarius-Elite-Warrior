@@ -284,9 +284,9 @@ def test_run_button_completes_real_backtest_and_chart_render(backtest_screen, qt
     presenter, view = backtest_screen
     view_model = presenter._view_model
     view_model.selectedTimeframe = _RUNTIME_INTERVAL
-    view_model.timeRangePreset = "custom"
-    view_model.customStartText = "2026-08-01 00:00"
-    view_model.customEndText = "2026-08-11 00:00"
+    view_model.time_range.preset = "custom"
+    view_model.time_range.customStartText = "2026-08-01 00:00"
+    view_model.time_range.customEndText = "2026-08-11 00:00"
     log_messages_before = [entry.message for entry in view_model.log_model.entries]
     # EPIC-008G: cả 2 màn giờ render qua HealthStatusReport.to_log_line(), và
     # nó giữ NGUYÊN thứ tự component engine trả về thay vì tự chọn vài khoá —
@@ -306,7 +306,7 @@ def test_run_button_completes_real_backtest_and_chart_render(backtest_screen, qt
         timeout=5000,
     )
 
-    assert view_model.needsDataSync is False
+    assert view_model.run_result.needsDataSync is False
     assert view._last_klines
     assert view.chart_cards[0].chart_card._raw_history
     log_messages_after = [entry.message for entry in view_model.log_model.entries]
@@ -360,9 +360,9 @@ def test_progress_banner_cancel_button_cancels_active_backtest_flow(
     presenter, view = backtest_screen
     view_model = presenter._view_model
     view_model.selectedTimeframe = _RUNTIME_INTERVAL
-    view_model.timeRangePreset = "custom"
-    view_model.customStartText = "2026-08-01 00:00"
-    view_model.customEndText = "2026-08-11 00:00"
+    view_model.time_range.preset = "custom"
+    view_model.time_range.customStartText = "2026-08-01 00:00"
+    view_model.time_range.customEndText = "2026-08-11 00:00"
 
     # Trigger backtest run via toolbar button
     view.top_widget._btn_run.click()

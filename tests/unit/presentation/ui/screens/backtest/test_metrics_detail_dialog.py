@@ -56,7 +56,7 @@ def _snapshot(**overrides: object) -> ExtendedMetricsSnapshot:
 def view_model():
     vm = BackTestViewModel()
     vm.selectedTimeframe = "1h"
-    vm.set_extended_metrics_snapshot(_snapshot())
+    vm.run_result.set_extended_metrics_snapshot(_snapshot())
     return vm
 
 
@@ -78,7 +78,7 @@ def test_timeframe_seconds_reads_the_view_models_live_selected_timeframe(
     """1h = 3600s bars -> `Max Drawdown Duration` (in the fixture's card
     list below) would convert differently than the 60s default — proving
     this reads `selectedTimeframe` live, not a retained/default value."""
-    view_model.set_extended_metrics_snapshot(
+    view_model.run_result.set_extended_metrics_snapshot(
         _snapshot(
             cards=(
                 StatCardData(
@@ -107,8 +107,8 @@ def test_stat_cards_changed_refreshes_an_already_open_dialog(qapp, view_model):
     dialog.open_dialog()
     qapp.processEvents()
 
-    view_model.set_extended_metrics_snapshot(_snapshot(gross_profit=5000.0))
-    view_model.statCardsChanged.emit()
+    view_model.run_result.set_extended_metrics_snapshot(_snapshot(gross_profit=5000.0))
+    view_model.run_result.statCardsChanged.emit()
     qapp.processEvents()
 
     label = dialog.root_object.findChild(QObject, "lblGrossProfit")

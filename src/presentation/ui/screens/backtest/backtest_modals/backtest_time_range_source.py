@@ -67,12 +67,12 @@ class BacktestTimeRangeSource:
         return self._view_model.selectedTimeframe
 
     def apply(self, start_text: str, end_text: str) -> None:
-        self._view_model.customStartText = start_text
-        self._view_model.customEndText = end_text
-        self._view_model.timeRangePreset = TimeRangePreset.CUSTOM.value
+        self._view_model.time_range.customStartText = start_text
+        self._view_model.time_range.customEndText = end_text
+        self._view_model.time_range.preset = TimeRangePreset.CUSTOM.value
 
     def _resolve(self) -> tuple[datetime | None, datetime | None]:
-        preset = TimeRangePreset(self._view_model.timeRangePreset)
-        custom_start = _parse(self._view_model.customStartText)
-        custom_end = _parse(self._view_model.customEndText)
+        preset = TimeRangePreset(self._view_model.time_range.preset)
+        custom_start = _parse(self._view_model.time_range.customStartText)
+        custom_end = _parse(self._view_model.time_range.customEndText)
         return resolve_time_range(preset, datetime.now(UTC), custom_start, custom_end)

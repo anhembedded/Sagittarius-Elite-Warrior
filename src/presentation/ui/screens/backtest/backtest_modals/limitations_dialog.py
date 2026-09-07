@@ -37,7 +37,7 @@ class LimitationsDialog(QmlOverlay):
         self._widget_vm = SelectListVM(
             get_options=lambda: [
                 {"id": str(index), "label": text}
-                for index, text in enumerate(view_model.limitations)
+                for index, text in enumerate(view_model.run_result.limitations)
             ],
             selectable=False,
         )
@@ -49,7 +49,7 @@ class LimitationsDialog(QmlOverlay):
         )
         self.setObjectName("limitationsPopup")
         self.resize(480, 420)
-        view_model.limitationsChanged.connect(self._widget_vm.refresh)
+        view_model.run_result.limitationsChanged.connect(self._widget_vm.refresh)
 
     def showEvent(self, event) -> None:
         self._widget_vm.refresh()

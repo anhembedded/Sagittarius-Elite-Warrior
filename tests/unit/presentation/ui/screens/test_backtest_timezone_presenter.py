@@ -31,15 +31,15 @@ def _make_dummy_trade(
 
 def test_view_model_timezone_properties_and_signals(qtbot) -> None:
     vm = BackTestViewModel()
-    assert vm.displayTimezone == "UTC"
-    assert vm.displayTimezoneLabel == "UTC"
-    assert len(vm.displayTimezoneOptions) >= 3
+    assert vm.time_range.displayTimezone == "UTC"
+    assert vm.time_range.displayTimezoneLabel == "UTC"
+    assert len(vm.time_range.displayTimezoneOptions) >= 3
 
-    with qtbot.waitSignal(vm.displayTimezoneChanged):
+    with qtbot.waitSignal(vm.time_range.displayTimezoneChanged):
         vm.setDisplayTimezone("Asia/Ho_Chi_Minh")
 
-    assert vm.displayTimezone == "Asia/Ho_Chi_Minh"
-    assert vm.displayTimezoneLabel == "Asia/Ho_Chi_Minh"
+    assert vm.time_range.displayTimezone == "Asia/Ho_Chi_Minh"
+    assert vm.time_range.displayTimezoneLabel == "Asia/Ho_Chi_Minh"
 
     with qtbot.waitSignal(vm.openTimezonePickerRequested):
         vm.requestOpenTimezonePicker()
@@ -76,7 +76,7 @@ def test_timezone_change_does_not_dirty_config_or_dispatch_job(qapp) -> None:
     presenter._refresh_trade_log()
 
     # Initial UTC check: 04:00 and 08:00
-    rows = presenter._view_model.tradeLogRows
+    rows = presenter._view_model.trade_log.rows
     assert len(rows) == 1
     assert rows[0]["entryTimeText"] == "2026-08-17 04:00"
     assert rows[0]["exitTimeText"] == "2026-08-17 08:00"
@@ -88,7 +88,7 @@ def test_timezone_change_does_not_dirty_config_or_dispatch_job(qapp) -> None:
     view.set_display_timezone.assert_called_with("Asia/Ho_Chi_Minh")
 
     # Assert Trade Logs table re-rendered to 11:00 and 15:00
-    rows_vn = presenter._view_model.tradeLogRows
+    rows_vn = presenter._view_model.trade_log.rows
     assert len(rows_vn) == 1
     assert rows_vn[0]["entryTimeText"] == "2026-08-17 11:00"
     assert rows_vn[0]["exitTimeText"] == "2026-08-17 15:00"

@@ -21,7 +21,7 @@ def build_preview() -> QWidget:
     view = BackTestView()
     view_model = BackTestViewModel()
     view_model.strategyName = "EmaCrossoverStrategy"
-    view_model.set_stat_cards(
+    view_model.run_result.set_stat_cards(
         [
             {
                 "title": "LỢI NHUẬN RÒNG",
@@ -59,7 +59,7 @@ def build_preview() -> QWidget:
             {"title": "Lãi/lỗ trung bình", "value": "59.19 USDT", "suffix": ""},
         ],
     )
-    view_model.set_limitations(
+    view_model.run_result.set_limitations(
         [
             "Giả lập trên dữ liệu nến lịch sử đã đóng",
             "Phí cố định 0.1% mỗi chiều",
@@ -80,7 +80,7 @@ def build_preview() -> QWidget:
         )
     ]
     rows = trade_log_rows_to_qml(build_trade_log_rows(sample_trades))
-    view_model.set_trade_log_page_state(rows, total_count=len(rows), total_pages=1)
+    view_model.trade_log.set_page_state(rows, total_count=len(rows), total_pages=1)
     view.set_view_model(view_model)
     view.resize(1400, 850)
     return view

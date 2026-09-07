@@ -141,7 +141,7 @@ def test_a_broken_qml_file_raises_instead_of_rendering_a_blank_box(
 @pytest.fixture
 def backtest_view_model():
     vm = BackTestViewModel()
-    vm.timeRangePreset = "30d"
+    vm.time_range.preset = "30d"
     vm.selectedTimeframe = "1h"
     return vm
 
@@ -170,7 +170,7 @@ def test_backtest_dialog_applying_writes_an_explicit_custom_range(
     dialog._widget_vm.apply()
     qapp.processEvents()
 
-    assert backtest_view_model.timeRangePreset == "custom"
-    assert backtest_view_model.customStartText != ""
-    assert backtest_view_model.customEndText != ""
+    assert backtest_view_model.time_range.preset == "custom"
+    assert backtest_view_model.time_range.customStartText != ""
+    assert backtest_view_model.time_range.customEndText != ""
     assert not dialog.isVisible()

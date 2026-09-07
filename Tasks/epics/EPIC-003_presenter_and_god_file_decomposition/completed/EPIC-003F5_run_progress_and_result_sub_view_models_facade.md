@@ -1,6 +1,6 @@
 # EPIC-003F5 — Lát cắt 5 của `003F`: `RunProgressViewModel` + `RunResultViewModel` + facade
 
-**Thuộc Epic:** [`EPIC-003`](../README.md) · **Task cha:** [`EPIC-003F`](../incomplete/EPIC-003F_backtest_viewmodel_composite_design_review.md)
+**Thuộc Epic:** [`EPIC-003`](../README.md) · **Task cha:** [`EPIC-003F`](EPIC-003F_backtest_viewmodel_composite_design_review.md)
 **Trạng thái:** ✅ Xong 2026-09-07
 **Rủi ro:** 🟡
 

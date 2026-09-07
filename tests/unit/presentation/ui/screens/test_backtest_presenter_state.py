@@ -185,11 +185,11 @@ def test_restores_a_whole_remembered_form(view, container):
     vm = presenter._view_model
 
     assert vm.initialCapitalText == "12345"
-    assert vm.pyramiding == 3
-    assert vm.slippageTicks == 7
-    assert vm.longLeverage == 2.5
-    assert vm.takeProfitPctEnabled is True
-    assert vm.customStartText == "2024-01-01 00:00"
+    assert vm.broker_sim.pyramiding == 3
+    assert vm.broker_sim.slippageTicks == 7
+    assert vm.broker_sim.longLeverage == 2.5
+    assert vm.broker_sim.takeProfitPctEnabled is True
+    assert vm.time_range.customStartText == "2024-01-01 00:00"
     assert vm.showExtendedMetrics is True
 
 
@@ -240,7 +240,14 @@ def test_one_bad_field_falls_back_alone(view, container, key, bad_value):
         if good_key == key:
             continue
         field = next(f for f in BACKTEST_STATE_FIELDS if f.key == good_key)
-        assert getattr(vm, field.prop) == good_value, (
+        # `EPIC-003F6`: `prop` may be a dotted path onto a sub-ViewModel.
+        # Walked here rather than through `read_prop()` so this guard cannot
+        # agree with a broken walker (same reasoning as the notifier test).
+        owner = vm
+        *parents, attribute = field.prop.split(".")
+        for segment in parents:
+            owner = getattr(owner, segment)
+        assert getattr(owner, attribute) == good_value, (
             f"{good_key} should still restore despite {key} being invalid"
         )
 
@@ -292,7 +299,7 @@ def test_editing_a_field_survives_a_restart(view, container):
     presenter = BackTestPresenter(view, _with_coordinator(container, coordinator))
 
     presenter._view_model.initialCapitalText = "55555"
-    presenter._view_model.pyramiding = 6
+    presenter._view_model.broker_sim.pyramiding = 6
     coordinator.flush()
 
     written = store.read(_SCOPE)
@@ -303,8 +310,19 @@ def test_editing_a_field_survives_a_restart(view, container):
 def test_every_field_has_the_notifier_the_debounce_relies_on(view, container):
     """`_connect_state_tracking()` derives `<prop>Changed` by convention. If a
     ViewModel rename ever broke that, the field would silently stop being
-    persisted — so the convention is asserted rather than assumed."""
+    persisted — so the convention is asserted rather than assumed.
+
+    `EPIC-003F6` made `prop` a possibly-dotted path, so the walk below
+    resolves the owner first and looks for the notifier on **it**. Walked
+    here by hand rather than through `read_notifier()`: a guard that calls
+    the same helper the production code calls would pass whenever that
+    helper is wrong in both places at once."""
     presenter = BackTestPresenter(view, container)
 
     for field in BACKTEST_STATE_FIELDS:
-        assert hasattr(presenter._view_model, f"{field.prop}Changed"), field.prop
+        *parents, attribute = field.prop.split(".")
+        owner = presenter._view_model
+        for segment in parents:
+            assert hasattr(owner, segment), field.prop
+            owner = getattr(owner, segment)
+        assert hasattr(owner, f"{attribute}Changed"), field.prop

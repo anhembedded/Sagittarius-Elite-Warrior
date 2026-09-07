@@ -264,7 +264,9 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             self._icon_label_row("sliders", Palette.ACCENT, "Thông số Chiến lược")
         )
         self._btn_bot_params.clicked.connect(
-            lambda: self._vm.requestOpenBotParams(self._vm.selectedStrategyName)
+            lambda: self._vm.requestOpenBotParams(
+                self._vm.strategy_params.selectedStrategyName
+            )
         )
         row.addWidget(self._btn_bot_params)
 
@@ -525,7 +527,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         # constructed (`qml-rule.md` §1.1) — this widget reads
         # `primaryStatCards` live, `_sync_stat_cards()` below only tells it
         # *when* to re-pull that list, not what is in it.
-        widget = StatCardRowWidget(lambda: self._vm.primaryStatCards)
+        widget = StatCardRowWidget(lambda: self._vm.run_result.primaryStatCards)
         widget.setFixedHeight(_STAT_CARD_ROW_HEIGHT)
         return widget
 
@@ -561,10 +563,10 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
     def _wire_view_model(self) -> None:
         vm = self._vm
         vm.selectedSymbolChanged.connect(self._sync_toolbar_labels)
-        vm.selectedStrategyKeyChanged.connect(self._sync_toolbar_labels)
+        vm.strategy_params.selectedStrategyKeyChanged.connect(self._sync_toolbar_labels)
         vm.selectedTimeframeChanged.connect(self._sync_toolbar_labels)
-        vm.timeRangePresetChanged.connect(self._sync_toolbar_labels)
-        vm.displayTimezoneChanged.connect(self._sync_toolbar_labels)
+        vm.time_range.presetChanged.connect(self._sync_toolbar_labels)
+        vm.time_range.displayTimezoneChanged.connect(self._sync_toolbar_labels)
         vm.initialCapitalTextChanged.connect(self._sync_toolbar_labels)
         vm.selectedCurrencyChanged.connect(self._sync_toolbar_labels)
         vm.controlsEnabledChanged.connect(self._sync_controls_enabled)
@@ -576,14 +578,14 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         vm.run_progress.syncProgressChanged.connect(self._sync_banners)
         vm.uiModeChanged.connect(self._sync_banners)
         vm.isChartPreviewChanged.connect(self._sync_banners)
-        vm.dataCoverageChanged.connect(self._sync_banners)
-        vm.needsDataSyncChanged.connect(self._sync_banners)
+        vm.run_result.dataCoverageChanged.connect(self._sync_banners)
+        vm.run_result.needsDataSyncChanged.connect(self._sync_banners)
         vm.configDiffSummaryChanged.connect(self._sync_banners)
-        vm.statCardsChanged.connect(self._sync_stat_cards)
-        vm.statCardsChanged.connect(self._sync_metrics_header)
-        vm.resultWarningTextChanged.connect(self._sync_metrics_header)
-        vm.resultChanged.connect(self._sync_result_box)
-        vm.needsDataSyncChanged.connect(self._sync_result_box)
+        vm.run_result.statCardsChanged.connect(self._sync_stat_cards)
+        vm.run_result.statCardsChanged.connect(self._sync_metrics_header)
+        vm.run_result.resultWarningTextChanged.connect(self._sync_metrics_header)
+        vm.run_result.resultChanged.connect(self._sync_result_box)
+        vm.run_result.needsDataSyncChanged.connect(self._sync_result_box)
 
     def _sync_all(self) -> None:
         self._sync_toolbar_labels()
@@ -597,10 +599,10 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
     def _sync_toolbar_labels(self) -> None:
         vm = self._vm
         self._btn_symbol._value_label.setText(vm.selectedSymbol or "Symbol")  # type: ignore[attr-defined]
-        self._btn_strategy._value_label.setText(vm.selectedStrategyName)  # type: ignore[attr-defined]
+        self._btn_strategy._value_label.setText(vm.strategy_params.selectedStrategyName)  # type: ignore[attr-defined]
         self._btn_timeframe._value_label.setText(vm.selectedTimeframe or "1m")  # type: ignore[attr-defined]
-        self._btn_range._value_label.setText(vm.selectedTimeRangePresetLabel)  # type: ignore[attr-defined]
-        self._btn_timezone._value_label.setText(vm.displayTimezoneLabel)  # type: ignore[attr-defined]
+        self._btn_range._value_label.setText(vm.time_range.selectedPresetLabel)  # type: ignore[attr-defined]
+        self._btn_timezone._value_label.setText(vm.time_range.displayTimezoneLabel)  # type: ignore[attr-defined]
         capital = vm.initialCapitalText or "0"
         self._btn_capital._value_label.setText(f"{capital} {vm.selectedCurrency}")  # type: ignore[attr-defined]
 
@@ -697,13 +699,16 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
                 f"Kết quả bên dưới chưa được cập nhật."
             )
 
-        coverage_visible = bool(vm.needsDataSync) and vm.dataCoverageMessage != ""
+        coverage_visible = (
+            bool(vm.run_result.needsDataSync)
+            and vm.run_result.dataCoverageMessage != ""
+        )
         self._coverage_banner.setVisible(coverage_visible)
         if coverage_visible:
-            self._coverage_banner.message = vm.dataCoverageMessage
+            self._coverage_banner.message = vm.run_result.dataCoverageMessage
 
     def _sync_stat_cards(self) -> None:
-        has_cards = bool(self._vm.primaryStatCards)
+        has_cards = bool(self._vm.run_result.primaryStatCards)
         self._stat_cards_row.setVisible(has_cards)
         self._result_box.setVisible(not has_cards)
         if has_cards:
@@ -717,21 +722,21 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             self._stat_cards_row.refresh()
 
     def _sync_metrics_header(self) -> None:
-        has_cards = bool(self._vm.primaryStatCards)
+        has_cards = bool(self._vm.run_result.primaryStatCards)
         self._metrics_header.setVisible(has_cards)
-        text = self._vm.resultWarningText
+        text = self._vm.run_result.resultWarningText
         self._result_warning_label.setText(text)
         self._result_warning_label.setVisible(has_cards and bool(text))
 
     def _sync_result_box(self) -> None:
         vm = self._vm
-        self._result_text.setPlainText(vm.resultText)
+        self._result_text.setPlainText(vm.run_result.resultText)
         self._result_text.setStyleSheet(
             f"background-color: {Palette.BG_CARD}; border: 1px solid {Palette.BORDER}; "
-            f"border-radius: 6px; color: {Palette.DANGER if vm.resultIsError else Palette.TEXT_PRIMARY}; "
+            f"border-radius: 6px; color: {Palette.DANGER if vm.run_result.resultIsError else Palette.TEXT_PRIMARY}; "
             f"font-size: 11px; font-family: 'JetBrains Mono', 'Fira Code', monospace;"
         )
-        self._btn_request_sync.setVisible(bool(vm.needsDataSync))
+        self._btn_request_sync.setVisible(bool(vm.run_result.needsDataSync))
         self._btn_request_sync.setEnabled(vm.uiMode != "SYNCING")
         text = "Đang đồng bộ..." if vm.uiMode == "SYNCING" else "Đồng bộ dữ liệu ngay"
         self._btn_request_sync.setText(text)

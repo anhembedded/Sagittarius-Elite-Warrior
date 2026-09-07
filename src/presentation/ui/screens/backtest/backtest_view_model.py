@@ -13,9 +13,6 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.backte
     BacktestExecutionMode,
     BacktestUiState,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.extended_metrics_snapshot import (
-    ExtendedMetricsSnapshot,
-)
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.broker_sim_view_model import (
     BrokerSimViewModel,
 )
@@ -81,8 +78,6 @@ class BackTestViewModel(BaseQmlViewModel):
     configDiffSummaryChanged = Signal()
     lastRunSummaryChanged = Signal()
 
-    strategyOptionsChanged = Signal()
-    selectedStrategyKeyChanged = Signal()
     #: BOT-102 — symbolOptions starts empty and is populated on demand (the
     #: Presenter fetches it from the exchange the first time the picker is
     #: opened, not at screen construction, unlike strategyOptions/
@@ -98,34 +93,17 @@ class BackTestViewModel(BaseQmlViewModel):
     selectedCurrencyChanged = Signal()
     selectedTimeframeChanged = Signal()
     executionModeChanged = Signal()
-    timeRangePresetChanged = Signal()
-    displayTimezoneChanged = Signal()
-    customStartTextChanged = Signal()
-    customEndTextChanged = Signal()
-    resultChanged = Signal()
-    dataCoverageChanged = Signal()
-    statCardsChanged = Signal()
     #: BOT-079 follow-up — separate from `statCardsChanged` on purpose: the
     #: warning is a full sentence, not something that fits a `MetricCard`
     #: pill (an earlier version tried squeezing it into the Net PnL badge
     #: and overflowed it). QML shows/hides its own row based on this being
     #: empty or not.
-    resultWarningTextChanged = Signal()
     #: BOT-081 — the "kín đáo nhưng tìm thấy được" disclosure list (icon +
     #: popup, unlike resultWarningText which must stay visible without a
     #: click). Recomputed per-run from real state (BOT-080's out_of_sample
     #: presence is the standout example), not a static string baked in once.
-    limitationsChanged = Signal()
     showExtendedMetricsChanged = Signal()
-    needsDataSyncChanged = Signal()
     isChartPreviewChanged = Signal()
-    tradeLogFilterChanged = Signal()
-    tradeLogSearchTextChanged = Signal()
-    tradeLogCurrentPageChanged = Signal()
-    #: Covers tradeLogRows/tradeLogTotalCount/tradeLogTotalPages together —
-    #: the Presenter always recomputes and sets all 3 in one call (same
-    #: bundling as statCardsChanged for primary/extendedStatCards).
-    tradeLogRowsChanged = Signal()
 
     #: Emitted when the user clicks "Chạy Backtest". The Presenter reads the
     #: current field values off this view model rather than receiving them
@@ -138,23 +116,8 @@ class BackTestViewModel(BaseQmlViewModel):
     #: visible in QML while `needsDataSync` is true.
     syncRequested = Signal()
 
-    #: Emitted whenever tradeLogFilter/tradeLogSearchText/tradeLogCurrentPage
-    #: changes — distinct from those properties' own notify signals (which
-    #: exist for QML bindings) because the Presenter needs ONE place to
-    #: listen and recompute the filtered/paginated row set (BOT-057).
-    tradeLogQueryChanged = Signal()
-
-    #: Emitted when the user clicks "Export" (BOT-057 §2.1).
-    tradeLogExportRequested = Signal()
-
-    #: Fires whenever `botParamsSchema` changes (selected strategy changed,
-    #: or a save just refreshed the shown "value"s) — BOT-047.
-    botParamsSchemaChanged = Signal()
-    botParamsRowsChanged = Signal()
-
     #: Empty string means "no error". Set by the Presenter after a save
     #: attempt; the modal shows this inline rather than closing.
-    botParamsErrorChanged = Signal()
 
     #: Emitted when the user's "Lưu & Re-Backtest" values passed validation
     #: and were applied — QML's modal listens for this to close itself.
@@ -174,18 +137,6 @@ class BackTestViewModel(BaseQmlViewModel):
     strategyPropertiesCommitRequested = Signal(object)
 
     #: Broker Simulation Settings signals (BOT-104)
-    orderSizeTypeChanged = Signal()
-    orderSizeValueChanged = Signal()
-    orderSizeTextChanged = Signal()
-    pyramidingChanged = Signal()
-    commissionTypeChanged = Signal()
-    commissionValueChanged = Signal()
-    commissionTextChanged = Signal()
-    slippageTicksChanged = Signal()
-    longLeverageChanged = Signal()
-    shortLeverageChanged = Signal()
-    takeProfitPctEnabledChanged = Signal()
-    takeProfitPctTextChanged = Signal()
 
     #: BOT-088: Signals to trigger overlay modals hosted in OverlayHost.
     openBotParamsRequested = Signal(str)
@@ -206,22 +157,11 @@ class BackTestViewModel(BaseQmlViewModel):
         super().__init__(parent)
         self._log_model = LogListModel(self)
         self._active_bottom_tab = "trades"
-        # `EPIC-003F2` — strategy selection + "Thông số Chiến lược" state
-        # lives here now; the properties above forward to it. Signals are
-        # connected, never re-emitted by hand: a second emit path is how
-        # `BUG-042`'s duplicate `beginInsertRows` happened.
+        # `EPIC-003F2` — strategy selection + "Thông số Chiến lược" state.
+        # `EPIC-003F6` Phase 2 deleted the forwarding: every call site reads
+        # `vm.strategy_params.*` now, so there is no signal left to connect
+        # here either.
         self._strategy_params = StrategyParamsViewModel(parent=self)
-        for source, forwarded in (
-            (self._strategy_params.strategyOptionsChanged, self.strategyOptionsChanged),
-            (
-                self._strategy_params.selectedStrategyKeyChanged,
-                self.selectedStrategyKeyChanged,
-            ),
-            (self._strategy_params.botParamsSchemaChanged, self.botParamsSchemaChanged),
-            (self._strategy_params.botParamsRowsChanged, self.botParamsRowsChanged),
-            (self._strategy_params.botParamsErrorChanged, self.botParamsErrorChanged),
-        ):
-            source.connect(forwarded)
         self._symbol_options: list[str] = []
         self._selected_symbol = ""
         self._initial_capital_text = _DEFAULT_INITIAL_CAPITAL_TEXT
@@ -232,71 +172,27 @@ class BackTestViewModel(BaseQmlViewModel):
         self._selected_timeframe = _DEFAULT_TIMEFRAME
         self._execution_mode = BacktestExecutionMode.BAR_CLOSE.value
         # `EPIC-003F4` — sizing + broker-cost state lives in
-        # `BrokerSimViewModel` now (defaults and clamps with it); the
-        # properties below forward. Signals connected, never re-emitted by
-        # hand (`003F1` §3.2).
+        # `BrokerSimViewModel` (defaults and clamps with it). `EPIC-003F6`
+        # Phase 5 deleted the forwarding: call sites read `vm.broker_sim.*`.
         self._broker_sim = BrokerSimViewModel(parent=self)
-        for source, forwarded in (
-            (self._broker_sim.orderSizeTypeChanged, self.orderSizeTypeChanged),
-            (self._broker_sim.orderSizeValueChanged, self.orderSizeValueChanged),
-            (self._broker_sim.orderSizeTextChanged, self.orderSizeTextChanged),
-            (self._broker_sim.pyramidingChanged, self.pyramidingChanged),
-            (self._broker_sim.commissionTypeChanged, self.commissionTypeChanged),
-            (self._broker_sim.commissionValueChanged, self.commissionValueChanged),
-            (self._broker_sim.commissionTextChanged, self.commissionTextChanged),
-            (self._broker_sim.slippageTicksChanged, self.slippageTicksChanged),
-            (self._broker_sim.longLeverageChanged, self.longLeverageChanged),
-            (self._broker_sim.shortLeverageChanged, self.shortLeverageChanged),
-            (
-                self._broker_sim.takeProfitPctEnabledChanged,
-                self.takeProfitPctEnabledChanged,
-            ),
-            (self._broker_sim.takeProfitPctTextChanged, self.takeProfitPctTextChanged),
-        ):
-            source.connect(forwarded)
         # `EPIC-003F3` — time window + display timezone live in
-        # `TimeRangeViewModel` now; the properties below forward to it.
-        # Signals connected, never re-emitted by hand (`003F1` §3.2).
+        # `TimeRangeViewModel`. `EPIC-003F6` Phase 4 deleted the forwarding:
+        # call sites read `vm.time_range.*` directly.
         self._time_range = TimeRangeViewModel(parent=self)
-        for source, forwarded in (
-            (self._time_range.presetChanged, self.timeRangePresetChanged),
-            (self._time_range.customStartTextChanged, self.customStartTextChanged),
-            (self._time_range.customEndTextChanged, self.customEndTextChanged),
-            (self._time_range.displayTimezoneChanged, self.displayTimezoneChanged),
-        ):
-            source.connect(forwarded)
         # `EPIC-003F5` — the two progress bars and the last run's verdict
-        # live in their own ViewModels now; the properties below forward.
-        # Signals connected, never re-emitted by hand (`003F1` §3.2).
+        # live in their own ViewModels. `EPIC-003F6` Phases 1 and 6 deleted
+        # both sets of forwards: call sites read `vm.run_progress.*` and
+        # `vm.run_result.*` directly.
         self._run_progress = RunProgressViewModel(parent=self)
         self._run_result = RunResultViewModel(parent=self)
-        for source, forwarded in (
-            (self._run_result.resultChanged, self.resultChanged),
-            (self._run_result.statCardsChanged, self.statCardsChanged),
-            (
-                self._run_result.resultWarningTextChanged,
-                self.resultWarningTextChanged,
-            ),
-            (self._run_result.limitationsChanged, self.limitationsChanged),
-            (self._run_result.dataCoverageChanged, self.dataCoverageChanged),
-            (self._run_result.needsDataSyncChanged, self.needsDataSyncChanged),
-        ):
-            source.connect(forwarded)
         #: Stays on the facade: a disclosure toggle the user sets, not part
         #: of the run's outcome — it must survive the next run.
         self._show_extended_metrics = False
         self._is_chart_preview = False
-        # `EPIC-003F1` — trade-log state lives in `TradeLogViewModel` now;
-        # this facade forwards, it owns none of it directly. Each sub-VM
-        # signal connects straight to the facade signal of the same shape
-        # (`EPIC-003F1` §3.2 — no manual re-`emit()`, which would double-fire).
+        # `EPIC-003F1` — trade-log state lives in `TradeLogViewModel`.
+        # `EPIC-003F6` Phase 3 deleted the forwarding: call sites read
+        # `vm.trade_log.*` directly, so no signal is re-exported here.
         self._trade_log = TradeLogViewModel(parent=self)
-        self._trade_log.rowsChanged.connect(self.tradeLogRowsChanged)
-        self._trade_log.filterChanged.connect(self.tradeLogFilterChanged)
-        self._trade_log.searchTextChanged.connect(self.tradeLogSearchTextChanged)
-        self._trade_log.currentPageChanged.connect(self.tradeLogCurrentPageChanged)
-        self._trade_log.queryChanged.connect(self.tradeLogQueryChanged)
-        self._trade_log.exportRequested.connect(self.tradeLogExportRequested)
         self._config_diff_summary = ""
         self._last_run_summary = ""
         self._script_model = IndicatorScriptListModel(self)
@@ -358,48 +254,6 @@ class BackTestViewModel(BaseQmlViewModel):
         return self._run_result
 
     # ------------------------------------------------------------------ #
-    # Strategy selection
-    # ------------------------------------------------------------------ #
-
-    # --- `EPIC-003F2` facade -> `StrategyParamsViewModel` ------------- #
-    # Hand-written forwards, not `__getattr__`: `presentation/` is outside
-    # the `mypy` gate, so `__getattr__` would make every misspelling
-    # statically valid AND silent until the UI needed the value.
-
-    def _get_strategy_options(self) -> list[dict[str, str]]:
-        return self._strategy_params.strategyOptions
-
-    strategyOptions = Property(
-        "QVariantList", _get_strategy_options, notify=strategyOptionsChanged
-    )
-
-    @Slot(list)
-    def set_strategy_options(self, options: list[dict[str, str]]) -> None:
-        self._strategy_params.set_strategy_options(options)
-
-    def _get_selected_strategy_key(self) -> str:
-        return self._strategy_params.selectedStrategyKey
-
-    def _set_selected_strategy_key(self, value: str) -> None:
-        self._strategy_params.selectedStrategyKey = value
-
-    selectedStrategyKey = Property(
-        str,
-        _get_selected_strategy_key,
-        _set_selected_strategy_key,
-        notify=selectedStrategyKeyChanged,
-    )
-
-    def _get_selected_strategy_name(self) -> str:
-        return self._strategy_params.selectedStrategyName
-
-    selectedStrategyName = Property(
-        str,
-        _get_selected_strategy_name,
-        notify=selectedStrategyKeyChanged,
-    )
-
-    # ------------------------------------------------------------------ #
     # Symbol selection (BOT-102)
     # ------------------------------------------------------------------ #
 
@@ -437,49 +291,6 @@ class BackTestViewModel(BaseQmlViewModel):
         _set_selected_symbol,
         notify=selectedSymbolChanged,
     )
-
-    # ------------------------------------------------------------------ #
-    # Bot Parameters modal (BOT-047)
-    # ------------------------------------------------------------------ #
-
-    def _get_bot_params_schema(self) -> list[dict]:
-        return self._strategy_params.botParamsSchema
-
-    botParamsSchema = Property(
-        "QVariantList", _get_bot_params_schema, notify=botParamsSchemaChanged
-    )
-
-    def _get_bot_params_rows(self) -> list[dict[str, object]]:
-        return self._strategy_params.botParamsRows
-
-    botParamsRows = Property(
-        "QVariantList", _get_bot_params_rows, notify=botParamsRowsChanged
-    )
-
-    @Slot(list)
-    def set_bot_params_schema(self, schema: list[dict]) -> None:
-        self._strategy_params.set_bot_params_schema(schema)
-
-    @Slot(list)
-    def set_bot_params_rows(self, rows: list[dict[str, object]]) -> None:
-        self._strategy_params.set_bot_params_rows(rows)
-
-    @Slot(str, str, int, result=str)
-    def step_bot_param_value(
-        self, field_name: str, raw_value: str, direction: int
-    ) -> str:
-        return self._strategy_params.step_bot_param_value(
-            field_name, raw_value, direction
-        )
-
-    def _get_bot_params_error(self) -> str:
-        return self._strategy_params.botParamsError
-
-    botParamsError = Property(str, _get_bot_params_error, notify=botParamsErrorChanged)
-
-    @Slot(str)
-    def set_bot_params_error(self, message: str) -> None:
-        self._strategy_params.set_bot_params_error(message)
 
     # ------------------------------------------------------------------ #
     # Capital / timeframe
@@ -621,379 +432,18 @@ class BackTestViewModel(BaseQmlViewModel):
     # Broker simulation & sizing (BOT-104)
     # ------------------------------------------------------------------ #
 
-    # --- `EPIC-003F4` facade -> `BrokerSimViewModel` ------------------ #
-    # Hand-written forwards for the same reason as the `003F2`/`003F3`
-    # blocks: `presentation/` is outside the `mypy` gate, so `__getattr__`
-    # would make every misspelling statically valid and silent.
-
-    def _get_order_size_type(self) -> str:
-        return self._broker_sim.orderSizeType
-
-    def _set_order_size_type(self, value: str) -> None:
-        self._broker_sim.orderSizeType = value
-
-    orderSizeType = Property(
-        str,
-        _get_order_size_type,
-        _set_order_size_type,
-        notify=orderSizeTypeChanged,
-    )
-
-    def _get_order_size_value(self) -> float:
-        return self._broker_sim.orderSizeValue
-
-    def _set_order_size_value(self, value: float) -> None:
-        self._broker_sim.orderSizeValue = value
-
-    orderSizeValue = Property(
-        float,
-        _get_order_size_value,
-        _set_order_size_value,
-        notify=orderSizeValueChanged,
-    )
-
-    def _get_order_size_text(self) -> str:
-        return self._broker_sim.orderSizeText
-
-    def _set_order_size_text(self, value: str) -> None:
-        self._broker_sim.orderSizeText = value
-
-    orderSizeText = Property(
-        str,
-        _get_order_size_text,
-        _set_order_size_text,
-        notify=orderSizeTextChanged,
-    )
-
-    def _get_pyramiding(self) -> int:
-        return self._broker_sim.pyramiding
-
-    def _set_pyramiding(self, value: int) -> None:
-        self._broker_sim.pyramiding = value
-
-    pyramiding = Property(
-        int,
-        _get_pyramiding,
-        _set_pyramiding,
-        notify=pyramidingChanged,
-    )
-
-    def _get_commission_type(self) -> str:
-        return self._broker_sim.commissionType
-
-    def _set_commission_type(self, value: str) -> None:
-        self._broker_sim.commissionType = value
-
-    commissionType = Property(
-        str,
-        _get_commission_type,
-        _set_commission_type,
-        notify=commissionTypeChanged,
-    )
-
-    def _get_commission_value(self) -> float:
-        return self._broker_sim.commissionValue
-
-    def _set_commission_value(self, value: float) -> None:
-        self._broker_sim.commissionValue = value
-
-    commissionValue = Property(
-        float,
-        _get_commission_value,
-        _set_commission_value,
-        notify=commissionValueChanged,
-    )
-
-    def _get_commission_text(self) -> str:
-        return self._broker_sim.commissionText
-
-    def _set_commission_text(self, value: str) -> None:
-        self._broker_sim.commissionText = value
-
-    commissionText = Property(
-        str,
-        _get_commission_text,
-        _set_commission_text,
-        notify=commissionTextChanged,
-    )
-
-    def _get_slippage_ticks(self) -> int:
-        return self._broker_sim.slippageTicks
-
-    def _set_slippage_ticks(self, value: int) -> None:
-        self._broker_sim.slippageTicks = value
-
-    slippageTicks = Property(
-        int,
-        _get_slippage_ticks,
-        _set_slippage_ticks,
-        notify=slippageTicksChanged,
-    )
-
-    def _get_long_leverage(self) -> float:
-        return self._broker_sim.longLeverage
-
-    def _set_long_leverage(self, value: float) -> None:
-        self._broker_sim.longLeverage = value
-
-    longLeverage = Property(
-        float,
-        _get_long_leverage,
-        _set_long_leverage,
-        notify=longLeverageChanged,
-    )
-
-    def _get_short_leverage(self) -> float:
-        return self._broker_sim.shortLeverage
-
-    def _set_short_leverage(self, value: float) -> None:
-        self._broker_sim.shortLeverage = value
-
-    shortLeverage = Property(
-        float,
-        _get_short_leverage,
-        _set_short_leverage,
-        notify=shortLeverageChanged,
-    )
-
-    def _get_take_profit_pct_enabled(self) -> bool:
-        return self._broker_sim.takeProfitPctEnabled
-
-    def _set_take_profit_pct_enabled(self, value: bool) -> None:
-        self._broker_sim.takeProfitPctEnabled = value
-
-    takeProfitPctEnabled = Property(
-        bool,
-        _get_take_profit_pct_enabled,
-        _set_take_profit_pct_enabled,
-        notify=takeProfitPctEnabledChanged,
-    )
-
-    def _get_take_profit_pct_text(self) -> str:
-        return self._broker_sim.takeProfitPctText
-
-    def _set_take_profit_pct_text(self, value: str) -> None:
-        self._broker_sim.takeProfitPctText = value
-
-    takeProfitPctText = Property(
-        str,
-        _get_take_profit_pct_text,
-        _set_take_profit_pct_text,
-        notify=takeProfitPctTextChanged,
-    )
-
-    @Slot(str)
-    def set_order_size_type(self, value: str) -> None:
-        self._broker_sim.set_order_size_type(value)
-
-    @Slot(float)
-    def set_order_size_value(self, value: float) -> None:
-        self._broker_sim.set_order_size_value(value)
-
-    @Slot(str)
-    def set_order_size_text(self, value: str) -> None:
-        self._broker_sim.set_order_size_text(value)
-
-    @Slot(int)
-    def set_pyramiding(self, value: int) -> None:
-        self._broker_sim.set_pyramiding(value)
-
-    @Slot(str)
-    def set_commission_type(self, value: str) -> None:
-        self._broker_sim.set_commission_type(value)
-
-    @Slot(float)
-    def set_commission_value(self, value: float) -> None:
-        self._broker_sim.set_commission_value(value)
-
-    @Slot(str)
-    def set_commission_text(self, value: str) -> None:
-        self._broker_sim.set_commission_text(value)
-
-    @Slot(int)
-    def set_slippage_ticks(self, value: int) -> None:
-        self._broker_sim.set_slippage_ticks(value)
-
-    @Slot(float)
-    def set_long_leverage(self, value: float) -> None:
-        self._broker_sim.set_long_leverage(value)
-
-    @Slot(float)
-    def set_short_leverage(self, value: float) -> None:
-        self._broker_sim.set_short_leverage(value)
-
-    @Property("QVariantList", constant=True)
-    def timeRangePresetOptions(self) -> list[dict[str, str]]:
-        return self._time_range.presetOptions
-
-    def _get_time_range_preset(self) -> str:
-        return self._time_range.preset
-
-    def _set_time_range_preset(self, value: str) -> None:
-        self._time_range.preset = value
-
-    timeRangePreset = Property(
-        str,
-        _get_time_range_preset,
-        _set_time_range_preset,
-        notify=timeRangePresetChanged,
-    )
-
-    def _get_selected_time_range_preset_label(self) -> str:
-        return self._time_range.selectedPresetLabel
-
-    selectedTimeRangePresetLabel = Property(
-        str,
-        _get_selected_time_range_preset_label,
-        notify=timeRangePresetChanged,
-    )
-
-    def _get_custom_start_text(self) -> str:
-        return self._time_range.customStartText
-
-    def _set_custom_start_text(self, value: str) -> None:
-        self._time_range.customStartText = value
-
-    customStartText = Property(
-        str,
-        _get_custom_start_text,
-        _set_custom_start_text,
-        notify=customStartTextChanged,
-    )
-
-    def _get_custom_end_text(self) -> str:
-        return self._time_range.customEndText
-
-    def _set_custom_end_text(self, value: str) -> None:
-        self._time_range.customEndText = value
-
-    customEndText = Property(
-        str, _get_custom_end_text, _set_custom_end_text, notify=customEndTextChanged
-    )
-
-    # ------------------------------------------------------------------ #
-    # Display Timezone (BOT-097)
-    # ------------------------------------------------------------------ #
-
-    @Property("QVariantList", constant=True)
-    def displayTimezoneOptions(self) -> list[dict[str, str]]:
-        return self._time_range.displayTimezoneOptions
-
-    def _get_display_timezone(self) -> str:
-        return self._time_range.displayTimezone
-
-    @Slot(str)
-    def set_display_timezone(self, value: str) -> None:
-        self._time_range.set_display_timezone(value)
-
-    displayTimezone = Property(
-        str,
-        _get_display_timezone,
-        set_display_timezone,
-        notify=displayTimezoneChanged,
-    )
-
-    def _get_display_timezone_label(self) -> str:
-        return self._time_range.displayTimezoneLabel
-
-    displayTimezoneLabel = Property(
-        str,
-        _get_display_timezone_label,
-        notify=displayTimezoneChanged,
-    )
-
     # ------------------------------------------------------------------ #
     # Result / status (written from Python only)
     # ------------------------------------------------------------------ #
 
-    # --- `EPIC-003F5` facade -> `RunProgressViewModel` /
-    # `RunResultViewModel` --------------------------------------------- #
-    # `showExtendedMetrics` stays on the facade: it is a UI disclosure
-    # toggle, not part of the run's outcome — it survives a new run.
-
-    def _get_result_text(self) -> str:
-        return self._run_result.resultText
-
-    resultText = Property(str, _get_result_text, notify=resultChanged)
-
-    def _get_result_is_error(self) -> bool:
-        return self._run_result.resultIsError
-
-    resultIsError = Property(bool, _get_result_is_error, notify=resultChanged)
-
-    @Slot(str, bool)
-    def set_result(self, text: str, is_error: bool) -> None:
-        self._run_result.set_result(text, is_error)
-
-    isDataFullyCovered = Property(
-        bool,
-        lambda self: self._run_result.isDataFullyCovered,
-        notify=dataCoverageChanged,
-    )
-    dataCoverageMessage = Property(
-        str,
-        lambda self: self._run_result.dataCoverageMessage,
-        notify=dataCoverageChanged,
-    )
-
-    @Slot(bool, str)
-    def set_data_coverage(self, is_fully_covered: bool, message: str) -> None:
-        self._run_result.set_data_coverage(is_fully_covered, message)
-
     # ------------------------------------------------------------------ #
-    # Performance stat cards (BOT-055)
+    # Disclosure + preview flags — the facade's own state, not a sub-VM's
+    #
+    # `EPIC-003F6`: both survived the split on purpose. `showExtendedMetrics`
+    # is a toggle the user sets and must outlive the run whose metrics it
+    # reveals; `isChartPreview` says which of two render paths the chart is
+    # currently showing, which is a screen-level fact, not a run result.
     # ------------------------------------------------------------------ #
-
-    def _get_primary_stat_cards(self) -> list[dict[str, str]]:
-        return self._run_result.primaryStatCards
-
-    primaryStatCards = Property(
-        "QVariantList", _get_primary_stat_cards, notify=statCardsChanged
-    )
-
-    def _get_extended_stat_cards(self) -> list[dict[str, str]]:
-        return self._run_result.extendedStatCards
-
-    extendedStatCards = Property(
-        "QVariantList", _get_extended_stat_cards, notify=statCardsChanged
-    )
-
-    @Slot("QVariantList", "QVariantList")
-    def set_stat_cards(
-        self,
-        primary: list[dict[str, str]],
-        extended: list[dict[str, str]],
-    ) -> None:
-        self._run_result.set_stat_cards(primary, extended)
-
-    def extended_metrics_snapshot(self) -> ExtendedMetricsSnapshot | None:
-        return self._run_result.extended_metrics_snapshot()
-
-    @Slot(object)
-    def set_extended_metrics_snapshot(
-        self, snapshot: ExtendedMetricsSnapshot | None
-    ) -> None:
-        self._run_result.set_extended_metrics_snapshot(snapshot)
-
-    def _get_result_warning_text(self) -> str:
-        return self._run_result.resultWarningText
-
-    resultWarningText = Property(
-        str, _get_result_warning_text, notify=resultWarningTextChanged
-    )
-
-    @Slot(str)
-    def set_result_warning_text(self, text: str) -> None:
-        self._run_result.set_result_warning_text(text)
-
-    def _get_limitations(self) -> list[str]:
-        return self._run_result.limitations
-
-    limitations = Property("QStringList", _get_limitations, notify=limitationsChanged)
-
-    @Slot("QStringList")
-    def set_limitations(self, limitations: list[str]) -> None:
-        self._run_result.set_limitations(limitations)
 
     def _get_show_extended_metrics(self) -> bool:
         return self._show_extended_metrics
@@ -1010,19 +460,6 @@ class BackTestViewModel(BaseQmlViewModel):
         notify=showExtendedMetricsChanged,
     )
 
-    # ------------------------------------------------------------------ #
-    # Data sync affordance (BOT-059, written from Python only)
-    # ------------------------------------------------------------------ #
-
-    def _get_needs_data_sync(self) -> bool:
-        return self._run_result.needsDataSync
-
-    needsDataSync = Property(bool, _get_needs_data_sync, notify=needsDataSyncChanged)
-
-    @Slot(bool)
-    def set_needs_data_sync(self, value: bool) -> None:
-        self._run_result.set_needs_data_sync(value)
-
     def _get_is_chart_preview(self) -> bool:
         return self._is_chart_preview
 
@@ -1030,9 +467,9 @@ class BackTestViewModel(BaseQmlViewModel):
     #: `_request_chart_preview()` (opening the screen / changing symbol,
     #: timeframe, or range before a run) rather than a completed
     #: `BacktestResult`. Both paths render through the same
-    #: `render_historical_data`/`render_historical_volume` calls, so QML
-    #: needs this flag to tell the user which one they're looking at.
-    #: Read-only from QML by design, same convention as `needsDataSync`.
+    #: `render_historical_data`/`render_historical_volume` calls, so the view
+    #: needs this flag to tell the user which one they are looking at.
+    #: Read-only from the view by design.
     isChartPreview = Property(bool, _get_is_chart_preview, notify=isChartPreviewChanged)
 
     @Slot(bool)
@@ -1040,94 +477,6 @@ class BackTestViewModel(BaseQmlViewModel):
         if value != self._is_chart_preview:
             self._is_chart_preview = value
             self.isChartPreviewChanged.emit()
-
-    # ------------------------------------------------------------------ #
-    # Trade Logs table (BOT-057 §2.1) — forwarded to `TradeLogViewModel`
-    # (`EPIC-003F1`); this facade owns no trade-log state directly.
-    # ------------------------------------------------------------------ #
-
-    def _get_trade_log_rows(self) -> list[dict[str, str]]:
-        return self._trade_log.rows
-
-    #: Already-formatted display rows for the CURRENT page only — the
-    #: Presenter owns filtering/searching/pagination over the full trade
-    #: list, this is just whatever it decided QML should render right now.
-    tradeLogRows = Property(
-        "QVariantList", _get_trade_log_rows, notify=tradeLogRowsChanged
-    )
-
-    def _get_trade_log_total_count(self) -> int:
-        return self._trade_log.totalCount
-
-    #: Row count AFTER filter/search, BEFORE pagination — the "44 Lệnh"
-    #: badge counts what matches the current filter, not the page size.
-    tradeLogTotalCount = Property(
-        int, _get_trade_log_total_count, notify=tradeLogRowsChanged
-    )
-
-    def _get_trade_log_total_pages(self) -> int:
-        return self._trade_log.totalPages
-
-    tradeLogTotalPages = Property(
-        int, _get_trade_log_total_pages, notify=tradeLogRowsChanged
-    )
-
-    @Slot("QVariantList", int, int)
-    def set_trade_log_page_state(
-        self,
-        rows: list[dict[str, str]],
-        total_count: int,
-        total_pages: int,
-    ) -> None:
-        """Public bulk-write, called by the Presenter after every
-        filter/search/page/run change — same convention as
-        `set_stat_cards`."""
-        self._trade_log.set_page_state(rows, total_count, total_pages)
-
-    def _get_trade_log_filter(self) -> str:
-        return self._trade_log.filter
-
-    def _set_trade_log_filter(self, value: str) -> None:
-        self._trade_log.filter = value
-
-    #: One of TradeLogFilter's values — QML's tab row writes this directly
-    #: (no dedicated Slot needed, same pattern as `selectedTimeframe`).
-    #: Resets to page 1 on change: a filter narrowing the result set could
-    #: otherwise leave the view stuck on a now out-of-range page (behavior
-    #: lives in `TradeLogViewModel.filter`'s own setter).
-    tradeLogFilter = Property(
-        str, _get_trade_log_filter, _set_trade_log_filter, notify=tradeLogFilterChanged
-    )
-
-    def _get_trade_log_search_text(self) -> str:
-        return self._trade_log.searchText
-
-    def _set_trade_log_search_text(self, value: str) -> None:
-        self._trade_log.searchText = value
-
-    tradeLogSearchText = Property(
-        str,
-        _get_trade_log_search_text,
-        _set_trade_log_search_text,
-        notify=tradeLogSearchTextChanged,
-    )
-
-    def _get_trade_log_current_page(self) -> int:
-        return self._trade_log.currentPage
-
-    def _set_trade_log_current_page(self, value: int) -> None:
-        self._trade_log.currentPage = value
-
-    #: QML's Prev/Next buttons write this directly (e.g.
-    #: `viewModel.tradeLogCurrentPage = viewModel.tradeLogCurrentPage - 1`) —
-    #: the Presenter clamps it into range on every recompute, so an
-    #: out-of-bounds write here is harmless.
-    tradeLogCurrentPage = Property(
-        int,
-        _get_trade_log_current_page,
-        _set_trade_log_current_page,
-        notify=tradeLogCurrentPageChanged,
-    )
 
     # ------------------------------------------------------------------ #
     # QML entry point
@@ -1152,11 +501,6 @@ class BackTestViewModel(BaseQmlViewModel):
     def requestSync(self) -> None:
         """Called from QML's "Đồng bộ ngay" button."""
         self.syncRequested.emit()
-
-    @Slot()
-    def requestTradeLogExport(self) -> None:
-        """Called from QML's "Export" button."""
-        self._trade_log.request_export()
 
     @Slot("QVariant")
     def requestBotParamsSave(self, values) -> None:
@@ -1234,7 +578,7 @@ class BackTestViewModel(BaseQmlViewModel):
 
     @Slot(str)
     def setDisplayTimezone(self, tz_name: str) -> None:
-        self.set_display_timezone(tz_name)
+        self._time_range.set_display_timezone(tz_name)
 
     # ------------------------------------------------------------------ #
     # Log model — exposed to LogPanel.qml, mutated by BacktestEventLogger.

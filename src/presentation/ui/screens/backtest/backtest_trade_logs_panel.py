@@ -152,7 +152,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
             f"background-color: {Palette.BG_CARD_HEADER}; border: 1px solid {Palette.STATE_NAV_BORDER}; border-radius: 6px; "
             f"color: {Palette.TEXT_PRIMARY}; font-size: 11px; font-weight: bold; padding: 0 10px;"
         )
-        self._btn_export.clicked.connect(self._vm.requestTradeLogExport)
+        self._btn_export.clicked.connect(self._vm.trade_log.request_export)
         toolbar_layout.addWidget(self._btn_export)
 
         layout.addWidget(toolbar)
@@ -236,7 +236,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         self._btn_prev_page.setFixedHeight(26)
         self._btn_prev_page.clicked.connect(
             lambda: setattr(
-                self._vm, "tradeLogCurrentPage", self._vm.tradeLogCurrentPage - 1
+                self._vm, "tradeLogCurrentPage", self._vm.trade_log.currentPage - 1
             )
         )
         row.addWidget(self._btn_prev_page)
@@ -255,7 +255,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         self._btn_next_page.setFixedHeight(26)
         self._btn_next_page.clicked.connect(
             lambda: setattr(
-                self._vm, "tradeLogCurrentPage", self._vm.tradeLogCurrentPage + 1
+                self._vm, "tradeLogCurrentPage", self._vm.trade_log.currentPage + 1
             )
         )
         row.addWidget(self._btn_next_page)
@@ -270,11 +270,11 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
     def _wire_view_model(self) -> None:
         vm = self._vm
         vm.activeBottomTabChanged.connect(self._sync_active_tab)
-        vm.tradeLogFilterChanged.connect(self._sync_filters)
-        vm.tradeLogSearchTextChanged.connect(self._sync_search)
-        vm.tradeLogRowsChanged.connect(self._sync_rows)
-        vm.tradeLogRowsChanged.connect(self._sync_tab_badges)
-        vm.tradeLogCurrentPageChanged.connect(self._sync_pagination)
+        vm.trade_log.filterChanged.connect(self._sync_filters)
+        vm.trade_log.searchTextChanged.connect(self._sync_search)
+        vm.trade_log.rowsChanged.connect(self._sync_rows)
+        vm.trade_log.rowsChanged.connect(self._sync_tab_badges)
+        vm.trade_log.currentPageChanged.connect(self._sync_pagination)
         vm.logModel.countChanged.connect(self._sync_tab_badges)
         vm.isConfigDirtyChanged.connect(self._sync_dirty_opacity)
 
@@ -297,7 +297,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         self._vm.setActiveBottomTab(tab_id)
 
     def _sync_tab_badges(self) -> None:
-        total = self._vm.tradeLogTotalCount
+        total = self._vm.trade_log.totalCount
         log_count = self._vm.logModel.rowCount()
         self._tab_bar.set_tabs(
             [
@@ -308,22 +308,22 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         self._sync_active_tab()
 
     def _sync_filters(self) -> None:
-        current = self._vm.tradeLogFilter
+        current = self._vm.trade_log.filter
         for btn in self._filter_buttons:
             btn.set_active(btn.value == current)
 
     def _on_filter_clicked(self, value: str) -> None:
-        self._vm.tradeLogFilter = value
+        self._vm.trade_log.filter = value
 
     def _sync_search(self) -> None:
-        if self._search_field.text() != self._vm.tradeLogSearchText:
-            self._search_field.setText(self._vm.tradeLogSearchText)
+        if self._search_field.text() != self._vm.trade_log.searchText:
+            self._search_field.setText(self._vm.trade_log.searchText)
 
     def _on_search_edited(self, text: str) -> None:
-        self._vm.tradeLogSearchText = text
+        self._vm.trade_log.searchText = text
 
     def _sync_rows(self) -> None:
-        rows = self._vm.tradeLogRows
+        rows = self._vm.trade_log.rows
         while self._rows_layout.count() > 1:
             item = self._rows_layout.takeAt(0)
             widget = item.widget()
@@ -352,12 +352,14 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
 
     def _sync_pagination(self) -> None:
         vm = self._vm
-        visible = vm.tradeLogTotalPages > 1
+        visible = vm.trade_log.totalPages > 1
         self._pagination_row.setVisible(visible)
-        self._btn_prev_page.setEnabled(vm.tradeLogCurrentPage > 1)
-        self._btn_next_page.setEnabled(vm.tradeLogCurrentPage < vm.tradeLogTotalPages)
+        self._btn_prev_page.setEnabled(vm.trade_log.currentPage > 1)
+        self._btn_next_page.setEnabled(
+            vm.trade_log.currentPage < vm.trade_log.totalPages
+        )
         self._page_label.setText(
-            f"Trang {vm.tradeLogCurrentPage} / {vm.tradeLogTotalPages}"
+            f"Trang {vm.trade_log.currentPage} / {vm.trade_log.totalPages}"
         )
 
     def _sync_dirty_opacity(self) -> None:

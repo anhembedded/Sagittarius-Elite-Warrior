@@ -70,8 +70,8 @@ def test_refresh_fills_the_page_state_without_a_presenter(qtbot) -> None:
 
     coordinator.refresh()
 
-    assert len(view_model.tradeLogRows) == 2
-    assert view_model.tradeLogTotalCount == 2
+    assert len(view_model.trade_log.rows) == 2
+    assert view_model.trade_log.totalCount == 2
 
 
 def test_the_trade_list_is_read_live_not_captured(qtbot) -> None:
@@ -88,12 +88,12 @@ def test_the_trade_list_is_read_live_not_captured(qtbot) -> None:
         logger=_RecordingLogger(),
     )
     coordinator.refresh()
-    assert view_model.tradeLogTotalCount == 0
+    assert view_model.trade_log.totalCount == 0
 
     trades.append(_trade(50.0))
     coordinator.refresh()
 
-    assert view_model.tradeLogTotalCount == 1
+    assert view_model.trade_log.totalCount == 1
 
 
 def test_export_writes_only_what_the_filter_currently_shows(qtbot, tmp_path) -> None:
@@ -103,7 +103,7 @@ def test_export_writes_only_what_the_filter_currently_shows(qtbot, tmp_path) -> 
     coordinator, view_model, _ = _build(
         [_trade(50.0), _trade(-20.0, entry_hour=6)], export_path=str(target)
     )
-    view_model.tradeLogFilter = "win"
+    view_model.trade_log.filter = "win"
 
     coordinator.on_export_requested()
 
@@ -152,4 +152,4 @@ def test_timezone_change_reaches_the_chart_and_re_renders_the_table(qtbot) -> No
     coordinator.on_display_timezone_changed()
 
     assert pushed == ["Asia/Ho_Chi_Minh"]
-    assert view_model.tradeLogTotalCount == 1
+    assert view_model.trade_log.totalCount == 1

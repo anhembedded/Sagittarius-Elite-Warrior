@@ -17,7 +17,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.bo
     parse_bot_params,
 )
 
-from ..logic.broker_properties_schema import BROKER_PROPERTY_FIELDS
+from ..logic.broker_properties_schema import BROKER_PROPERTY_FIELDS, owner_of
 from ..logic.pre_backtest_assertions import (
     PreBacktestAssertionPipeline,
     PreBacktestInput,
@@ -70,11 +70,11 @@ class StrategyConfigCoordinator:
         ignored or raise "param nobody declares" against the new one, so
         they're discarded rather than carried over (BOT-047)."""
         self._state.strategy_params = None
-        self._view_model.set_bot_params_error("")
+        self._view_model.strategy_params.set_bot_params_error("")
         self.refresh_bot_params_schema()
         self._logger.log_strategy_selected(
-            self._view_model.selectedStrategyName,
-            self._view_model.selectedStrategyKey,
+            self._view_model.strategy_params.selectedStrategyName,
+            self._view_model.strategy_params.selectedStrategyKey,
         )
         self._notify_config_changed()
 
@@ -85,12 +85,14 @@ class StrategyConfigCoordinator:
             if strategy_cls is not None
             else []
         )
-        self._view_model.set_bot_params_schema(schema)
-        self._view_model.set_bot_params_rows(build_bot_params_rows(schema))
+        self._view_model.strategy_params.set_bot_params_schema(schema)
+        self._view_model.strategy_params.set_bot_params_rows(
+            build_bot_params_rows(schema)
+        )
 
     def _selected_strategy_class(self):
         return self._strategy_registry.available().get(
-            self._view_model.selectedStrategyKey
+            self._view_model.strategy_params.selectedStrategyKey
         )
 
     # ---------------------------------------------------------------- #
@@ -112,7 +114,7 @@ class StrategyConfigCoordinator:
             parsed = parse_bot_params(strategy_cls().inputs, raw_values)
             strategy_cls(parsed)  # construct-and-discard: the real validator
         except ValueError as exc:
-            self._view_model.set_bot_params_error(str(exc))
+            self._view_model.strategy_params.set_bot_params_error(str(exc))
             return False
 
         self._state.strategy_params = parsed
@@ -151,7 +153,7 @@ class StrategyConfigCoordinator:
         """
         if not self._persist_strategy_properties(payload):
             return False
-        self._view_model.set_bot_params_error("")
+        self._view_model.strategy_params.set_bot_params_error("")
         self.refresh_bot_params_schema()
         self._notify_config_changed()
         return True
@@ -171,7 +173,7 @@ class StrategyConfigCoordinator:
                 strategy_cls(parsed)
                 self._state.strategy_params = parsed
             except ValueError as exc:
-                self._view_model.set_bot_params_error(str(exc))
+                self._view_model.strategy_params.set_bot_params_error(str(exc))
                 return False
 
         self._apply_broker_properties(props)
@@ -186,15 +188,17 @@ class StrategyConfigCoordinator:
         for field in BROKER_PROPERTY_FIELDS:
             if field.key in props:
                 setattr(
-                    self._view_model, field.vm_attribute, field.coerce(props[field.key])
+                    owner_of(self._view_model, field),
+                    field.vm_attribute,
+                    field.coerce(props[field.key]),
                 )
 
     def _finish_save(self, saved_params: dict) -> None:
-        self._view_model.set_bot_params_error("")
+        self._view_model.strategy_params.set_bot_params_error("")
         self.refresh_bot_params_schema()
         self._view_model.botParamsSaved.emit()
         self._logger.log_bot_params_saved(
-            self._view_model.selectedStrategyName,
+            self._view_model.strategy_params.selectedStrategyName,
             saved_params,
         )
         self._notify_config_changed()

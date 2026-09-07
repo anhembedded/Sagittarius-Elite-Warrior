@@ -56,7 +56,7 @@ class MetricsDetailDialogWidget(MetricsDetailModal):
         )
         super().__init__(self._widget_vm, parent=parent)
         self.setObjectName("backtestMetricsDetailDialog")
-        view_model.statCardsChanged.connect(self._widget_vm.refresh)
+        view_model.run_result.statCardsChanged.connect(self._widget_vm.refresh)
 
     def open_dialog(self) -> None:
         self._widget_vm.refresh()

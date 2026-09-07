@@ -99,12 +99,12 @@ def test_backtest_truthful_markers_integration(qtbot, sample_long_only_result) -
         assert "SHORT" not in label
 
     # 4. Assert Trade Logs table in ViewModel
-    rows = presenter._view_model.tradeLogRows
+    rows = presenter._view_model.trade_log.rows
     assert len(rows) == 1
     assert "vị thế mua" in rows[0]["positionLabel"]
     assert "SHORT" not in rows[0]["positionLabel"]
 
     # 5. Filter tab "short" contains 0 items in long-only engine
-    presenter._view_model.tradeLogFilter = "short"
-    filtered_rows = presenter._view_model.tradeLogRows
+    presenter._view_model.trade_log.filter = "short"
+    filtered_rows = presenter._view_model.trade_log.rows
     assert len(filtered_rows) == 0

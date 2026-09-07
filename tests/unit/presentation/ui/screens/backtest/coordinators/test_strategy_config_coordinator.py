@@ -88,7 +88,7 @@ def _build(strategies=None, state=None):
         get_market_metadata=lambda _symbol: state.metadata,
         notify_config_changed=bump,
     )
-    view_model.selectedStrategyKey = "s1"
+    view_model.strategy_params.selectedStrategyKey = "s1"
     return coordinator, view_model, state, logger
 
 
@@ -113,7 +113,7 @@ def test_a_rejected_param_is_not_saved_and_asks_for_no_re_run(qtbot) -> None:
 
     assert should_rerun is False
     assert state.strategy_params is None
-    assert "period" in view_model.botParamsError
+    assert "period" in view_model.strategy_params.botParamsError
 
 
 def test_an_accepted_param_is_saved_and_asks_for_a_re_run(qtbot) -> None:
@@ -123,7 +123,7 @@ def test_an_accepted_param_is_saved_and_asks_for_a_re_run(qtbot) -> None:
 
     assert should_rerun is True
     assert state.strategy_params == {"period": 21}
-    assert view_model.botParamsError == ""
+    assert view_model.strategy_params.botParamsError == ""
 
 
 def test_an_unknown_strategy_key_saves_nothing(qtbot) -> None:
@@ -150,23 +150,23 @@ def test_broker_properties_are_applied_with_their_declared_types(qtbot) -> None:
     )
 
     assert view_model.initialCapitalText == "5000"
-    assert view_model.pyramiding == 3
-    assert view_model.longLeverage == 2.5
-    assert view_model.takeProfitPctEnabled is True
+    assert view_model.broker_sim.pyramiding == 3
+    assert view_model.broker_sim.longLeverage == 2.5
+    assert view_model.broker_sim.takeProfitPctEnabled is True
 
 
 def test_properties_are_left_alone_when_the_inputs_are_rejected(qtbot) -> None:
     """The strategy inputs are validated BEFORE the broker properties are
     written, so a bad input must not half-apply the rest of the payload."""
     coordinator, view_model, _state, _logger = _build()
-    before = view_model.pyramiding
+    before = view_model.broker_sim.pyramiding
 
     should_rerun = coordinator.apply_strategy_properties(
         {"inputs": {"period": "-5"}, "properties": {"pyramiding": "3"}}
     )
 
     assert should_rerun is False
-    assert view_model.pyramiding == before
+    assert view_model.broker_sim.pyramiding == before
 
 
 def test_no_metadata_clears_any_previous_verdict(qtbot) -> None:

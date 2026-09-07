@@ -1,8 +1,9 @@
 # EPIC-003F — `BackTestViewModel` → Composite ViewModel: vòng thiết kế trước, CHƯA code
 
 **Thuộc Epic:** [`EPIC-003`](../README.md)
-**Trạng thái:** 🟡 **Đã mở khoá 2026-08-27** — vòng thiết kế xong, có quyết định ở §4.
-Code vẫn chưa bắt đầu: task con triển khai chưa mở.
+**Trạng thái:** ✅ **Xong 2026-09-07.** Vòng thiết kế chốt hướng C ở §4; sáu task con
+(`003F1`…`003F6`) đã triển khai hết, kể cả bước gỡ facade ở §4.3. `backtest_view_model.py`
+1.435 → 689 dòng.
 **Phụ thuộc:** Không phụ thuộc kỹ thuật task nào, nhưng cố tình tách khỏi `EPIC-003E` — không tự động làm sau khi `E` xong.
 **Nguồn vòng đo lại:** [`DOCTOR-002`](../../../completed/DOCTOR-002_epic_003f_blocker_is_dead.md)
 

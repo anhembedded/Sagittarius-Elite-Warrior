@@ -85,7 +85,7 @@ class ChartPreviewCoordinator:
         if self._is_busy():
             return
         config = self._get_current_config()
-        if self._view_model.timeRangePreset == TimeRangePreset.CUSTOM.value:
+        if self._view_model.time_range.preset == TimeRangePreset.CUSTOM.value:
             if config.start_time is None or config.end_time is None:
                 return
             if config.start_time >= config.end_time:
@@ -170,12 +170,12 @@ class ChartPreviewCoordinator:
             return
         if raw_klines is not None:
             self._state.current_raw_klines = list(raw_klines)
-        self._view_model.set_data_coverage(
+        self._view_model.run_result.set_data_coverage(
             coverage.is_fully_covered,
             ""
             if coverage.is_fully_covered
             else self._format_coverage_message(coverage),
         )
-        self._view_model.set_needs_data_sync(not coverage.is_fully_covered)
+        self._view_model.run_result.set_needs_data_sync(not coverage.is_fully_covered)
         self._view.on_preview_data_ready(klines, volume)
         self._view_model.set_chart_preview_mode(True)

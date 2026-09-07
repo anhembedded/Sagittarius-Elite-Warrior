@@ -16,6 +16,8 @@ from .backtest_state_fields import (
     SCRIPTS_ENABLED_KEY,
     SCRIPTS_TOUCHED_KEY,
     is_key_list,
+    read_prop,
+    write_prop,
 )
 
 
@@ -23,7 +25,7 @@ def capture(view_model) -> StateData:
     script_model = view_model.script_model
     return {
         **{
-            field.key: getattr(view_model, field.prop)
+            field.key: read_prop(view_model, field.prop)
             for field in BACKTEST_STATE_FIELDS
         },
         # EPIC-010G — the script checklist is a QAbstractListModel, not a
@@ -53,7 +55,7 @@ def restore(view_model, data: StateData) -> None:
             continue
         value = data[field.key]
         if field.is_valid(value, view_model):
-            setattr(view_model, field.prop, value)
+            write_prop(view_model, field.prop, value)
 
     enabled = data.get(SCRIPTS_ENABLED_KEY)
     touched = data.get(SCRIPTS_TOUCHED_KEY)

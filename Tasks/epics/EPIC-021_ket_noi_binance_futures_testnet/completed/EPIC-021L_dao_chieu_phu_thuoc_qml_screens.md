@@ -19,7 +19,7 @@ sẽ kéo theo `screens/backtest/` vào màn Giao dịch, vì ViewModel của ch
 > → `BackTestTradeLogsPanel`, 392 dòng). `qml/TradeLogTable/NOTES.md` nói rõ đây là chủ ý
 > (*"dựng khung trước, đủ tính năng sau"*) và nêu đúng điều kiện còn thiếu để nối được:
 > *"`BackTestViewModel` needs an unpaginated 'all filtered rows' source, not today's per-page one"*.
-> Điều kiện đó là việc của [`EPIC-003F1`](../../EPIC-003_presenter_and_god_file_decomposition/incomplete/EPIC-003F1_trade_log_sub_view_model_facade.md),
+> Điều kiện đó là việc của [`EPIC-003F1`](../../EPIC-003_presenter_and_god_file_decomposition/completed/EPIC-003F1_trade_log_sub_view_model_facade.md),
 > **không** thuộc task này. `021L` chỉ đảo chiều phụ thuộc — sau nó, widget vẫn chưa nối, nhưng đã
 > **nối được** mà không kéo theo màn nào.
 

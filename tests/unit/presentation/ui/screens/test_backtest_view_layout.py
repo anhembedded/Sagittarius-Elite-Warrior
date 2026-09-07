@@ -78,7 +78,7 @@ def test_stat_cards_row_replaces_result_box_when_a_run_completes(view, qapp, qml
     assert v.top_widget._stat_cards_row.isVisible() is False
     assert v.top_widget._result_box.isVisible() is True
 
-    vm.set_stat_cards(_stat_cards(4), [])
+    vm.run_result.set_stat_cards(_stat_cards(4), [])
     qapp.processEvents()
 
     assert v.top_widget._stat_cards_row.isVisible() is True
@@ -98,7 +98,7 @@ def test_metrics_header_and_expand_button_appear_when_a_run_completes(view, qapp
     v, vm = view
     assert v.top_widget._metrics_header.isVisible() is False
 
-    vm.set_stat_cards(_stat_cards(4), [])
+    vm.run_result.set_stat_cards(_stat_cards(4), [])
     qapp.processEvents()
 
     assert v.top_widget._metrics_header.isVisible() is True
@@ -111,10 +111,10 @@ def test_top_panel_result_warning_line_does_not_affect_stat_cards_visibility(
     """BOT-079 follow-up: the warning line shares the metrics-header row —
     setting it must not toggle the stat-cards-vs-result-box state."""
     v, vm = view
-    vm.set_stat_cards(_stat_cards(4), [])
+    vm.run_result.set_stat_cards(_stat_cards(4), [])
     qapp.processEvents()
 
-    vm.set_result_warning_text("⚠ Phí giao dịch chiếm phần lớn kết quả.")
+    vm.run_result.set_result_warning_text("⚠ Phí giao dịch chiếm phần lớn kết quả.")
     qapp.processEvents()
 
     assert v.top_widget._stat_cards_row.isVisible() is True
@@ -137,8 +137,8 @@ def test_progress_banner_is_visible_while_backtest_runs(view, qapp):
 def test_sync_progress_and_coverage_warning_are_visible(view, qapp):
     v, vm = view
 
-    vm.set_data_coverage(False, "Thiếu nến từ 2026-01-01 00:00 UTC.")
-    vm.set_needs_data_sync(True)
+    vm.run_result.set_data_coverage(False, "Thiếu nến từ 2026-01-01 00:00 UTC.")
+    vm.run_result.set_needs_data_sync(True)
     vm.run_progress.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
     vm.set_ui_mode("SYNCING")
     qapp.processEvents()
@@ -161,7 +161,7 @@ def test_trade_log_rows_are_visible_by_default(view, qapp):
     """Regression guard for BUG-004/BOT-090: a 75-trade result page
     (PAGE_SIZE=20 rows) rendered with zero rows actually visible."""
     v, vm = view
-    vm.set_trade_log_page_state(_trade_log_rows(20), 75, 4)
+    vm.trade_log.set_page_state(_trade_log_rows(20), 75, 4)
     qapp.processEvents()
 
     assert v.bottom_widget._rows_layout.count() == 21  # 20 rows + trailing stretch

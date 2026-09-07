@@ -28,14 +28,14 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.sync_progress_feed imp
     SyncProgressFeed,
 )
 
-from .backtest_state_fields import BACKTEST_STATE_FIELDS
+from .backtest_state_fields import BACKTEST_STATE_FIELDS, read_notifier
 
 
 def connect_ui_signals(presenter) -> None:
     presenter._view_model.runBacktestRequested.connect(presenter._on_run_backtest)
     presenter._view_model.cancelBacktestRequested.connect(presenter._on_cancel_backtest)
     presenter._view_model.syncRequested.connect(presenter._on_request_sync)
-    presenter._view_model.selectedStrategyKeyChanged.connect(
+    presenter._view_model.strategy_params.selectedStrategyKeyChanged.connect(
         presenter._on_strategy_selection_changed
     )
     presenter._view_model.selectedTimeframeChanged.connect(
@@ -53,16 +53,16 @@ def connect_ui_signals(presenter) -> None:
     presenter._view_model.executionModeChanged.connect(
         presenter._on_execution_mode_changed
     )
-    presenter._view_model.timeRangePresetChanged.connect(
+    presenter._view_model.time_range.presetChanged.connect(
         presenter._on_time_range_changed
     )
-    presenter._view_model.displayTimezoneChanged.connect(
+    presenter._view_model.time_range.displayTimezoneChanged.connect(
         presenter._on_display_timezone_changed
     )
-    presenter._view_model.customStartTextChanged.connect(
+    presenter._view_model.time_range.customStartTextChanged.connect(
         presenter._on_custom_time_changed
     )
-    presenter._view_model.customEndTextChanged.connect(
+    presenter._view_model.time_range.customEndTextChanged.connect(
         presenter._on_custom_time_changed
     )
     presenter._view_model.initialCapitalTextChanged.connect(
@@ -120,10 +120,10 @@ def connect_ui_signals(presenter) -> None:
     presenter._uiLogSignal.connect(presenter._on_ui_log)
     presenter._symbolOptionsReadySignal.connect(presenter._on_symbol_options_ready)
     presenter._symbolOptionsFailedSignal.connect(presenter._on_symbol_options_failed)
-    presenter._view_model.tradeLogQueryChanged.connect(
+    presenter._view_model.trade_log.queryChanged.connect(
         presenter._on_trade_log_query_changed
     )
-    presenter._view_model.tradeLogExportRequested.connect(
+    presenter._view_model.trade_log.exportRequested.connect(
         presenter._on_trade_log_export_requested
     )
 
@@ -191,7 +191,7 @@ def connect_state_tracking(presenter) -> None:
         presenter._mark_state_dirty
     )
     for field in BACKTEST_STATE_FIELDS:
-        signal = getattr(presenter._view_model, f"{field.prop}Changed", None)
+        signal = read_notifier(presenter._view_model, field.prop)
         if signal is None:
             raise AttributeError(
                 f"{type(presenter._view_model).__name__} has no "

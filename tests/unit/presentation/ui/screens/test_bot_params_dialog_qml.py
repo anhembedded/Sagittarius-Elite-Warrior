@@ -104,13 +104,13 @@ def test_opening_bot_params_dialog_keeps_strategy_schema_live(
 
     dialog = view._modals_host._strategy_properties
     assert dialog is not None
-    assert bot_params_presenter._view_model.botParamsSchema != []
+    assert bot_params_presenter._view_model.strategy_params.botParamsSchema != []
 
 
 def test_bot_params_dialog_materializes_schema_rows_for_the_open_modal(
     qapp, bot_params_presenter
 ):
-    assert bot_params_presenter._view_model.botParamsSchema
+    assert bot_params_presenter._view_model.strategy_params.botParamsSchema
     view = bot_params_presenter.view
     view.top_widget._btn_bot_params.click()
     qapp.processEvents()

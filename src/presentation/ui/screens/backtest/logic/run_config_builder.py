@@ -82,29 +82,27 @@ LIVE_BACKTEST_END_DELAY_INTERVALS = 1
 FALLBACK_INITIAL_BALANCE = 10000.0
 
 
-class RunConfigInputs(Protocol):
-    """What the builders read off the ViewModel — nothing else.
-
-    An explicit contract rather than `BackTestViewModel` itself
-    (`architecture-rule.md`: explicit contracts, no implicit duck-typing):
-    it is what lets a test hand in a plain object, and it is the list of
-    fields a future ViewModel split must keep reachable.
-    """
+class StrategyInputs(Protocol):
+    """What the builders read off `BackTestViewModel.strategy_params`."""
 
     @property
     def selectedStrategyKey(self) -> str: ...
+
+
+class TimeRangeInputs(Protocol):
+    """…off `BackTestViewModel.time_range`."""
+
     @property
-    def selectedTimeframe(self) -> str: ...
-    @property
-    def selectedCurrency(self) -> str: ...
-    @property
-    def initialCapitalText(self) -> str: ...
-    @property
-    def timeRangePreset(self) -> str: ...
+    def preset(self) -> str: ...
     @property
     def customStartText(self) -> str: ...
     @property
     def customEndText(self) -> str: ...
+
+
+class BrokerSimInputs(Protocol):
+    """…off `BackTestViewModel.broker_sim`."""
+
     @property
     def orderSizeType(self) -> str: ...
     @property
@@ -125,6 +123,34 @@ class RunConfigInputs(Protocol):
     def takeProfitPctEnabled(self) -> bool: ...
     @property
     def takeProfitPctText(self) -> str: ...
+
+
+class RunConfigInputs(Protocol):
+    """What the builders read off the ViewModel — nothing else.
+
+    An explicit contract rather than `BackTestViewModel` itself
+    (`architecture-rule.md`: explicit contracts, no implicit duck-typing):
+    it is what lets a test hand in a plain object, and it is the list of
+    fields a ViewModel split must keep reachable.
+
+    `EPIC-003F6` reshaped it to match the object graph rather than the old
+    flat facade: three of these fields now come from sub-ViewModels, so the
+    Protocol says so. Written flat, the contract would have kept claiming a
+    flat ViewModel exists long after it stopped.
+    """
+
+    @property
+    def selectedTimeframe(self) -> str: ...
+    @property
+    def selectedCurrency(self) -> str: ...
+    @property
+    def initialCapitalText(self) -> str: ...
+    @property
+    def strategy_params(self) -> StrategyInputs: ...
+    @property
+    def time_range(self) -> TimeRangeInputs: ...
+    @property
+    def broker_sim(self) -> BrokerSimInputs: ...
 
 
 @dataclass(frozen=True)
@@ -172,13 +198,13 @@ def build_run_config(
     @param now Injectable clock so a test can assert the published-candle
     watermark instead of racing the wall clock. Defaults to `datetime.now(UTC)`.
     """
-    preset = TimeRangePreset(view_model.timeRangePreset)
+    preset = TimeRangePreset(view_model.time_range.preset)
     assertions = PreBacktestAssertionPipeline.default().validate(
         PreBacktestInput(
             capital_text=view_model.initialCapitalText,
             is_custom_range=preset is TimeRangePreset.CUSTOM,
-            custom_start_text=view_model.customStartText,
-            custom_end_text=view_model.customEndText,
+            custom_start_text=view_model.time_range.customStartText,
+            custom_end_text=view_model.time_range.customEndText,
             is_unbounded_range=preset is TimeRangePreset.ALL_HISTORY,
             is_tick_mode=execution_mode is BacktestExecutionMode.HISTORICAL_TICK,
         )
@@ -201,7 +227,7 @@ def build_run_config(
 
     initial_balance = float(view_model.initialCapitalText)
 
-    if not view_model.selectedStrategyKey:
+    if not view_model.strategy_params.selectedStrategyKey:
         return RunConfigOutcome(
             config=None,
             error_message=NO_STRATEGY_MESSAGE,
@@ -211,8 +237,8 @@ def build_run_config(
     custom_start: datetime | None = None
     custom_end: datetime | None = None
     if preset is TimeRangePreset.CUSTOM:
-        custom_start = parse_custom_datetime(view_model.customStartText)
-        custom_end = parse_custom_datetime(view_model.customEndText)
+        custom_start = parse_custom_datetime(view_model.time_range.customStartText)
+        custom_end = parse_custom_datetime(view_model.time_range.customEndText)
 
     range_now = now or datetime.now(UTC)
     if preset is not TimeRangePreset.CUSTOM:
@@ -224,7 +250,7 @@ def build_run_config(
     )
 
     config = BacktestRunConfig(
-        strategy_key=view_model.selectedStrategyKey,
+        strategy_key=view_model.strategy_params.selectedStrategyKey,
         timeframe=TimeFrame(view_model.selectedTimeframe),
         initial_balance=initial_balance,
         start_time=start_time,
@@ -233,8 +259,8 @@ def build_run_config(
         currency=Currency(view_model.selectedCurrency),
         symbol=symbol,
         execution_mode=execution_mode,
-        position_sizing=_position_sizing(view_model),
-        broker_config=_broker_config(view_model),
+        position_sizing=_position_sizing(view_model.broker_sim),
+        broker_config=_broker_config(view_model.broker_sim),
     )
     return RunConfigOutcome(
         config=config,
@@ -243,7 +269,7 @@ def build_run_config(
                 "run_config_built",
                 {
                     "symbol": symbol,
-                    "strategy": view_model.selectedStrategyKey,
+                    "strategy": view_model.strategy_params.selectedStrategyKey,
                     "timeframe": view_model.selectedTimeframe,
                     "start": start_time,
                     "end": end_time,
@@ -277,10 +303,10 @@ def snapshot_current_config(
     except ValueError:
         currency = Currency.USD
 
-    preset = view_model.timeRangePreset
+    preset = view_model.time_range.preset
     if preset == TimeRangePreset.CUSTOM.value:
-        start_dt = parse_custom_datetime(view_model.customStartText)
-        end_dt = parse_custom_datetime(view_model.customEndText)
+        start_dt = parse_custom_datetime(view_model.time_range.customStartText)
+        end_dt = parse_custom_datetime(view_model.time_range.customEndText)
     else:
         try:
             start_dt, end_dt = resolve_time_range(
@@ -290,7 +316,7 @@ def snapshot_current_config(
             start_dt, end_dt = None, None
 
     return BacktestRunConfig(
-        strategy_key=view_model.selectedStrategyKey,
+        strategy_key=view_model.strategy_params.selectedStrategyKey,
         timeframe=timeframe,
         initial_balance=balance,
         start_time=start_dt,
@@ -302,40 +328,40 @@ def snapshot_current_config(
     )
 
 
-def _position_sizing(view_model: RunConfigInputs) -> PositionSizing:
+def _position_sizing(broker: BrokerSimInputs) -> PositionSizing:
     """An unknown sizing type falls back to the app's default rather than
     raising: the value came from a persisted state file, and a screen that
     refuses to open is worse than one that opens on the default."""
     try:
-        sizing_type = PositionSizingType(view_model.orderSizeType)
+        sizing_type = PositionSizingType(broker.orderSizeType)
     except ValueError:
         sizing_type = PositionSizingType.PERCENT_OF_EQUITY
-    return PositionSizing(type=sizing_type, value=view_model.orderSizeValue)
+    return PositionSizing(type=sizing_type, value=broker.orderSizeValue)
 
 
-def _broker_config(view_model: RunConfigInputs) -> BrokerSimulationConfig:
+def _broker_config(broker: BrokerSimInputs) -> BrokerSimulationConfig:
     try:
-        commission_type = CommissionType(view_model.commissionType)
+        commission_type = CommissionType(broker.commissionType)
     except ValueError:
         commission_type = CommissionType.PERCENT
 
     #: Off unless the user both ticked the box AND typed a positive number:
     #: a take-profit of 0% would close every position at entry.
     take_profit_pct: float | None = None
-    if view_model.takeProfitPctEnabled:
+    if broker.takeProfitPctEnabled:
         try:
-            parsed = float(view_model.takeProfitPctText)
+            parsed = float(broker.takeProfitPctText)
         except ValueError:
             parsed = 0.0
         if parsed > 0:
             take_profit_pct = parsed
 
     return BrokerSimulationConfig(
-        pyramiding=view_model.pyramiding,
-        slippage_ticks=view_model.slippageTicks,
+        pyramiding=broker.pyramiding,
+        slippage_ticks=broker.slippageTicks,
         commission_type=commission_type,
-        commission_value=view_model.commissionValue,
-        long_leverage=view_model.longLeverage,
-        short_leverage=view_model.shortLeverage,
+        commission_value=broker.commissionValue,
+        long_leverage=broker.longLeverage,
+        short_leverage=broker.shortLeverage,
         take_profit_pct=take_profit_pct,
     )

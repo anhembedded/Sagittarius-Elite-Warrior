@@ -91,52 +91,52 @@ def modal_presenter(qapp, request):
 
 def test_view_model_broker_properties_defaults_and_mutation():
     vm = BackTestViewModel()
-    assert vm.orderSizeType == PositionSizingType.PERCENT_OF_EQUITY.value
-    assert vm.orderSizeValue == 100.0
-    assert vm.orderSizeText == "100"
-    assert vm.pyramiding == 1
-    assert vm.commissionType == CommissionType.PERCENT.value
-    assert vm.commissionValue == 0.1
-    assert vm.commissionText == "0.1"
-    assert vm.slippageTicks == 0
-    assert vm.longLeverage == 1.0
-    assert vm.shortLeverage == 1.0
-    assert vm.takeProfitPctEnabled is False
-    assert vm.takeProfitPctText == "2.0"
+    assert vm.broker_sim.orderSizeType == PositionSizingType.PERCENT_OF_EQUITY.value
+    assert vm.broker_sim.orderSizeValue == 100.0
+    assert vm.broker_sim.orderSizeText == "100"
+    assert vm.broker_sim.pyramiding == 1
+    assert vm.broker_sim.commissionType == CommissionType.PERCENT.value
+    assert vm.broker_sim.commissionValue == 0.1
+    assert vm.broker_sim.commissionText == "0.1"
+    assert vm.broker_sim.slippageTicks == 0
+    assert vm.broker_sim.longLeverage == 1.0
+    assert vm.broker_sim.shortLeverage == 1.0
+    assert vm.broker_sim.takeProfitPctEnabled is False
+    assert vm.broker_sim.takeProfitPctText == "2.0"
 
     # Test property setters
-    vm.orderSizeType = "fixed_cash"
-    assert vm.orderSizeType == "fixed_cash"
+    vm.broker_sim.orderSizeType = "fixed_cash"
+    assert vm.broker_sim.orderSizeType == "fixed_cash"
 
-    vm.orderSizeText = "500.0"
-    assert vm.orderSizeValue == 500.0
-    assert vm.orderSizeText == "500.0"
+    vm.broker_sim.orderSizeText = "500.0"
+    assert vm.broker_sim.orderSizeValue == 500.0
+    assert vm.broker_sim.orderSizeText == "500.0"
 
-    vm.pyramiding = 3
-    assert vm.pyramiding == 3
+    vm.broker_sim.pyramiding = 3
+    assert vm.broker_sim.pyramiding == 3
 
-    vm.commissionType = "cash_per_order"
-    assert vm.commissionType == "cash_per_order"
+    vm.broker_sim.commissionType = "cash_per_order"
+    assert vm.broker_sim.commissionType == "cash_per_order"
 
-    vm.commissionText = "1.5"
-    assert vm.commissionValue == 1.5
+    vm.broker_sim.commissionText = "1.5"
+    assert vm.broker_sim.commissionValue == 1.5
 
-    vm.slippageTicks = 5
-    assert vm.slippageTicks == 5
+    vm.broker_sim.slippageTicks = 5
+    assert vm.broker_sim.slippageTicks == 5
 
-    vm.longLeverage = 10.0
-    assert vm.longLeverage == 10.0
+    vm.broker_sim.longLeverage = 10.0
+    assert vm.broker_sim.longLeverage == 10.0
 
-    vm.takeProfitPctEnabled = True
-    assert vm.takeProfitPctEnabled is True
+    vm.broker_sim.takeProfitPctEnabled = True
+    assert vm.broker_sim.takeProfitPctEnabled is True
 
-    vm.takeProfitPctText = "4.0"
-    assert vm.takeProfitPctText == "4.0"
+    vm.broker_sim.takeProfitPctText = "4.0"
+    assert vm.broker_sim.takeProfitPctText == "4.0"
 
 
 def test_presenter_strategy_properties_save_updates_config(qapp, modal_presenter):
     vm = modal_presenter._view_model
-    vm.selectedStrategyKey = "sample_strategy"
+    vm.strategy_params.selectedStrategyKey = "sample_strategy"
     modal_presenter._refresh_bot_params_schema()
 
     saved_emitted = False
@@ -169,14 +169,14 @@ def test_presenter_strategy_properties_save_updates_config(qapp, modal_presenter
     assert saved_emitted is True
     assert vm.initialCapitalText == "25000"
     assert vm.selectedCurrency == "USDT"
-    assert vm.orderSizeType == "percent_of_equity"
-    assert vm.orderSizeValue == 25.0
-    assert vm.pyramiding == 4
-    assert vm.commissionType == "percent"
-    assert vm.commissionValue == 0.05
-    assert vm.slippageTicks == 2
-    assert vm.takeProfitPctEnabled is True
-    assert vm.takeProfitPctText == "2.5"
+    assert vm.broker_sim.orderSizeType == "percent_of_equity"
+    assert vm.broker_sim.orderSizeValue == 25.0
+    assert vm.broker_sim.pyramiding == 4
+    assert vm.broker_sim.commissionType == "percent"
+    assert vm.broker_sim.commissionValue == 0.05
+    assert vm.broker_sim.slippageTicks == 2
+    assert vm.broker_sim.takeProfitPctEnabled is True
+    assert vm.broker_sim.takeProfitPctText == "2.5"
 
     # Check that BacktestRunConfig built by presenter contains all broker settings
     run_config = modal_presenter._build_run_config()
@@ -249,7 +249,7 @@ def test_editing_a_strategy_input_field_and_saving_uses_the_typed_value(
     is therefore NOT this — see the next test for the same check against
     `VolumeSpikeFlowStrategy` specifically."""
     vm = modal_presenter._view_model
-    vm.selectedStrategyKey = "sample_strategy"
+    vm.strategy_params.selectedStrategyKey = "sample_strategy"
     modal_presenter._refresh_bot_params_schema()
 
     view = modal_presenter.view
@@ -287,7 +287,7 @@ def test_editing_volume_spike_flow_strategy_trailing_stop_and_saving_uses_the_ty
     mix of int/float/bool inputs, which the sample strategy's two plain ints
     can't exercise."""
     vm = modal_presenter._view_model
-    vm.selectedStrategyKey = "volume_spike_flow"
+    vm.strategy_params.selectedStrategyKey = "volume_spike_flow"
     modal_presenter._refresh_bot_params_schema()
 
     view = modal_presenter.view
@@ -374,10 +374,12 @@ def test_pressing_enter_in_order_size_field_commits_the_typed_value(
     QTest.keyClick(order_size_field, Qt.Key.Key_Return)
     qapp.processEvents()
 
-    assert modal_presenter._view_model.orderSizeText == "10"
+    assert modal_presenter._view_model.broker_sim.orderSizeText == "10"
 
     # Reopening must show the value that was actually committed, not revert.
-    dialog.open_for_strategy(modal_presenter._view_model.selectedStrategyName)
+    dialog.open_for_strategy(
+        modal_presenter._view_model.strategy_params.selectedStrategyName
+    )
     qapp.processEvents()
     reopened_field = dialog.findChild(object, "propOrderSizeValue")
     assert reopened_field.text() == "10"
@@ -416,7 +418,7 @@ def test_tabbing_away_from_a_field_without_pressing_enter_also_commits_it(
     commission_field.setFocus()
     qapp.processEvents()
 
-    assert modal_presenter._view_model.orderSizeText == "42"
+    assert modal_presenter._view_model.broker_sim.orderSizeText == "42"
     # BUG-064 follow-up #1: the save path's success emits
     # botParamsSaved, connected to accept() so the "Lưu & Chạy lại" BUTTON
     # closes the dialog — merely tabbing between fields must not.
@@ -436,7 +438,7 @@ def test_editing_a_strategy_input_field_and_losing_focus_also_commits_it(
     is what makes it "một cơ chế chung" rather than a fix scoped to the one
     field the user happened to hit."""
     vm = modal_presenter._view_model
-    vm.selectedStrategyKey = "sample_strategy"
+    vm.strategy_params.selectedStrategyKey = "sample_strategy"
     modal_presenter._refresh_bot_params_schema()
 
     view = modal_presenter.view
@@ -518,26 +520,26 @@ def test_non_text_widgets_also_commit_on_change(qapp, modal_presenter):
     qapp.processEvents()
 
     vm = modal_presenter._view_model
-    assert vm.pyramiding == 1, "sanity: default"
-    assert vm.takeProfitPctEnabled is False, "sanity: default"
-    assert vm.commissionType == "percent", "sanity: default"
+    assert vm.broker_sim.pyramiding == 1, "sanity: default"
+    assert vm.broker_sim.takeProfitPctEnabled is False, "sanity: default"
+    assert vm.broker_sim.commissionType == "percent", "sanity: default"
 
     # QSpinBox — no Enter, no focus change, no Save click.
     dialog.findChild(object, "propPyramiding").setValue(4)
     qapp.processEvents()
-    assert vm.pyramiding == 4
+    assert vm.broker_sim.pyramiding == 4
 
     # QCheckBox — toggling IS the commit.
     dialog.findChild(object, "propTakeProfitEnabled").setChecked(True)
     qapp.processEvents()
-    assert vm.takeProfitPctEnabled is True
+    assert vm.broker_sim.takeProfitPctEnabled is True
 
     # QComboBox carrying item data — the stored value must be the data
     # ("cash_per_order"), never the Vietnamese label shown in the list.
     commission_combo = dialog.findChild(object, "propCommissionType")
     commission_combo.setCurrentIndex(commission_combo.findData("cash_per_order"))
     qapp.processEvents()
-    assert vm.commissionType == "cash_per_order"
+    assert vm.broker_sim.commissionType == "cash_per_order"
 
     assert dialog.isVisible(), "committing must not close the dialog"
 
@@ -611,6 +613,6 @@ def test_pressing_enter_does_not_trigger_the_reset_button(qapp, modal_presenter)
 
     # Enter committed the field it was typed in, and touched nothing else.
     assert order_size.text() == "33"
-    assert modal_presenter._view_model.orderSizeText == "33"
+    assert modal_presenter._view_model.broker_sim.orderSizeText == "33"
     assert pyramiding.value() == 6, "Enter must not have reset the other fields"
-    assert modal_presenter._view_model.pyramiding == 6
+    assert modal_presenter._view_model.broker_sim.pyramiding == 6

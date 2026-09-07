@@ -1,6 +1,6 @@
 # EPIC-003F3 — Lát cắt 3 của `003F`: `TimeRangeViewModel` + facade
 
-**Thuộc Epic:** [`EPIC-003`](../README.md) · **Task cha:** [`EPIC-003F`](../incomplete/EPIC-003F_backtest_viewmodel_composite_design_review.md)
+**Thuộc Epic:** [`EPIC-003`](../README.md) · **Task cha:** [`EPIC-003F`](EPIC-003F_backtest_viewmodel_composite_design_review.md)
 **Trạng thái:** ✅ Xong 2026-09-07
 **Rủi ro:** 🟡 — đúng khuôn `003F1`/`003F2`, không phát minh gì mới.
 

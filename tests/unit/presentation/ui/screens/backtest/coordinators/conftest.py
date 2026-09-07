@@ -153,21 +153,45 @@ class FakeBacktestView:
         self.preview_data.append((len(klines), len(volume)))
 
 
-class FakeChartViewModel:
+class FakeTimeRange:
+    """`EPIC-003F6`: the time window lives on `vm.time_range` now, so the
+    double has to have the same shape — a flat `timeRangePreset` here would
+    let the test pass against a ViewModel the app no longer has."""
+
     def __init__(self) -> None:
-        self.preview_mode: list[bool] = []
+        self.preset = "1M"
+
+
+class FakeRunResult:
+    """…and the coverage / needs-sync verdict lives on `vm.run_result`."""
+
+    def __init__(self) -> None:
         self.coverage: list[tuple[bool, str]] = []
         self.needs_sync: list[bool] = []
-        self.timeRangePreset = "1M"
-
-    def set_chart_preview_mode(self, v):
-        self.preview_mode.append(v)
 
     def set_data_coverage(self, ok, message):
         self.coverage.append((ok, message))
 
     def set_needs_data_sync(self, v):
         self.needs_sync.append(v)
+
+
+class FakeChartViewModel:
+    def __init__(self) -> None:
+        self.preview_mode: list[bool] = []
+        self.time_range = FakeTimeRange()
+        self.run_result = FakeRunResult()
+
+    def set_chart_preview_mode(self, v):
+        self.preview_mode.append(v)
+
+    @property
+    def coverage(self):
+        return self.run_result.coverage
+
+    @property
+    def needs_sync(self):
+        return self.run_result.needs_sync
 
 
 # ---------------------------------------------------------------------- #

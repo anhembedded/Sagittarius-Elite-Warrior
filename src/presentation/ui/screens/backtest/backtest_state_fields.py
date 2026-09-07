@@ -58,10 +58,62 @@ class StateField:
 
     key: str
     prop: str
+    """Where the value lives, relative to the ViewModel.
+
+    May be a dotted path (`EPIC-003F6`): `"broker_sim.commissionText"` once
+    that group has moved off the facade, `"selectedCurrency"` while it has
+    not. Both halves go through `read_prop()`/`write_prop()`, so a row can
+    be flipped the moment its group migrates and no earlier."""
     is_valid: Callable[[Any, Any], bool]
     """`(value, view_model) -> bool`. Takes the ViewModel too because some
     fields are only valid against a list it owns at runtime (the strategy
     keys actually registered, the timezones actually supported)."""
+
+
+def read_prop(view_model: Any, path: str) -> Any:
+    """`getattr` along a dotted path.
+
+    @details `EPIC-003F6` moves state off `BackTestViewModel` onto six
+    sub-ViewModels, so `"commissionText"` becomes
+    `"broker_sim.commissionText"`. Walking the path here is what keeps that
+    a one-line edit per row instead of a special case at every call site.
+
+    Deliberately **not** defensive: a bad path is a typo in the table above,
+    and an `AttributeError` naming it is far more useful than a `None` that
+    quietly captures an empty form and restores it over the user's real one.
+    """
+    for segment in path.split("."):
+        view_model = getattr(view_model, segment)
+    return view_model
+
+
+def write_prop(view_model: Any, path: str, value: Any) -> None:
+    """`setattr` at the end of a dotted path — the inverse of `read_prop`."""
+    *parents, attribute = path.split(".")
+    for segment in parents:
+        view_model = getattr(view_model, segment)
+    setattr(view_model, attribute, value)
+
+
+def read_notifier(view_model: Any, path: str) -> Any:
+    """The `<prop>Changed` signal for a (possibly dotted) `path`.
+
+    @details Qt names a property's notifier `<prop>Changed`, and
+    `signal_wiring.connect_state_tracking()` derives every row's notifier
+    that way. With a dotted path the suffix belongs on the **last** segment:
+    `"broker_sim.commissionText"` notifies via
+    `view_model.broker_sim.commissionTextChanged`, not via a non-existent
+    `view_model.<"broker_sim.commissionTextChanged">`.
+
+    Returns `None` when the signal is absent, so the caller can raise with
+    the field key in the message rather than an opaque `AttributeError`.
+    """
+    *parents, attribute = path.split(".")
+    for segment in parents:
+        view_model = getattr(view_model, segment, None)
+        if view_model is None:
+            return None
+    return getattr(view_model, f"{attribute}Changed", None)
 
 
 def _text(value: Any, _view_model: Any) -> bool:
@@ -130,7 +182,13 @@ def _among(
     def check(value: Any, view_model: Any) -> bool:
         if not isinstance(value, str):
             return False
-        options = getattr(view_model, options_prop, None) or []
+        try:
+            options = read_prop(view_model, options_prop) or []
+        except AttributeError:
+            # An options list that is not there yet is not a reason to throw
+            # away a remembered value's validation — it is a reason to reject
+            # the value, which is what an empty list already does.
+            options = []
         if entry_key is None:
             return value in options
         return any(
@@ -169,8 +227,8 @@ BACKTEST_STATE_FIELDS: tuple[StateField, ...] = (
         # (`backtest_presenter.py:471`), not plain strings — comparing a
         # key against the raw list would silently never match.
         "strategy",
-        "selectedStrategyKey",
-        _among("strategyOptions", "key"),
+        "strategy_params.selectedStrategyKey",
+        _among("strategy_params.strategyOptions", "key"),
     ),
     StateField("capital", "initialCapitalText", _text),
     StateField("currency", "selectedCurrency", _one_of(Currency.list_values())),
@@ -181,37 +239,37 @@ BACKTEST_STATE_FIELDS: tuple[StateField, ...] = (
     ),
     StateField(
         "order_size_type",
-        "orderSizeType",
+        "broker_sim.orderSizeType",
         _one_of(kind.value for kind in PositionSizingType),
     ),
-    StateField("order_size", "orderSizeText", _text),
-    StateField("pyramiding", "pyramiding", _whole(1, 1000)),
+    StateField("order_size", "broker_sim.orderSizeText", _text),
+    StateField("pyramiding", "broker_sim.pyramiding", _whole(1, 1000)),
     StateField(
         "commission_type",
-        "commissionType",
+        "broker_sim.commissionType",
         _one_of(kind.value for kind in CommissionType),
     ),
-    StateField("commission", "commissionText", _text),
-    StateField("slippage_ticks", "slippageTicks", _whole(0, 10_000)),
-    StateField("long_leverage", "longLeverage", _number(0, 1000)),
-    StateField("short_leverage", "shortLeverage", _number(0, 1000)),
-    StateField("take_profit_enabled", "takeProfitPctEnabled", _flag),
-    StateField("take_profit_pct", "takeProfitPctText", _text),
+    StateField("commission", "broker_sim.commissionText", _text),
+    StateField("slippage_ticks", "broker_sim.slippageTicks", _whole(0, 10_000)),
+    StateField("long_leverage", "broker_sim.longLeverage", _number(0, 1000)),
+    StateField("short_leverage", "broker_sim.shortLeverage", _number(0, 1000)),
+    StateField("take_profit_enabled", "broker_sim.takeProfitPctEnabled", _flag),
+    StateField("take_profit_pct", "broker_sim.takeProfitPctText", _text),
     StateField(
         "time_range_preset",
-        "timeRangePreset",
+        "time_range.preset",
         _one_of(preset.value for preset in TimeRangePreset),
     ),
-    StateField("custom_start", "customStartText", _text),
-    StateField("custom_end", "customEndText", _text),
+    StateField("custom_start", "time_range.customStartText", _text),
+    StateField("custom_end", "time_range.customEndText", _text),
     StateField(
         # Timezone options key their id as `"id"`, while the time-range preset
         # options above use `"value"` — two different shapes for the same kind
         # of list, which is why each row names its own key rather than the
         # table assuming one convention.
         "timezone",
-        "displayTimezone",
-        _among("displayTimezoneOptions", "id"),
+        "time_range.displayTimezone",
+        _among("time_range.displayTimezoneOptions", "id"),
     ),
     StateField("extended_metrics", "showExtendedMetrics", _flag),
 )

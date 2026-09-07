@@ -30,6 +30,16 @@ _SNAPSHOT = ExtendedMetricsSnapshot(
 )
 
 
+class _FakeRunResult:
+    """`EPIC-003F6`: the retained snapshot lives on `vm.run_result` now."""
+
+    def __init__(self, snapshot: ExtendedMetricsSnapshot | None) -> None:
+        self._snapshot = snapshot
+
+    def extended_metrics_snapshot(self) -> ExtendedMetricsSnapshot | None:
+        return self._snapshot
+
+
 class _FakeViewModel:
     """Just the two members `BacktestMetricsDetailSource` reads from a screen
     ViewModel — a real `BackTestViewModel` is a `QObject` and needs a
@@ -41,11 +51,8 @@ class _FakeViewModel:
         snapshot: ExtendedMetricsSnapshot | None = None,
         selected_timeframe: str = "1m",
     ) -> None:
-        self._snapshot = snapshot
+        self.run_result = _FakeRunResult(snapshot)
         self.selectedTimeframe = selected_timeframe
-
-    def extended_metrics_snapshot(self) -> ExtendedMetricsSnapshot | None:
-        return self._snapshot
 
 
 def test_get_cards_reads_the_retained_snapshots_cards() -> None:

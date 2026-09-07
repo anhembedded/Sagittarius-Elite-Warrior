@@ -3,7 +3,7 @@
 **Nguồn:** chạy `.jules/doctor.prompt.md` (quét brief thường trực `EPIC-003`)
 **Ưu tiên:** P2 — không phải lỗi runtime, nhưng đang **chặn** việc phân rã file lớn thứ 2 trong repo
 **Trạng thái:** ✅ Hoàn thành 2026-08-27 — user duyệt mở khoá
-**Liên quan:** [`EPIC-003F`](../epics/EPIC-003_presenter_and_god_file_decomposition/incomplete/EPIC-003F_backtest_viewmodel_composite_design_review.md), [`EPIC-006`](../epics/EPIC-006_drop_qml/README.md)
+**Liên quan:** [`EPIC-003F`](../epics/EPIC-003_presenter_and_god_file_decomposition/completed/EPIC-003F_backtest_viewmodel_composite_design_review.md), [`EPIC-006`](../epics/EPIC-006_drop_qml/README.md)
 
 ---
 

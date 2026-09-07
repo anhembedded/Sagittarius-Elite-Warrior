@@ -41,7 +41,7 @@ def test_the_timezone_body_renders_one_row_per_option(qapp, view_model):
     qapp.processEvents()
 
     rows = find_all_named(dialog.root_object, "selectItem_")
-    assert len(rows) == len(view_model.displayTimezoneOptions)
+    assert len(rows) == len(view_model.time_range.displayTimezoneOptions)
     dialog.close()
 
 
@@ -68,7 +68,7 @@ def test_choosing_a_timezone_writes_through_and_closes(qapp, view_model):
     dialog._widget_vm.choose("Asia/Tokyo")
     qapp.processEvents()
 
-    assert view_model.displayTimezone == "Asia/Tokyo"
+    assert view_model.time_range.displayTimezone == "Asia/Tokyo"
     assert not dialog.isVisible()
 
 

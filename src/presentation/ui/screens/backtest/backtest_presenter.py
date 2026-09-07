@@ -429,7 +429,7 @@ class BackTestPresenter(BasePresenter):
         # BOT-102: mirrors the config-derived self._symbol so the picker
         # highlights the right entry even before it's ever been opened.
         self._view_model.selectedSymbol = self._symbol
-        self._view_model.set_strategy_options(
+        self._view_model.strategy_params.set_strategy_options(
             [
                 # category/description are blank until a registered strategy
                 # actually carries them (BOT-046/BOT-047) — StrategyComboBox
@@ -696,17 +696,17 @@ class BackTestPresenter(BasePresenter):
             return
         self._log_dev_trace(
             "run_requested",
-            strategy=self._view_model.selectedStrategyKey,
+            strategy=self._view_model.strategy_params.selectedStrategyKey,
             timeframe=self._view_model.selectedTimeframe,
             capital=self._view_model.initialCapitalText,
-            preset=self._view_model.timeRangePreset,
+            preset=self._view_model.time_range.preset,
         )
         config = self._build_run_config()
         if config is None:
             return
         self._logger.log_backtest_started(
-            strategy_name=self._view_model.selectedStrategyName
-            or self._view_model.selectedStrategyKey,
+            strategy_name=self._view_model.strategy_params.selectedStrategyName
+            or self._view_model.strategy_params.selectedStrategyKey,
             timeframe=self._view_model.selectedTimeframe,
             capital=float(self._view_model.initialCapitalText or 0),
             currency=self._view_model.selectedCurrency,
@@ -775,7 +775,7 @@ class BackTestPresenter(BasePresenter):
             previous_state or self.fsm.current_state,
         )
         self._view_model.run_progress.reset_sync_progress()
-        self._view_model.set_result(_RUNNING_MESSAGE, is_error=False)
+        self._view_model.run_result.set_result(_RUNNING_MESSAGE, is_error=False)
         self._log_dev_trace("run_worker_submitted")
         self._thread_manager.submit(
             self._run_backtest,
@@ -802,8 +802,8 @@ class BackTestPresenter(BasePresenter):
         message = self._format_coverage_message(coverage)
         self._last_no_data_config = config
         self._last_no_data_coverage = coverage
-        self._view_model.set_data_coverage(False, message)
-        self._view_model.set_needs_data_sync(True)
+        self._view_model.run_result.set_data_coverage(False, message)
+        self._view_model.run_result.set_needs_data_sync(True)
         self._finish_action(action_id, BacktestActionOutcome.EMPTY)
         if allow_auto_sync:
             if self.fsm.can_dispatch(BacktestUiEvent.BACKTEST_EMPTY):
@@ -819,8 +819,8 @@ class BackTestPresenter(BasePresenter):
     ) -> None:
         if not self._is_current_pending_action(action_id, BacktestActionKind.BACKTEST):
             return
-        self._view_model.set_data_coverage(True, "")
-        self._view_model.set_needs_data_sync(False)
+        self._view_model.run_result.set_data_coverage(True, "")
+        self._view_model.run_result.set_needs_data_sync(False)
 
     @staticmethod
     def _format_coverage_message(coverage: BacktestRangeCoverage) -> str:
@@ -854,12 +854,14 @@ class BackTestPresenter(BasePresenter):
         if kind is BacktestActionKind.SYNC:
             if self._sync_cancellation_token is not None:
                 self._sync_cancellation_token.cancel()
-            self._view_model.set_result(_CANCELLING_SYNC_MESSAGE, is_error=False)
+            self._view_model.run_result.set_result(
+                _CANCELLING_SYNC_MESSAGE, is_error=False
+            )
             self._emit_ui_log("Đang gửi yêu cầu hủy đồng bộ...", "info")
         else:
             if self._backtest_cancellation_token is not None:
                 self._backtest_cancellation_token.cancel()
-            self._view_model.set_result(_CANCELLING_MESSAGE, is_error=False)
+            self._view_model.run_result.set_result(_CANCELLING_MESSAGE, is_error=False)
             self._emit_ui_log("Đang gửi yêu cầu hủy Backtest...", "info")
         self._log_dev_trace("cancel_requested", action_id=action_id, kind=kind.value)
         self._log_dev_trace("cancel_requested", action_id=action_id)
@@ -902,7 +904,7 @@ class BackTestPresenter(BasePresenter):
             self._backtest_cancellation_token = None
             self._view_model.run_progress.reset_backtest_progress()
             message = "Đã hủy Backtest. Kết quả trước đó được giữ nguyên."
-        self._view_model.set_result(message, is_error=False)
+        self._view_model.run_result.set_result(message, is_error=False)
         self._emit_ui_log(message, "info")
         event = self._cancel_restore_event(previous_state)
         if self.fsm.can_dispatch(event):
@@ -1068,13 +1070,13 @@ class BackTestPresenter(BasePresenter):
         )
         self._last_no_data_config = None
         self._last_no_data_coverage = None
-        self._view_model.set_needs_data_sync(False)
+        self._view_model.run_result.set_needs_data_sync(False)
         extended_cards = build_extended_stat_cards(result)
-        self._view_model.set_stat_cards(
+        self._view_model.run_result.set_stat_cards(
             stat_cards_to_qml(build_primary_stat_cards(result)),
             stat_cards_to_qml(extended_cards),
         )
-        self._view_model.set_extended_metrics_snapshot(
+        self._view_model.run_result.set_extended_metrics_snapshot(
             ExtendedMetricsSnapshot(
                 cards=extended_cards,
                 gross_profit=result.metrics.gross_profit,
@@ -1084,8 +1086,10 @@ class BackTestPresenter(BasePresenter):
                 fee_rate_percent=self._fee_rate_percent_for_last_run(),
             )
         )
-        self._view_model.set_result_warning_text(build_result_warning_text(result))
-        self._view_model.set_limitations(build_backtest_limitations(result))
+        self._view_model.run_result.set_result_warning_text(
+            build_result_warning_text(result)
+        )
+        self._view_model.run_result.set_limitations(build_backtest_limitations(result))
         run_config = self._get_current_config()
         message = (
             format_result_summary(result)
@@ -1093,7 +1097,7 @@ class BackTestPresenter(BasePresenter):
             else f"{_ZERO_TRADES_MESSAGE}\n\n{format_result_summary(result)}"
         )
         message = f"{self._execution_mode_label(run_config)}\n{message}"
-        self._view_model.set_result(message, is_error=False)
+        self._view_model.run_result.set_result(message, is_error=False)
         self._all_trades = result.trades
         self._refresh_trade_log()
         duration_sec = getattr(result, "duration", 0.0)
@@ -1157,12 +1161,12 @@ class BackTestPresenter(BasePresenter):
         # reuse a stale gap from an earlier, unrelated missing-coverage
         # event, or the next sync would resume from the wrong point.
         self._last_no_data_coverage = None
-        self._view_model.set_needs_data_sync(True)
-        self._view_model.set_stat_cards([], [])
-        self._view_model.set_extended_metrics_snapshot(None)
-        self._view_model.set_result_warning_text("")
-        self._view_model.set_limitations([])
-        self._view_model.set_result(message, is_error=False)
+        self._view_model.run_result.set_needs_data_sync(True)
+        self._view_model.run_result.set_stat_cards([], [])
+        self._view_model.run_result.set_extended_metrics_snapshot(None)
+        self._view_model.run_result.set_result_warning_text("")
+        self._view_model.run_result.set_limitations([])
+        self._view_model.run_result.set_result(message, is_error=False)
         self._all_trades = []
         self._refresh_trade_log()
         self._logger.log_backtest_empty(message)
@@ -1174,11 +1178,11 @@ class BackTestPresenter(BasePresenter):
     @safe_ui_action
     def _on_backtest_failed(self, message: str) -> None:
         self._log_dev_trace("run_failed", message=message)
-        self._view_model.set_stat_cards([], [])
-        self._view_model.set_extended_metrics_snapshot(None)
-        self._view_model.set_result_warning_text("")
-        self._view_model.set_limitations([])
-        self._view_model.set_result(f"Lỗi: {message}", is_error=True)
+        self._view_model.run_result.set_stat_cards([], [])
+        self._view_model.run_result.set_extended_metrics_snapshot(None)
+        self._view_model.run_result.set_result_warning_text("")
+        self._view_model.run_result.set_limitations([])
+        self._view_model.run_result.set_result(f"Lỗi: {message}", is_error=True)
         self._all_trades = []
         self._refresh_trade_log()
         self._logger.log_backtest_failed(message)
@@ -1351,9 +1355,9 @@ class BackTestPresenter(BasePresenter):
     @safe_ui_action
     def _on_time_range_changed(self) -> None:
         self._logger.log_time_range_selected(
-            self._view_model.timeRangePreset,
-            self._view_model.customStartText,
-            self._view_model.customEndText,
+            self._view_model.time_range.preset,
+            self._view_model.time_range.customStartText,
+            self._view_model.time_range.customEndText,
         )
         self._on_config_input_changed()
         self._request_chart_preview()
@@ -1361,7 +1365,7 @@ class BackTestPresenter(BasePresenter):
     @Slot()
     @safe_ui_action
     def _on_custom_time_changed(self) -> None:
-        if self._view_model.timeRangePreset == TimeRangePreset.CUSTOM.value:
+        if self._view_model.time_range.preset == TimeRangePreset.CUSTOM.value:
             self._on_config_input_changed()
             self._request_chart_preview()
 
@@ -1502,7 +1506,7 @@ class BackTestPresenter(BasePresenter):
         action = self._begin_action(
             BacktestActionKind.SYNC, sync_config, previous_state
         )
-        self._view_model.set_result(_SYNCING_MESSAGE, is_error=False)
+        self._view_model.run_result.set_result(_SYNCING_MESSAGE, is_error=False)
         self._log_dev_trace("sync_worker_submitted")
         self._sync_cancellation_token = CancellationToken()
         self._thread_manager.submit(
@@ -1584,7 +1588,7 @@ class BackTestPresenter(BasePresenter):
         # resume automatically rather than making them click "Chạy Backtest"
         # a second time.
         cached_config = self._last_no_data_config
-        self._view_model.set_needs_data_sync(False)
+        self._view_model.run_result.set_needs_data_sync(False)
         self._last_no_data_config = None
         self._last_no_data_coverage = None
         if self.fsm.can_dispatch(BacktestUiEvent.SYNC_SUCCEEDED):
@@ -1608,7 +1612,9 @@ class BackTestPresenter(BasePresenter):
         # should stay offered for the user to retry.
         if self.fsm.can_dispatch(BacktestUiEvent.SYNC_FAILED):
             self.fsm.dispatch(BacktestUiEvent.SYNC_FAILED)
-        self._view_model.set_result(f"Đồng bộ thất bại: {message}", is_error=True)
+        self._view_model.run_result.set_result(
+            f"Đồng bộ thất bại: {message}", is_error=True
+        )
 
     @Slot()
     @safe_ui_action
@@ -1672,7 +1678,7 @@ class BackTestPresenter(BasePresenter):
         for trace in outcome.traces:
             self._log_dev_trace(trace.event, **trace.fields)
         if outcome.config is None:
-            self._view_model.set_result(outcome.error_message, is_error=True)
+            self._view_model.run_result.set_result(outcome.error_message, is_error=True)
             return None
         return outcome.config
 

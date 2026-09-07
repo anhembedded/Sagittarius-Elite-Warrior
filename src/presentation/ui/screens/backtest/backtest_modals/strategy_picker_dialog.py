@@ -38,9 +38,9 @@ class StrategyPickerDialog(QmlOverlay):
                     "label": option.get("name", option.get("key", "")),
                     "subtitle": f"Mã: {option.get('key', '')}",
                 }
-                for option in view_model.strategyOptions
+                for option in view_model.strategy_params.strategyOptions
             ],
-            get_current=lambda: view_model.selectedStrategyKey,
+            get_current=lambda: view_model.strategy_params.selectedStrategyKey,
         )
         super().__init__(
             "CHỌN CHIẾN LƯỢC BOT",
@@ -57,5 +57,5 @@ class StrategyPickerDialog(QmlOverlay):
         super().showEvent(event)
 
     def _on_selected(self, key: str) -> None:
-        self._vm.selectedStrategyKey = key
+        self._vm.strategy_params.selectedStrategyKey = key
         self.accept()

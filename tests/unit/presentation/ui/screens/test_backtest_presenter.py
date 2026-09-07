@@ -537,7 +537,7 @@ def test_boot_wires_the_container_registered_store_into_the_view(
 
 
 def test_strategy_options_loaded_from_registry_on_init(view_model):
-    assert view_model.strategyOptions == [
+    assert view_model.strategy_params.strategyOptions == [
         {
             "key": "fake_strategy",
             "name": "Fake Strategy",
@@ -545,7 +545,7 @@ def test_strategy_options_loaded_from_registry_on_init(view_model):
             "description": "",
         }
     ]
-    assert view_model.selectedStrategyKey == "fake_strategy"
+    assert view_model.strategy_params.selectedStrategyKey == "fake_strategy"
 
 
 # ---------------------------------------------------------------------------
@@ -648,7 +648,7 @@ def test_selecting_a_symbol_marks_the_config_dirty_with_a_truthful_diff(
     a symbol change must be visible in the diff message too (BOT-102), not
     only detected by equality (which BacktestRunConfig already got for free
     since `symbol` was always a dataclass field, just never surfaced)."""
-    view_model.selectedStrategyKey = "fake_strategy"
+    view_model.strategy_params.selectedStrategyKey = "fake_strategy"
     view_model.selectedTimeframe = "1m"
     view_model.initialCapitalText = "10000"
     view_model.selectedCurrency = Currency.USD
@@ -874,7 +874,7 @@ def test_historical_tick_mode_dispatches_run_historical_tick_backtest_command(
     view_model.executionMode = "HISTORICAL_TICK"
     # Tick mode rejects the ALL_HISTORY default (unbounded start_time) -
     # see TickModeRequiresBoundedRangeRule.
-    view_model.timeRangePreset = "7d"
+    view_model.time_range.preset = "7d"
     mock_dispatcher.dispatch.side_effect = _dispatch_stub(
         _make_result(with_trades=True), realtime=True
     )
@@ -924,19 +924,19 @@ def test_result_message_labels_realtime_vs_static_truthfully(
     """The two engines are allowed to disagree on the same data (BOT-076
     §5) — a result with no mode label is exactly the "looks identical, means
     something different" trap the task's own §3.3 checklist calls out."""
-    view_model.selectedStrategyKey = "fake_strategy"
+    view_model.strategy_params.selectedStrategyKey = "fake_strategy"
 
     view_model.executionMode = "HISTORICAL_TICK"
     result = _make_result(with_trades=True)
     presenter._on_backtest_succeeded(result)
     # No picker exists yet (BOT-076 §3.3 scope) — BacktestRunConfig.tick_resolution
     # always defaults to 1s, so that is the value a truthful label must show.
-    assert "Realtime" in view_model.resultText
-    assert "tick 1s" in view_model.resultText
+    assert "Realtime" in view_model.run_result.resultText
+    assert "tick 1s" in view_model.run_result.resultText
 
     view_model.executionMode = "BAR_CLOSE"
     presenter._on_backtest_succeeded(result)
-    assert "Static" in view_model.resultText
+    assert "Static" in view_model.run_result.resultText
 
 
 def test_probe_data_coverage_checks_tick_resolution_for_realtime_mode(
@@ -947,7 +947,7 @@ def test_probe_data_coverage_checks_tick_resolution_for_realtime_mode(
     for the wrong one would report "fully covered" while the interval the
     handler actually reads was never synced at all."""
     view_model.executionMode = "HISTORICAL_TICK"
-    view_model.timeRangePreset = "7d"
+    view_model.time_range.preset = "7d"
     config = _lock_and_get_config(presenter, view_model)
     mock_dispatcher.dispatch.return_value = Mock(is_fully_covered=True)
 
@@ -1038,7 +1038,7 @@ def test_invalid_capital_is_rejected_without_submitting(
     view_model.requestRun()
 
     mock_thread_mgr.submit.assert_not_called()
-    assert view_model.resultIsError is True
+    assert view_model.run_result.resultIsError is True
     assert presenter.fsm.current_state == BacktestUiState.IDLE
 
 
@@ -1048,32 +1048,32 @@ def test_non_positive_capital_is_rejected(presenter, view_model, mock_thread_mgr
     view_model.requestRun()
 
     mock_thread_mgr.submit.assert_not_called()
-    assert view_model.resultIsError is True
+    assert view_model.run_result.resultIsError is True
 
 
 def test_custom_range_with_invalid_start_is_rejected(
     presenter, view_model, mock_thread_mgr
 ):
-    view_model.timeRangePreset = "custom"
-    view_model.customStartText = "not-a-date"
+    view_model.time_range.preset = "custom"
+    view_model.time_range.customStartText = "not-a-date"
 
     view_model.requestRun()
 
     mock_thread_mgr.submit.assert_not_called()
-    assert view_model.resultIsError is True
+    assert view_model.run_result.resultIsError is True
 
 
 def test_custom_range_start_after_end_is_rejected(
     presenter, view_model, mock_thread_mgr
 ):
-    view_model.timeRangePreset = "custom"
-    view_model.customStartText = "2026-06-01 00:00"
-    view_model.customEndText = "2026-01-01 00:00"
+    view_model.time_range.preset = "custom"
+    view_model.time_range.customStartText = "2026-06-01 00:00"
+    view_model.time_range.customEndText = "2026-01-01 00:00"
 
     view_model.requestRun()
 
     mock_thread_mgr.submit.assert_not_called()
-    assert view_model.resultIsError is True
+    assert view_model.run_result.resultIsError is True
 
 
 def test_run_backtest_ignored_while_already_running(
@@ -1115,13 +1115,17 @@ def test_successful_run_with_trades_updates_view_model_and_unlocks(
     presenter._run_backtest(config)
 
     assert presenter.fsm.current_state == BacktestUiState.COMPLETED
-    assert view_model.resultIsError is False
-    assert "ETHUSDT" in view_model.resultText
-    assert "Closed trades: 1" in view_model.resultText
-    assert len(view_model.primaryStatCards) == 4
-    assert len(view_model.extendedStatCards) == 15  # BOT-106A: +6 risk metrics
-    assert view_model.resultWarningText == ""  # no fee/frequency flags on this result
-    assert len(view_model.limitations) > 0  # BOT-081
+    assert view_model.run_result.resultIsError is False
+    assert "ETHUSDT" in view_model.run_result.resultText
+    assert "Closed trades: 1" in view_model.run_result.resultText
+    assert len(view_model.run_result.primaryStatCards) == 4
+    assert (
+        len(view_model.run_result.extendedStatCards) == 15
+    )  # BOT-106A: +6 risk metrics
+    assert (
+        view_model.run_result.resultWarningText == ""
+    )  # no fee/frequency flags on this result
+    assert len(view_model.run_result.limitations) > 0  # BOT-081
 
 
 def test_successful_run_with_a_fee_dominant_result_sets_the_warning_text(
@@ -1141,8 +1145,8 @@ def test_successful_run_with_a_fee_dominant_result_sets_the_warning_text(
 
     presenter._run_backtest(config)
 
-    assert view_model.resultWarningText != ""
-    assert "Phí giao dịch" in view_model.resultWarningText
+    assert view_model.run_result.resultWarningText != ""
+    assert "Phí giao dịch" in view_model.run_result.resultWarningText
 
 
 def test_successful_run_with_a_diverging_out_of_sample_result_sets_the_warning_text(
@@ -1168,9 +1172,9 @@ def test_successful_run_with_a_diverging_out_of_sample_result_sets_the_warning_t
 
     presenter._run_backtest(config)
 
-    assert view_model.resultWarningText != ""
-    assert "overfit" in view_model.resultWarningText
-    titles = {card["title"] for card in view_model.extendedStatCards}
+    assert view_model.run_result.resultWarningText != ""
+    assert "overfit" in view_model.run_result.resultWarningText
+    titles = {card["title"] for card in view_model.run_result.extendedStatCards}
     assert "In-Sample Net Profit" in titles
     assert "Out-of-Sample Net Profit" in titles
 
@@ -1189,7 +1193,7 @@ def test_successful_run_populates_limitations_from_the_real_result(
 
     presenter._run_backtest(config)
 
-    joined = " ".join(view_model.limitations)
+    joined = " ".join(view_model.run_result.limitations)
     assert "Stop Loss" in joined
     assert "out-of-sample" in joined  # this specific run has no split
 
@@ -1209,7 +1213,9 @@ def test_successful_run_omits_the_out_of_sample_note_when_a_split_exists(
 
     presenter._run_backtest(config)
 
-    assert not any("out-of-sample" in note for note in view_model.limitations)
+    assert not any(
+        "out-of-sample" in note for note in view_model.run_result.limitations
+    )
 
 
 def test_no_historical_data_clears_limitations(presenter, view_model, mock_dispatcher):
@@ -1218,7 +1224,7 @@ def test_no_historical_data_clears_limitations(presenter, view_model, mock_dispa
 
     presenter._run_backtest(config)
 
-    assert view_model.limitations == []
+    assert view_model.run_result.limitations == []
 
 
 def test_qml_limitations_button_opens_without_crashing(
@@ -1265,10 +1271,10 @@ def test_no_historical_data_reports_empty_message_and_unlocks(
     presenter._run_backtest(config)
 
     assert presenter.fsm.current_state == BacktestUiState.EMPTY_DATA
-    assert view_model.resultIsError is False
-    assert "Không có dữ liệu" in view_model.resultText
+    assert view_model.run_result.resultIsError is False
+    assert "Không có dữ liệu" in view_model.run_result.resultText
     # BOT-059: "no data at all" is exactly the case "Đồng bộ ngay" exists for.
-    assert view_model.needsDataSync is True
+    assert view_model.run_result.needsDataSync is True
     assert presenter._last_no_data_config is config
 
 
@@ -1283,14 +1289,14 @@ def test_zero_trades_reports_empty_message_with_the_metrics(
     presenter._run_backtest(config)
 
     assert presenter.fsm.current_state == BacktestUiState.COMPLETED
-    assert view_model.resultIsError is False
-    assert "không có giao dịch nào" in view_model.resultText
-    assert "Closed trades: 0" in view_model.resultText
+    assert view_model.run_result.resultIsError is False
+    assert "không có giao dịch nào" in view_model.run_result.resultText
+    assert "Closed trades: 0" in view_model.run_result.resultText
     # BOT-055: 0 trades still populates the 4 cards (all reading 0), not an
     # empty panel — only "no historical data at all" clears it.
-    assert len(view_model.primaryStatCards) == 4
+    assert len(view_model.run_result.primaryStatCards) == 4
     # BOT-059: 0 trades is a real result, not "no data" — must not offer sync.
-    assert view_model.needsDataSync is False
+    assert view_model.run_result.needsDataSync is False
 
 
 def test_dispatch_exception_reports_error_and_unlocks(
@@ -1302,8 +1308,8 @@ def test_dispatch_exception_reports_error_and_unlocks(
     presenter._run_backtest(config)
 
     assert presenter.fsm.current_state == BacktestUiState.ERROR
-    assert view_model.resultIsError is True
-    assert "boom" in view_model.resultText
+    assert view_model.run_result.resultIsError is True
+    assert "boom" in view_model.run_result.resultText
 
 
 # ---------------------------------------------------------------------------
@@ -1359,7 +1365,7 @@ def test_missing_coverage_auto_starts_sync_with_the_run_snapshot(
     assert presenter._active_action is not None
     assert presenter._active_action.kind is BacktestActionKind.SYNC
     assert presenter._active_action.config == action.config
-    assert view_model.needsDataSync is True
+    assert view_model.run_result.needsDataSync is True
     assert mock_thread_mgr.submit.call_args[0][0] == presenter._run_sync
 
 
@@ -1376,7 +1382,7 @@ def test_missing_coverage_after_sync_fails_without_sync_loop(
     )
 
     assert presenter.fsm.current_state is BacktestUiState.ERROR
-    assert "Thiếu nến" in view_model.resultText
+    assert "Thiếu nến" in view_model.run_result.resultText
     mock_thread_mgr.submit.assert_not_called()
 
 
@@ -1476,8 +1482,8 @@ def test_preview_result_updates_coverage_and_chart_but_stale_result_is_fenced(
 
     presenter._on_preview_data_ready(2, _complete_coverage(), ["new"], ["volume"])
 
-    assert view_model.isDataFullyCovered is True
-    assert view_model.needsDataSync is False
+    assert view_model.run_result.isDataFullyCovered is True
+    assert view_model.run_result.needsDataSync is False
     presenter.view.on_preview_data_ready.assert_called_once_with(["new"], ["volume"])
 
 
@@ -1665,9 +1671,9 @@ def test_sync_without_the_required_candle_reports_incomplete_and_keeps_retry_ava
     presenter._run_sync(config)
 
     assert presenter.fsm.current_state is BacktestUiState.ERROR
-    assert view_model.needsDataSync is True
+    assert view_model.run_result.needsDataSync is True
     assert presenter._last_no_data_config == config
-    assert "Đồng bộ chưa đủ" in view_model.resultText
+    assert "Đồng bộ chưa đủ" in view_model.run_result.resultText
     mock_thread_mgr.submit.assert_not_called()
 
 
@@ -1684,7 +1690,7 @@ def test_sync_success_clears_the_flag_and_auto_resubmits_the_backtest(
 
     presenter._run_sync(config)
 
-    assert view_model.needsDataSync is False
+    assert view_model.run_result.needsDataSync is False
     assert presenter._last_no_data_config is None
     # Auto-resubmitted straight into RUNNING, no click needed.
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
@@ -1727,10 +1733,10 @@ def test_sync_failure_keeps_the_flag_and_returns_to_idle(
     presenter._run_sync(config)
 
     assert presenter.fsm.current_state == BacktestUiState.ERROR
-    assert view_model.needsDataSync is True
+    assert view_model.run_result.needsDataSync is True
     assert presenter._last_no_data_config is config
-    assert view_model.resultIsError is True
-    assert "sync boom" in view_model.resultText
+    assert view_model.run_result.resultIsError is True
+    assert "sync boom" in view_model.run_result.resultText
     mock_thread_mgr.submit.assert_not_called()
 
 
@@ -1757,7 +1763,7 @@ def test_cancel_button_cancels_the_sync_token_not_the_backtest_token(
     assert presenter.fsm.current_state == BacktestUiState.CANCELLING
     assert sync_token.is_cancelled() is True
     assert presenter._backtest_cancellation_token.is_cancelled() is False
-    assert "đồng bộ" in view_model.resultText.lower()
+    assert "đồng bộ" in view_model.run_result.resultText.lower()
 
 
 def test_run_sync_emits_sync_cancelled_and_resolves_fsm_back_to_idle(
@@ -1787,7 +1793,7 @@ def test_run_sync_emits_sync_cancelled_and_resolves_fsm_back_to_idle(
     assert presenter.fsm.current_state == BacktestUiState.IDLE
     assert presenter._sync_cancellation_token is None
     assert presenter._cancelling_action_id is None
-    assert "hủy đồng bộ" in view_model.resultText.lower()
+    assert "hủy đồng bộ" in view_model.run_result.resultText.lower()
 
 
 def test_sync_succeeding_right_after_cancel_requested_still_resolves_fsm(
@@ -1849,13 +1855,13 @@ def test_all_history_with_tick_mode_is_rejected_before_any_dispatch(
     presenter, view_model, mock_dispatcher
 ):
     view_model.executionMode = "HISTORICAL_TICK"
-    assert view_model.timeRangePreset == "all"  # the actual default, unchanged
+    assert view_model.time_range.preset == "all"  # the actual default, unchanged
 
     view_model.requestRun()
 
     assert presenter.fsm.current_state == BacktestUiState.IDLE
-    assert view_model.resultIsError is True
-    assert "Toàn bộ lịch sử" in view_model.resultText
+    assert view_model.run_result.resultIsError is True
+    assert "Toàn bộ lịch sử" in view_model.run_result.resultText
     mock_dispatcher.dispatch.assert_not_called()
 
 
@@ -1865,7 +1871,7 @@ def test_all_history_with_bar_close_mode_is_still_allowed(
     """The new rule is tick-mode-specific — Static backtests must keep
     being allowed to run over the full local history exactly as before."""
     assert view_model.executionMode == "BAR_CLOSE"
-    assert view_model.timeRangePreset == "all"
+    assert view_model.time_range.preset == "all"
     mock_dispatcher.dispatch.return_value = None
 
     view_model.requestRun()
@@ -1877,7 +1883,7 @@ def test_tick_mode_with_a_bounded_range_is_allowed(
     presenter, view_model, mock_dispatcher
 ):
     view_model.executionMode = "HISTORICAL_TICK"
-    view_model.timeRangePreset = "7d"
+    view_model.time_range.preset = "7d"
     mock_dispatcher.dispatch.return_value = None
 
     view_model.requestRun()
@@ -1986,7 +1992,7 @@ def test_bot_params_schema_is_empty_for_a_strategy_with_no_declared_params(
     """`fake_strategy` (the shared fixture's registered strategy) declares
     nothing — the modal must show "no params" rather than crash on an empty
     schema."""
-    assert view_model.botParamsSchema == []
+    assert view_model.strategy_params.botParamsSchema == []
 
 
 def test_bot_params_schema_reflects_a_strategy_with_declared_params(
@@ -1999,7 +2005,7 @@ def test_bot_params_schema_reflects_a_strategy_with_declared_params(
     )
     view_model = presenter._view_model
 
-    schema = view_model.botParamsSchema
+    schema = view_model.strategy_params.botParamsSchema
     assert len(schema) == 1
     fields = {f["name"]: f for f in schema[0]["fields"]}
     assert fields["period"]["default"] == 20
@@ -2017,12 +2023,12 @@ def test_selecting_a_different_strategy_rebuilds_the_schema(
         qapp, mock_thread_mgr, mock_dispatcher, mock_config, registry, request
     )
     view_model = presenter._view_model
-    assert view_model.selectedStrategyKey == "fake_strategy"
-    assert view_model.botParamsSchema == []
+    assert view_model.strategy_params.selectedStrategyKey == "fake_strategy"
+    assert view_model.strategy_params.botParamsSchema == []
 
-    view_model.selectedStrategyKey = "rich_strategy"
+    view_model.strategy_params.selectedStrategyKey = "rich_strategy"
 
-    assert len(view_model.botParamsSchema) == 1
+    assert len(view_model.strategy_params.botParamsSchema) == 1
 
 
 def test_valid_bot_params_save_updates_params_clears_error_and_reruns(
@@ -2040,10 +2046,12 @@ def test_valid_bot_params_save_updates_params_clears_error_and_reruns(
     view_model.requestBotParamsSave({"period": "50", "threshold": "2.5"})
 
     assert presenter._strategy_params == {"period": 50, "threshold": 2.5}
-    assert view_model.botParamsError == ""
+    assert view_model.strategy_params.botParamsError == ""
     assert saved_signal_calls == [1]
     # Values shown by the (now-refreshed) schema reflect what was just saved.
-    fields = {f["name"]: f for f in view_model.botParamsSchema[0]["fields"]}
+    fields = {
+        f["name"]: f for f in view_model.strategy_params.botParamsSchema[0]["fields"]
+    }
     assert fields["period"]["value"] == 50
     mock_thread_mgr.submit.assert_called_once()
     config = mock_thread_mgr.submit.call_args[0][1]
@@ -2066,7 +2074,7 @@ def test_invalid_bot_params_save_sets_error_and_does_not_rerun(
     view_model.requestBotParamsSave({"period": "500", "threshold": "2.5"})
 
     assert presenter._strategy_params is None
-    assert view_model.botParamsError != ""
+    assert view_model.strategy_params.botParamsError != ""
     assert saved_signal_calls == []
     mock_thread_mgr.submit.assert_not_called()
 
@@ -2083,7 +2091,7 @@ def test_unparseable_bot_params_value_sets_error_and_does_not_rerun(
 
     view_model.requestBotParamsSave({"period": "not-a-number"})
 
-    assert view_model.botParamsError != ""
+    assert view_model.strategy_params.botParamsError != ""
     mock_thread_mgr.submit.assert_not_called()
 
 
@@ -2097,14 +2105,14 @@ def test_changing_strategy_after_a_save_discards_the_old_params(
         qapp, mock_thread_mgr, mock_dispatcher, mock_config, registry, request
     )
     view_model = presenter._view_model
-    view_model.selectedStrategyKey = "rich_strategy"
+    view_model.strategy_params.selectedStrategyKey = "rich_strategy"
     view_model.requestBotParamsSave({"period": "50", "threshold": "2.5"})
     assert presenter._strategy_params is not None
 
-    view_model.selectedStrategyKey = "fake_strategy"
+    view_model.strategy_params.selectedStrategyKey = "fake_strategy"
 
     assert presenter._strategy_params is None
-    assert view_model.botParamsError == ""
+    assert view_model.strategy_params.botParamsError == ""
 
 
 def test_run_backtest_command_carries_the_saved_strategy_params(
@@ -2332,7 +2340,7 @@ def test_successful_run_draws_the_strategys_own_indicator_lines_on_the_chart(
     script (the bug the user reported: Buy/Sell markers not lining up with
     anything drawn)."""
     presenter._strategy_registry.register("ema_strategy", _EmaIndicatorStrategy)
-    view_model.selectedStrategyKey = "ema_strategy"
+    view_model.strategy_params.selectedStrategyKey = "ema_strategy"
     config = _lock_and_get_config(presenter, view_model)
     assert config.strategy_key == "ema_strategy"
     card = presenter.view.chart_cards[0]
@@ -2369,7 +2377,7 @@ def test_successful_run_honors_a_strategys_own_chart_line_widths(
             return {"ema_fast": 1}  # ema_slow deliberately left at the default
 
     presenter._strategy_registry.register("width_strategy", _WidthOverridingStrategy)
-    view_model.selectedStrategyKey = "width_strategy"
+    view_model.strategy_params.selectedStrategyKey = "width_strategy"
     config = _lock_and_get_config(presenter, view_model)
     card = presenter.view.chart_cards[0]
     card.add_overlay_indicator = Mock()
@@ -2420,7 +2428,7 @@ def test_successful_run_draws_the_strategys_own_trend_zone_on_the_chart(
     API BOT-032's custom scripts already use — under the fixed
     "strategy_trend_zone" key."""
     presenter._strategy_registry.register("trend_zone_strategy", _TrendZoneStrategy)
-    view_model.selectedStrategyKey = "trend_zone_strategy"
+    view_model.strategy_params.selectedStrategyKey = "trend_zone_strategy"
     config = _lock_and_get_config(presenter, view_model)
     card = presenter.view.chart_cards[0]
     card.set_script_regions = Mock()
@@ -2511,7 +2519,7 @@ def test_strategy_with_no_trend_zone_override_draws_no_zones(
     the call — so a stale zone from a previous strategy's run never lingers
     on the chart after switching to one with no zone opinion."""
     presenter._strategy_registry.register("ema_strategy", _EmaIndicatorStrategy)
-    view_model.selectedStrategyKey = "ema_strategy"
+    view_model.strategy_params.selectedStrategyKey = "ema_strategy"
     config = _lock_and_get_config(presenter, view_model)
     card = presenter.view.chart_cards[0]
     card.set_script_regions = Mock()
@@ -2541,7 +2549,7 @@ def test_ema_toggle_shows_and_hides_the_strategys_own_indicator_lines(
     presenter, view_model, mock_dispatcher
 ):
     presenter._strategy_registry.register("ema_strategy", _EmaIndicatorStrategy)
-    view_model.selectedStrategyKey = "ema_strategy"
+    view_model.strategy_params.selectedStrategyKey = "ema_strategy"
     config = _lock_and_get_config(presenter, view_model)
     card = presenter.view.chart_cards[0]
     mock_dispatcher.dispatch.side_effect = _dispatch_stub(
@@ -2878,9 +2886,9 @@ def test_successful_run_populates_the_trade_log_first_page(
 
     presenter._run_backtest(config)
 
-    assert view_model.tradeLogTotalCount == 25
-    assert view_model.tradeLogTotalPages == 2
-    assert len(view_model.tradeLogRows) == 20  # PAGE_SIZE
+    assert view_model.trade_log.totalCount == 25
+    assert view_model.trade_log.totalPages == 2
+    assert len(view_model.trade_log.rows) == 20  # PAGE_SIZE
 
 
 def test_no_historical_data_clears_the_trade_log(
@@ -2891,8 +2899,8 @@ def test_no_historical_data_clears_the_trade_log(
 
     presenter._run_backtest(config)
 
-    assert view_model.tradeLogRows == []
-    assert view_model.tradeLogTotalCount == 0
+    assert view_model.trade_log.rows == []
+    assert view_model.trade_log.totalCount == 0
 
 
 def test_failed_run_clears_the_trade_log(presenter, view_model, mock_dispatcher):
@@ -2901,8 +2909,8 @@ def test_failed_run_clears_the_trade_log(presenter, view_model, mock_dispatcher)
 
     presenter._run_backtest(config)
 
-    assert view_model.tradeLogRows == []
-    assert view_model.tradeLogTotalCount == 0
+    assert view_model.trade_log.rows == []
+    assert view_model.trade_log.totalCount == 0
 
 
 def test_changing_the_filter_recomputes_the_trade_log(
@@ -2914,9 +2922,9 @@ def test_changing_the_filter_recomputes_the_trade_log(
     )
     presenter._run_backtest(config)
 
-    view_model.tradeLogFilter = "win"
+    view_model.trade_log.filter = "win"
 
-    assert view_model.tradeLogTotalCount == 3
+    assert view_model.trade_log.totalCount == 3
 
 
 def test_changing_the_filter_resets_to_page_1(presenter, view_model, mock_dispatcher):
@@ -2925,11 +2933,11 @@ def test_changing_the_filter_resets_to_page_1(presenter, view_model, mock_dispat
         _make_result_with_trades(trade_count=25, win_count=25)
     )
     presenter._run_backtest(config)
-    view_model.tradeLogCurrentPage = 2
+    view_model.trade_log.currentPage = 2
 
-    view_model.tradeLogFilter = "loss"  # narrows to 0 rows -> would strand page 2
+    view_model.trade_log.filter = "loss"  # narrows to 0 rows -> would strand page 2
 
-    assert view_model.tradeLogCurrentPage == 1
+    assert view_model.trade_log.currentPage == 1
 
 
 def test_changing_the_search_text_recomputes_the_trade_log(
@@ -2941,9 +2949,9 @@ def test_changing_the_search_text_recomputes_the_trade_log(
     )
     presenter._run_backtest(config)
 
-    view_model.tradeLogSearchText = "#3"
+    view_model.trade_log.searchText = "#3"
 
-    assert view_model.tradeLogTotalCount == 1
+    assert view_model.trade_log.totalCount == 1
 
 
 def test_changing_the_current_page_recomputes_the_trade_log(
@@ -2955,9 +2963,9 @@ def test_changing_the_current_page_recomputes_the_trade_log(
     )
     presenter._run_backtest(config)
 
-    view_model.tradeLogCurrentPage = 2
+    view_model.trade_log.currentPage = 2
 
-    assert len(view_model.tradeLogRows) == 5  # 25 - 20 on page 1
+    assert len(view_model.trade_log.rows) == 5  # 25 - 20 on page 1
 
 
 def test_export_writes_the_currently_filtered_trades(
@@ -2968,7 +2976,7 @@ def test_export_writes_the_currently_filtered_trades(
         _make_result_with_trades(trade_count=10, win_count=4)
     )
     presenter._run_backtest(config)
-    view_model.tradeLogFilter = "win"
+    view_model.trade_log.filter = "win"
     export_path = str(tmp_path / "export.csv")
 
     with patch(
@@ -2976,7 +2984,7 @@ def test_export_writes_the_currently_filtered_trades(
         "backtest_presenter.QFileDialog.getSaveFileName",
         return_value=(export_path, "CSV Files (*.csv)"),
     ):
-        view_model.requestTradeLogExport()
+        view_model.trade_log.request_export()
 
     with open(export_path, encoding="utf-8") as f:
         # header + 4 winning trades.
@@ -2997,7 +3005,7 @@ def test_export_does_nothing_when_the_dialog_is_cancelled(
         "backtest_presenter.QFileDialog.getSaveFileName",
         return_value=("", ""),
     ):
-        view_model.requestTradeLogExport()  # must not raise
+        view_model.trade_log.request_export()  # must not raise
 
 
 def test_export_does_nothing_when_there_are_no_trades_yet(presenter, view_model):
@@ -3005,7 +3013,7 @@ def test_export_does_nothing_when_there_are_no_trades_yet(presenter, view_model)
         "Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest."
         "backtest_presenter.QFileDialog.getSaveFileName"
     ) as mock_dialog:
-        view_model.requestTradeLogExport()
+        view_model.trade_log.request_export()
 
     mock_dialog.assert_not_called()
 
@@ -3036,8 +3044,8 @@ def test_qml_trade_log_filter_tab_click_updates_the_view_model(
     win_button.click()
     qapp.processEvents()
 
-    assert view_model.tradeLogFilter == "win"
-    assert view_model.tradeLogTotalCount == 2
+    assert view_model.trade_log.filter == "win"
+    assert view_model.trade_log.totalCount == 2
 
 
 def test_qml_trade_log_export_button_click_requests_export(
@@ -3076,8 +3084,8 @@ def test_qml_trade_log_search_field_updates_the_view_model(
     search_field.textEdited.emit("#3")
     qapp.processEvents()
 
-    assert view_model.tradeLogSearchText == "#3"
-    assert view_model.tradeLogTotalCount == 1
+    assert view_model.trade_log.searchText == "#3"
+    assert view_model.trade_log.totalCount == 1
 
 
 def test_qml_trade_logs_document_loads_without_errors(presenter, qapp):
@@ -3151,7 +3159,7 @@ def test_fsm_initializes_with_declarative_state_machine(presenter):
 def test_run_backtest_dispatches_run_requested_and_updates_ui_mode(presenter):
     """Verify running backtest transitions FSM to RUNNING and disables toolbar controls."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.initialCapitalText = "10000"
 
     presenter._on_run_backtest()
@@ -3167,7 +3175,7 @@ def test_backtest_succeeded_transitions_to_completed_and_snapshots_last_run_conf
 ):
     """Verify successful run transitions to COMPLETED, saves _last_run_config and summary."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
     vm.selectedCurrency = Currency.USD
@@ -3192,7 +3200,7 @@ def test_backtest_succeeded_transitions_to_completed_and_snapshots_last_run_conf
 def test_dirty_tracking_detects_timeframe_change_after_completed(presenter):
     """Verify changing timeframe when COMPLETED transitions to CONFIG_DIRTY with diff summary."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
     vm.selectedCurrency = Currency.USD
@@ -3217,7 +3225,7 @@ def test_dirty_tracking_detects_timeframe_change_after_completed(presenter):
 def test_dirty_tracking_restores_to_completed_when_input_reverted(presenter):
     """Verify reverting modified input returns FSM to COMPLETED and clears diff summary."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
     vm.selectedCurrency = Currency.USD
@@ -3242,7 +3250,7 @@ def test_dirty_tracking_restores_to_completed_when_input_reverted(presenter):
 def test_dirty_tracking_detects_capital_and_strategy_changes(presenter):
     """Verify modifying capital or strategy updates diff summary and sets DIRTY."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
     vm.selectedCurrency = Currency.USD
@@ -3257,14 +3265,14 @@ def test_dirty_tracking_detects_capital_and_strategy_changes(presenter):
     assert "Vốn (10,000 → 50,000)" in vm.configDiffSummary
 
     # Change strategy
-    vm.selectedStrategyKey = "ema_strategy"
+    vm.strategy_params.selectedStrategyKey = "ema_strategy"
     assert "Chiến lược (fake_strategy → ema_strategy)" in vm.configDiffSummary
 
 
 def test_running_from_dirty_state_clears_dirty_state_on_completion(presenter):
     """Verify executing run from CONFIG_DIRTY transitions to RUNNING and on success COMPLETED with new snapshot."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
 
@@ -3291,7 +3299,7 @@ def test_running_from_dirty_state_clears_dirty_state_on_completion(presenter):
 def test_empty_backtest_transitions_to_idle_with_sync_affordance(presenter):
     """Verify empty backtest (no historical data) transitions FSM to EMPTY_DATA and enables sync."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
 
     presenter._on_run_backtest()
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
@@ -3301,14 +3309,14 @@ def test_empty_backtest_transitions_to_idle_with_sync_affordance(presenter):
 
     assert presenter.fsm.current_state == BacktestUiState.EMPTY_DATA
     assert vm.uiMode == BacktestUiState.EMPTY_DATA.value
-    assert vm.needsDataSync is True
+    assert vm.run_result.needsDataSync is True
     assert presenter._last_no_data_config == cfg
 
 
 def test_failed_backtest_transitions_to_idle_with_error(presenter):
     """Verify failed backtest transitions FSM to ERROR and populates error message."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
 
     presenter._on_run_backtest()
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
@@ -3317,14 +3325,14 @@ def test_failed_backtest_transitions_to_idle_with_error(presenter):
 
     assert presenter.fsm.current_state == BacktestUiState.ERROR
     assert vm.uiMode == BacktestUiState.ERROR.value
-    assert "Connection timed out" in vm.resultText
+    assert "Connection timed out" in vm.run_result.resultText
 
 
 def test_qml_stale_warning_banner_and_button_dirty_rendering(presenter, qapp):
     """`BackTestTopPanel` renders the amber warning banner when
     isConfigDirty is True."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
 
@@ -3367,7 +3375,7 @@ def test_cancel_request_fences_callbacks_and_restores_idle(presenter, view_model
 
     assert presenter.fsm.current_state is BacktestUiState.IDLE
     assert presenter._active_action_outcome is BacktestActionOutcome.CANCELLED
-    assert "Đã hủy Backtest" in view_model.resultText
+    assert "Đã hủy Backtest" in view_model.run_result.resultText
 
 
 def test_cancel_restores_config_dirty_and_late_success_cannot_render(
@@ -3460,7 +3468,7 @@ def test_superseded_backtest_success_cannot_overwrite_the_new_action(
     assert presenter._active_action == second_action
     assert presenter._active_action_outcome is BacktestActionOutcome.PENDING
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Đang chạy backtest..."
 
 
 def test_superseded_backtest_failure_cannot_overwrite_the_new_action(
@@ -3481,7 +3489,7 @@ def test_superseded_backtest_failure_cannot_overwrite_the_new_action(
     assert presenter._active_action == second_action
     assert presenter._active_action_outcome is BacktestActionOutcome.PENDING
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Đang chạy backtest..."
 
 
 def test_success_after_failure_for_the_same_action_is_ignored(presenter, view_model):
@@ -3496,8 +3504,8 @@ def test_success_after_failure_for_the_same_action_is_ignored(presenter, view_mo
 
     assert presenter._active_action_outcome is BacktestActionOutcome.FAILED
     assert presenter.fsm.current_state == BacktestUiState.ERROR
-    assert view_model.resultIsError is True
-    assert "boom" in view_model.resultText
+    assert view_model.run_result.resultIsError is True
+    assert "boom" in view_model.run_result.resultText
 
 
 def test_invalidated_action_cannot_apply_a_late_success(presenter, view_model):
@@ -3512,7 +3520,7 @@ def test_invalidated_action_cannot_apply_a_late_success(presenter, view_model):
 
     assert presenter._active_action_outcome is BacktestActionOutcome.INVALIDATED
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Đang chạy backtest..."
 
 
 def test_invalidated_action_cannot_apply_a_late_failure(presenter, view_model):
@@ -3525,7 +3533,7 @@ def test_invalidated_action_cannot_apply_a_late_failure(presenter, view_model):
 
     assert presenter._active_action_outcome is BacktestActionOutcome.INVALIDATED
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Đang chạy backtest..."
 
 
 def test_action_context_deep_copies_mutable_strategy_params(presenter):
@@ -3586,13 +3594,13 @@ def test_get_current_config_does_not_raise_for_preset_time_ranges(presenter):
         resolve_time_range() missing 1 required positional argument: 'now'
     """
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
 
     presets_under_test = ["7d", "30d", "90d", "365d", "all"]
     for preset in presets_under_test:
-        vm.timeRangePreset = preset
+        vm.time_range.preset = preset
         # Must not raise TypeError — was crashing with missing 'now' arg
         config = presenter._get_current_config()
         assert config is not None, f"Expected config for preset={preset!r}"
@@ -3601,12 +3609,12 @@ def test_get_current_config_does_not_raise_for_preset_time_ranges(presenter):
 def test_get_current_config_custom_preset_parses_dates(presenter):
     """Regression companion: CUSTOM preset path must also work without crash."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
-    vm.timeRangePreset = "custom"
-    vm.customStartText = "2026-01-01"
-    vm.customEndText = "2026-06-30"
+    vm.time_range.preset = "custom"
+    vm.time_range.customStartText = "2026-01-01"
+    vm.time_range.customEndText = "2026-06-30"
 
     config = presenter._get_current_config()
     assert config is not None
@@ -3617,10 +3625,10 @@ def test_on_backtest_succeeded_does_not_raise_for_preset_ranges(presenter):
     to snapshot _last_run_config and compute diff — must not crash for
     any non-CUSTOM preset selected in the toolbar when a run completes."""
     vm = presenter._view_model
-    vm.selectedStrategyKey = "fake_strategy"
+    vm.strategy_params.selectedStrategyKey = "fake_strategy"
     vm.selectedTimeframe = "1m"
     vm.initialCapitalText = "10000"
-    vm.timeRangePreset = "30d"  # A preset that requires 'now' in resolve_time_range
+    vm.time_range.preset = "30d"  # A preset that requires 'now' in resolve_time_range
 
     presenter._on_run_backtest()
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
@@ -3707,14 +3715,14 @@ def test_strategy_properties_save_applies_leverage_to_the_view_model(
 ):
     """BOT-105: StrategyPropertiesModal.qml's new leverage spin boxes save
     through the same "properties" payload path pyramiding/slippage already
-    use — must reach view_model.longLeverage/shortLeverage, which
+    use — must reach view_model.broker_sim.longLeverage/shortLeverage, which
     _build_run_config threads into BrokerSimulationConfig."""
     presenter._on_strategy_properties_save_requested(
         {"properties": {"long_leverage": 5, "short_leverage": 3}}
     )
 
-    assert view_model.longLeverage == 5.0
-    assert view_model.shortLeverage == 3.0
+    assert view_model.broker_sim.longLeverage == 5.0
+    assert view_model.broker_sim.shortLeverage == 3.0
 
 
 def test_strategy_properties_save_applies_take_profit_pct_to_the_view_model(
@@ -3734,8 +3742,8 @@ def test_strategy_properties_save_applies_take_profit_pct_to_the_view_model(
         }
     )
 
-    assert view_model.takeProfitPctEnabled is True
-    assert view_model.takeProfitPctText == "2.0"
+    assert view_model.broker_sim.takeProfitPctEnabled is True
+    assert view_model.broker_sim.takeProfitPctText == "2.0"
 
 
 def test_build_run_config_sets_take_profit_pct_only_when_enabled(presenter, view_model):
@@ -3743,13 +3751,13 @@ def test_build_run_config_sets_take_profit_pct_only_when_enabled(presenter, view
     `BrokerSimulationConfig.take_profit_pct` — and must leave it `None`
     (BOT-041's own untouched default) when the checkbox is off, even if the
     text field still holds a leftover value from a previous toggle."""
-    view_model.takeProfitPctEnabled = True
-    view_model.takeProfitPctText = "3.5"
+    view_model.broker_sim.takeProfitPctEnabled = True
+    view_model.broker_sim.takeProfitPctText = "3.5"
     config = presenter._build_run_config()
     assert config is not None
     assert config.broker_config.take_profit_pct == 3.5
 
-    view_model.takeProfitPctEnabled = False
+    view_model.broker_sim.takeProfitPctEnabled = False
     config = presenter._build_run_config()
     assert config is not None
     assert config.broker_config.take_profit_pct is None
@@ -3760,8 +3768,8 @@ def test_build_run_config_ignores_malformed_take_profit_pct_text(presenter, view
     crash `_build_run_config()` (`BrokerSimulationConfig` itself raises for
     `take_profit_pct <= 0`) — falls back to disabled, matching the lenient
     fallback this function already uses for `order_size_type`/`commission_type`."""
-    view_model.takeProfitPctEnabled = True
-    view_model.takeProfitPctText = "not-a-number"
+    view_model.broker_sim.takeProfitPctEnabled = True
+    view_model.broker_sim.takeProfitPctText = "not-a-number"
     config = presenter._build_run_config()
     assert config is not None
     assert config.broker_config.take_profit_pct is None

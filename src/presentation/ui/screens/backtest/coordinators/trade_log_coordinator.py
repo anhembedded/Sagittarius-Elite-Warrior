@@ -58,7 +58,7 @@ class TradeLogCoordinator:
     def on_display_timezone_changed(self) -> None:
         """Propagates display timezone change to the chart and re-renders the
         trade log table without dirtying config."""
-        self._set_chart_display_timezone(self._view_model.displayTimezone)
+        self._set_chart_display_timezone(self._view_model.time_range.displayTimezone)
         self.refresh()
 
     def on_export_requested(self) -> None:
@@ -79,9 +79,9 @@ class TradeLogCoordinator:
         CSV export (which doesn't)."""
         view_model = self._view_model
         rows = build_trade_log_rows(self._state.all_trades)
-        filter_ = TradeLogFilter(view_model.tradeLogFilter)
+        filter_ = TradeLogFilter(view_model.trade_log.filter)
         filtered = filter_trade_log_rows(rows, filter_)
-        return search_trade_log_rows(filtered, view_model.tradeLogSearchText)
+        return search_trade_log_rows(filtered, view_model.trade_log.searchText)
 
     def currently_filtered_trades(self) -> list[Trade]:
         """The `Trade`s behind whatever's currently filtered/searched into
@@ -100,10 +100,12 @@ class TradeLogCoordinator:
         from QML (`tradeLogQueryChanged`)."""
         matched = self.filtered_and_searched_rows()
         page_rows = paginate_trade_log_rows(
-            matched, self._view_model.tradeLogCurrentPage
+            matched, self._view_model.trade_log.currentPage
         )
-        self._view_model.set_trade_log_page_state(
-            trade_log_rows_to_qml(page_rows, tz_name=self._view_model.displayTimezone),
+        self._view_model.trade_log.set_page_state(
+            trade_log_rows_to_qml(
+                page_rows, tz_name=self._view_model.time_range.displayTimezone
+            ),
             len(matched),
             total_pages(len(matched)),
         )

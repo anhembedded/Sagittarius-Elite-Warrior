@@ -34,7 +34,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.kit.widget_value import (
     write_widget_value,
 )
 
-from ..logic.broker_properties_schema import BROKER_PROPERTY_FIELDS
+from ..logic.broker_properties_schema import BROKER_PROPERTY_FIELDS, owner_of
 from ._layout import _ACCENT, _field_row, _section_header
 
 if TYPE_CHECKING:
@@ -124,7 +124,7 @@ class StrategyPropertiesDialog(Overlay):
         )
         self._tabs.addTab(visibility_tab, "Hiển thị")
 
-        view_model.botParamsRowsChanged.connect(self._sync_inputs)
+        view_model.strategy_params.botParamsRowsChanged.connect(self._sync_inputs)
         view_model.botParamsSaved.connect(self.accept)
 
     # -- Tab 2: Properties ------------------------------------------------
@@ -252,7 +252,7 @@ class StrategyPropertiesDialog(Overlay):
         BE the same value, in both directions (BUG-064).
 
         This is the QML binding this dialog was ported away from, rebuilt on
-        QtWidgets: `text: vm.orderSizeText` became one `bind(...)` row. What
+        QtWidgets: `text: vm.broker_sim.orderSizeText` became one `bind(...)` row. What
         it replaces is not just shorter code but a whole category of "did
         somebody remember to sync?" — there is no longer a `_sync_properties()`
         to call at the right moment, and no payload to collect at the right
@@ -265,7 +265,7 @@ class StrategyPropertiesDialog(Overlay):
         for field in BROKER_PROPERTY_FIELDS:
             bindings.bind(
                 self._property_widgets[field.key],
-                self._vm,
+                owner_of(self._vm, field),
                 field.vm_attribute,
                 field.coerce,
             )
@@ -275,7 +275,7 @@ class StrategyPropertiesDialog(Overlay):
         self._prop_take_profit_enabled.toggled.connect(
             self._prop_take_profit_pct.setEnabled
         )
-        self._prop_take_profit_pct.setEnabled(self._vm.takeProfitPctEnabled)
+        self._prop_take_profit_pct.setEnabled(self._vm.broker_sim.takeProfitPctEnabled)
         return bindings
 
     def _build_buttons(self) -> QHBoxLayout:
@@ -344,7 +344,7 @@ class StrategyPropertiesDialog(Overlay):
         nothing to rebuild. Switching strategies does change the field set,
         and still rebuilds.
         """
-        rows = self._vm.botParamsRows
+        rows = self._vm.strategy_params.botParamsRows
         if self._field_widgets and _field_names(rows) == [
             fw.field_name for fw in self._field_widgets
         ]:
@@ -370,7 +370,9 @@ class StrategyPropertiesDialog(Overlay):
                     _section_header("~", row.get("groupLabel", ""))
                 )
             elif row_type == "field":
-                field_widget = BotParamFieldWidget(row.get("field", {}), self._vm)
+                field_widget = BotParamFieldWidget(
+                    row.get("field", {}), self._vm.strategy_params
+                )
                 self._inputs_layout.addWidget(field_widget)
                 self._field_widgets.append(field_widget)
         self._wire_commit_on_edit(fw.input_widget for fw in self._field_widgets)

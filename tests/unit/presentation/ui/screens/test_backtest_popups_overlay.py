@@ -123,7 +123,7 @@ def test_extended_metrics_popup_opens_with_the_extended_stat_cards(
 ):
     view, presenter = backtest_screen
     _neutral = Tone.NEUTRAL
-    presenter._view_model.set_extended_metrics_snapshot(
+    presenter._view_model.run_result.set_extended_metrics_snapshot(
         ExtendedMetricsSnapshot(
             cards=(
                 StatCardData("Gross Profit", "100.00", _neutral, "USD", "", _neutral),
@@ -158,7 +158,7 @@ def test_limitations_popup_opens_with_each_limitation_as_its_own_label(
     qapp, backtest_screen
 ):
     view, presenter = backtest_screen
-    presenter._view_model.set_limitations(["Limitation 1", "Limitation 2"])
+    presenter._view_model.run_result.set_limitations(["Limitation 1", "Limitation 2"])
     qapp.processEvents()
 
     view.top_widget._btn_limitations.click()
@@ -299,4 +299,4 @@ def test_time_range_picker_modal_opens_and_lists_every_preset(qapp, backtest_scr
     assert dialog.objectName() == "backtestTimeRangePickerDialog"
     assert dialog.isVisible() is True
     rows = find_all_named(dialog.root_object, "timeRangePreset_")
-    assert len(rows) == len(presenter._view_model.timeRangePresetOptions) + 1
+    assert len(rows) == len(presenter._view_model.time_range.presetOptions) + 1

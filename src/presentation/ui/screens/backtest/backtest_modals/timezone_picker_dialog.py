@@ -34,8 +34,8 @@ class TimezonePickerDialog(QmlOverlay):
     ) -> None:
         self._vm = view_model
         self._widget_vm = SelectListVM(
-            get_options=lambda: view_model.displayTimezoneOptions,
-            get_current=lambda: view_model.displayTimezone,
+            get_options=lambda: view_model.time_range.displayTimezoneOptions,
+            get_current=lambda: view_model.time_range.displayTimezone,
         )
         super().__init__(
             "CHỌN MÚI GIỜ HIỂN THỊ",

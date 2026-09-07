@@ -15,10 +15,21 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.backtest_mod
 )
 
 
+class _FakeTimeRange:
+    def __init__(self, preset: str, start: str, end: str) -> None:
+        self.preset = preset
+        self.customStartText = start
+        self.customEndText = end
+
+
 class _FakeViewModel:
     """Just the four members `BacktestTimeRangeSource` reads/writes from a
     screen ViewModel — a real `BackTestViewModel` is a `QObject` and needs a
     `QApplication` to construct, which this test suite deliberately avoids.
+
+    Three of the four moved onto `vm.time_range` in `EPIC-003F6`, so this
+    double nests them the same way: a flat stand-in would keep passing
+    against a ViewModel shape the app no longer has.
     """
 
     def __init__(
@@ -28,9 +39,9 @@ class _FakeViewModel:
         custom_end_text: str = "",
         selected_timeframe: str = "5m",
     ) -> None:
-        self.timeRangePreset = time_range_preset
-        self.customStartText = custom_start_text
-        self.customEndText = custom_end_text
+        self.time_range = _FakeTimeRange(
+            time_range_preset, custom_start_text, custom_end_text
+        )
         self.selectedTimeframe = selected_timeframe
 
 
@@ -90,6 +101,6 @@ def test_apply_writes_an_explicit_custom_range() -> None:
 
     source.apply("2026-02-01 00:00", "2026-02-08 00:00")
 
-    assert view_model.customStartText == "2026-02-01 00:00"
-    assert view_model.customEndText == "2026-02-08 00:00"
-    assert view_model.timeRangePreset == "custom"
+    assert view_model.time_range.customStartText == "2026-02-01 00:00"
+    assert view_model.time_range.customEndText == "2026-02-08 00:00"
+    assert view_model.time_range.preset == "custom"
