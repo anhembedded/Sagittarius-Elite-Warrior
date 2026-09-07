@@ -1,9 +1,10 @@
 # Epic EPIC-003 — Phân rã Presenter/File quá tải (God Object/God File Decomposition)
 
-**Trạng thái:** 🟡 Đang làm — 6/9 xong, **1 huỷ** (`003D`). `003F` (vòng thiết kế) đã chốt hướng C;
-lát cắt đầu tiên của nó, [`EPIC-003F1`](completed/EPIC-003F1_trade_log_sub_view_model_facade.md)
-(`TradeLogViewModel` + facade, **trade log**), đã xong 2026-09-02 — `003F` bản thân vẫn đang làm,
-5 lát còn lại vẫn mở, xem `003F1` §7. Cập nhật 2026-09-02.
+**Trạng thái:** 🟡 Đang làm — 9/12 xong, **1 huỷ** (`003D`). `003F` (vòng thiết kế) đã chốt hướng C;
+**cả 5 lát cắt của nó đã xong** (`003F1`…`003F5`, 2026-09-02 → 2026-09-07) và nhóm cuối ("UI lặt
+vặt") đã kết luận **không tách** — xem [`EPIC-003F5`](completed/EPIC-003F5_run_progress_and_result_sub_view_models_facade.md) §4.
+`003F` bản thân **vẫn mở**: việc còn lại duy nhất là bước cuối cùng ở §4.3 của nó — **gỡ facade**,
+chỉ mở khi 344 điểm đọc đã dời hết. Cập nhật 2026-09-07.
 **Nguồn:** [`PRO-001`](../../proposal/PRO-001.md) (Coordinator Pattern cho Presenter),
 [`PRO-002`](../../proposal/PRO-002.md) (khảo sát toàn bộ file quá tải trong `src/`) —
 2 đề xuất do một phiên làm việc khác viết, được đối chiếu lại với quy tắc đã
@@ -97,6 +98,9 @@ dòng.
 | **[EPIC-003F](incomplete/EPIC-003F_backtest_viewmodel_composite_design_review.md)** | `BackTestViewModel` → Composite ViewModel — **vòng thiết kế trước**, chưa code | 🔴 | 🟡 **Đã mở khoá 27/08** — lý do chặn cũ (binding QML) chết theo `EPIC-006`; đo lại rủi ro thật, chốt hướng facade. Task con triển khai chưa mở. Xem [`DOCTOR-002`](../../completed/DOCTOR-002_epic_003f_blocker_is_dead.md) |
 | **[EPIC-003F1](completed/EPIC-003F1_trade_log_sub_view_model_facade.md)** | Lát cắt đầu tiên của `003F`: `TradeLogViewModel` + facade chuyển tiếp (6 property / 6 signal) | 🟡 | ✅ Xong (02/09) — `backtest_view_model.py` 1.435→1.426 dòng, `tests/` diff rỗng tuyệt đối, mutation-verify đã làm thật |
 | **[EPIC-003F2](completed/EPIC-003F2_strategy_params_sub_view_model_facade.md)** | Lát cắt 2 của `003F`: `StrategyParamsViewModel` + facade (6 property / 5 signal / `step_bot_param_value`) | 🟡 | ✅ Xong (07/09) — 1.426→1.417 dòng, **`tests/` diff rỗng tuyệt đối**, CI 3.639 passed. Phạm vi thu hẹp có lý do: 2 signal `open*Requested` ở lại khối 10 signal "mở modal" |
+| **[EPIC-003F3](completed/EPIC-003F3_time_range_sub_view_model_facade.md)** | Lát cắt 3: `TimeRangeViewModel` + facade (8 property / 4 signal / 1 slot, kèm 2 bảng option) | 🟡 | ✅ Xong (07/09) — 1.417→1.405 dòng, **`tests/` diff rỗng**, +12 test mới |
+| **[EPIC-003F4](completed/EPIC-003F4_broker_sim_sub_view_model_facade.md)** | Lát cắt 4: `BrokerSimViewModel` + facade (12 property / 12 signal / 10 slot); clamp và mặc định thành hằng số có tên | 🟡 | ✅ Xong (07/09) — 1.405→1.379 dòng, **`tests/` diff rỗng**, +10 test mới |
+| **[EPIC-003F5](completed/EPIC-003F5_run_progress_and_result_sub_view_models_facade.md)** | Lát cắt 5: `RunProgressViewModel` + `RunResultViewModel` + facade. Kết luận nhóm cuối: **không tách** | 🟡 | ✅ Xong (07/09) — 1.379→1.351 dòng, **`tests/` diff rỗng**, +15 test mới |
 | **[EPIC-003G](completed/EPIC-003G_dashboard_presenter_coordinator.md)** | `DashboardPresenter` → trích `IndicatorCoordinator` (fetch-limit + script dispatch) | 🟢 | ✅ Xong 2026-08-30 — 1.158→1.134 dòng, 13 test coordinator riêng, 787 test tổng xanh |
 
 > ### ❌ `EPIC-003D` đã huỷ (2026-08-25, user duyệt)

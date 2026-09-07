@@ -1,15 +1,7 @@
 from __future__ import annotations
 
-from contextlib import suppress
-
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from Sagittarius_Elite_Warrior.src.domain.value_objects.commission_type import (
-    CommissionType,
-)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.currency import Currency
-from Sagittarius_Elite_Warrior.src.domain.value_objects.position_sizing import (
-    PositionSizingType,
-)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.indicator_scripts.list_model import (
     IndicatorScriptListModel,
@@ -24,19 +16,23 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.backte
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.extended_metrics_snapshot import (
     ExtendedMetricsSnapshot,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.time_range_preset import (
-    TimeRangePreset,
+from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.broker_sim_view_model import (
+    BrokerSimViewModel,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.run_progress_view_model import (
+    RunProgressViewModel,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.run_result_view_model import (
+    RunResultViewModel,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.strategy_params_view_model import (
     StrategyParamsViewModel,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.time_range_view_model import (
+    TimeRangeViewModel,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.view_models.trade_log_view_model import (
     TradeLogViewModel,
-)
-from Sagittarius_Elite_Warrior.src.presentation.ui.services.display_timezone_service import (
-    DEFAULT_TIMEZONE,
-    get_display_timezone_label,
-    get_supported_timezones,
 )
 from sagittarius_engine.extensions.pyside_mvc import BaseQmlViewModel, from_qml
 from sagittarius_engine.extensions.pyside_mvc.QmlShared.log_list_model import (
@@ -237,46 +233,62 @@ class BackTestViewModel(BaseQmlViewModel):
         self._selected_currency = Currency.USD.value
         self._selected_timeframe = _DEFAULT_TIMEFRAME
         self._execution_mode = BacktestExecutionMode.BAR_CLOSE.value
-        self._order_size_type = PositionSizingType.PERCENT_OF_EQUITY.value
-        self._order_size_value = 100.0
-        self._order_size_text = "100"
-        self._pyramiding = 1
-        self._commission_type = CommissionType.PERCENT.value
-        self._commission_value = 0.1
-        self._commission_text = "0.1"
-        self._slippage_ticks = 0
-        self._long_leverage = 1.0
-        self._short_leverage = 1.0
-        #: EPIC-001A — BrokerSimulationConfig.take_profit_pct had no UI path
-        #: at all before this (only ever set in tests); None until the user
-        #: opts in, so a fresh app still behaves exactly as before this field
-        #: existed (BOT-041's own default).
-        self._take_profit_pct_enabled = False
-        self._take_profit_pct_text = "2.0"
-        self._time_range_preset = TimeRangePreset.ALL_HISTORY.value
-        self._display_timezone = DEFAULT_TIMEZONE
-        self._custom_start_text = ""
-        self._custom_end_text = ""
-        self._result_text = ""
-        self._result_is_error = False
-        self._backtest_progress_percent = 0.0
-        self._backtest_progress_text = ""
-        self._sync_progress_percent = 0.0
-        self._sync_progress_text = ""
-        self._is_data_fully_covered = False
-        self._data_coverage_message = ""
-        self._primary_stat_cards: list[dict[str, str]] = []
-        self._extended_stat_cards: list[dict[str, str]] = []
-        #: EPIC-015 Phase 3 — `MetricsDetailDialogWidget`'s composition root
-        #: reads this directly (plain Python, not a QML `Property`: no
-        #: `.qml` file needs it). `None` until the first run succeeds, same
-        #: "no result yet" convention `_extended_stat_cards` uses via an
-        #: empty list — see `extended_metrics_snapshot()`.
-        self._extended_metrics_snapshot: ExtendedMetricsSnapshot | None = None
-        self._result_warning_text = ""
-        self._limitations: list[str] = []
+        # `EPIC-003F4` — sizing + broker-cost state lives in
+        # `BrokerSimViewModel` now (defaults and clamps with it); the
+        # properties below forward. Signals connected, never re-emitted by
+        # hand (`003F1` §3.2).
+        self._broker_sim = BrokerSimViewModel(parent=self)
+        for source, forwarded in (
+            (self._broker_sim.orderSizeTypeChanged, self.orderSizeTypeChanged),
+            (self._broker_sim.orderSizeValueChanged, self.orderSizeValueChanged),
+            (self._broker_sim.orderSizeTextChanged, self.orderSizeTextChanged),
+            (self._broker_sim.pyramidingChanged, self.pyramidingChanged),
+            (self._broker_sim.commissionTypeChanged, self.commissionTypeChanged),
+            (self._broker_sim.commissionValueChanged, self.commissionValueChanged),
+            (self._broker_sim.commissionTextChanged, self.commissionTextChanged),
+            (self._broker_sim.slippageTicksChanged, self.slippageTicksChanged),
+            (self._broker_sim.longLeverageChanged, self.longLeverageChanged),
+            (self._broker_sim.shortLeverageChanged, self.shortLeverageChanged),
+            (
+                self._broker_sim.takeProfitPctEnabledChanged,
+                self.takeProfitPctEnabledChanged,
+            ),
+            (self._broker_sim.takeProfitPctTextChanged, self.takeProfitPctTextChanged),
+        ):
+            source.connect(forwarded)
+        # `EPIC-003F3` — time window + display timezone live in
+        # `TimeRangeViewModel` now; the properties below forward to it.
+        # Signals connected, never re-emitted by hand (`003F1` §3.2).
+        self._time_range = TimeRangeViewModel(parent=self)
+        for source, forwarded in (
+            (self._time_range.presetChanged, self.timeRangePresetChanged),
+            (self._time_range.customStartTextChanged, self.customStartTextChanged),
+            (self._time_range.customEndTextChanged, self.customEndTextChanged),
+            (self._time_range.displayTimezoneChanged, self.displayTimezoneChanged),
+        ):
+            source.connect(forwarded)
+        # `EPIC-003F5` — the two progress bars and the last run's verdict
+        # live in their own ViewModels now; the properties below forward.
+        # Signals connected, never re-emitted by hand (`003F1` §3.2).
+        self._run_progress = RunProgressViewModel(parent=self)
+        self._run_result = RunResultViewModel(parent=self)
+        for source, forwarded in (
+            (self._run_progress.backtestProgressChanged, self.backtestProgressChanged),
+            (self._run_progress.syncProgressChanged, self.syncProgressChanged),
+            (self._run_result.resultChanged, self.resultChanged),
+            (self._run_result.statCardsChanged, self.statCardsChanged),
+            (
+                self._run_result.resultWarningTextChanged,
+                self.resultWarningTextChanged,
+            ),
+            (self._run_result.limitationsChanged, self.limitationsChanged),
+            (self._run_result.dataCoverageChanged, self.dataCoverageChanged),
+            (self._run_result.needsDataSyncChanged, self.needsDataSyncChanged),
+        ):
+            source.connect(forwarded)
+        #: Stays on the facade: a disclosure toggle the user sets, not part
+        #: of the run's outcome — it must survive the next run.
         self._show_extended_metrics = False
-        self._needs_data_sync = False
         self._is_chart_preview = False
         # `EPIC-003F1` — trade-log state lives in `TradeLogViewModel` now;
         # this facade forwards, it owns none of it directly. Each sub-VM
@@ -573,13 +585,16 @@ class BackTestViewModel(BaseQmlViewModel):
     # Broker simulation & sizing (BOT-104)
     # ------------------------------------------------------------------ #
 
+    # --- `EPIC-003F4` facade -> `BrokerSimViewModel` ------------------ #
+    # Hand-written forwards for the same reason as the `003F2`/`003F3`
+    # blocks: `presentation/` is outside the `mypy` gate, so `__getattr__`
+    # would make every misspelling statically valid and silent.
+
     def _get_order_size_type(self) -> str:
-        return self._order_size_type
+        return self._broker_sim.orderSizeType
 
     def _set_order_size_type(self, value: str) -> None:
-        if value != self._order_size_type:
-            self._order_size_type = value
-            self.orderSizeTypeChanged.emit()
+        self._broker_sim.orderSizeType = value
 
     orderSizeType = Property(
         str,
@@ -589,12 +604,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_order_size_value(self) -> float:
-        return self._order_size_value
+        return self._broker_sim.orderSizeValue
 
     def _set_order_size_value(self, value: float) -> None:
-        if value != self._order_size_value:
-            self._order_size_value = value
-            self.orderSizeValueChanged.emit()
+        self._broker_sim.orderSizeValue = value
 
     orderSizeValue = Property(
         float,
@@ -604,15 +617,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_order_size_text(self) -> str:
-        return self._order_size_text
+        return self._broker_sim.orderSizeText
 
     def _set_order_size_text(self, value: str) -> None:
-        if value != self._order_size_text:
-            self._order_size_text = value
-            with suppress(ValueError):
-                self._order_size_value = float(value)
-            self.orderSizeTextChanged.emit()
-            self.orderSizeValueChanged.emit()
+        self._broker_sim.orderSizeText = value
 
     orderSizeText = Property(
         str,
@@ -622,12 +630,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_pyramiding(self) -> int:
-        return self._pyramiding
+        return self._broker_sim.pyramiding
 
     def _set_pyramiding(self, value: int) -> None:
-        if value != self._pyramiding:
-            self._pyramiding = max(1, value)
-            self.pyramidingChanged.emit()
+        self._broker_sim.pyramiding = value
 
     pyramiding = Property(
         int,
@@ -637,12 +643,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_commission_type(self) -> str:
-        return self._commission_type
+        return self._broker_sim.commissionType
 
     def _set_commission_type(self, value: str) -> None:
-        if value != self._commission_type:
-            self._commission_type = value
-            self.commissionTypeChanged.emit()
+        self._broker_sim.commissionType = value
 
     commissionType = Property(
         str,
@@ -652,12 +656,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_commission_value(self) -> float:
-        return self._commission_value
+        return self._broker_sim.commissionValue
 
     def _set_commission_value(self, value: float) -> None:
-        if value != self._commission_value:
-            self._commission_value = max(0.0, value)
-            self.commissionValueChanged.emit()
+        self._broker_sim.commissionValue = value
 
     commissionValue = Property(
         float,
@@ -667,15 +669,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_commission_text(self) -> str:
-        return self._commission_text
+        return self._broker_sim.commissionText
 
     def _set_commission_text(self, value: str) -> None:
-        if value != self._commission_text:
-            self._commission_text = value
-            with suppress(ValueError):
-                self._commission_value = float(value)
-            self.commissionTextChanged.emit()
-            self.commissionValueChanged.emit()
+        self._broker_sim.commissionText = value
 
     commissionText = Property(
         str,
@@ -685,12 +682,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_slippage_ticks(self) -> int:
-        return self._slippage_ticks
+        return self._broker_sim.slippageTicks
 
     def _set_slippage_ticks(self, value: int) -> None:
-        if value != self._slippage_ticks:
-            self._slippage_ticks = max(0, value)
-            self.slippageTicksChanged.emit()
+        self._broker_sim.slippageTicks = value
 
     slippageTicks = Property(
         int,
@@ -700,12 +695,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_long_leverage(self) -> float:
-        return self._long_leverage
+        return self._broker_sim.longLeverage
 
     def _set_long_leverage(self, value: float) -> None:
-        if value != self._long_leverage:
-            self._long_leverage = max(1.0, value)
-            self.longLeverageChanged.emit()
+        self._broker_sim.longLeverage = value
 
     longLeverage = Property(
         float,
@@ -715,12 +708,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_short_leverage(self) -> float:
-        return self._short_leverage
+        return self._broker_sim.shortLeverage
 
     def _set_short_leverage(self, value: float) -> None:
-        if value != self._short_leverage:
-            self._short_leverage = max(1.0, value)
-            self.shortLeverageChanged.emit()
+        self._broker_sim.shortLeverage = value
 
     shortLeverage = Property(
         float,
@@ -730,12 +721,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_take_profit_pct_enabled(self) -> bool:
-        return self._take_profit_pct_enabled
+        return self._broker_sim.takeProfitPctEnabled
 
     def _set_take_profit_pct_enabled(self, value: bool) -> None:
-        if value != self._take_profit_pct_enabled:
-            self._take_profit_pct_enabled = bool(value)
-            self.takeProfitPctEnabledChanged.emit()
+        self._broker_sim.takeProfitPctEnabled = value
 
     takeProfitPctEnabled = Property(
         bool,
@@ -745,12 +734,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_take_profit_pct_text(self) -> str:
-        return self._take_profit_pct_text
+        return self._broker_sim.takeProfitPctText
 
     def _set_take_profit_pct_text(self, value: str) -> None:
-        if value != self._take_profit_pct_text:
-            self._take_profit_pct_text = value
-            self.takeProfitPctTextChanged.emit()
+        self._broker_sim.takeProfitPctText = value
 
     takeProfitPctText = Property(
         str,
@@ -761,62 +748,53 @@ class BackTestViewModel(BaseQmlViewModel):
 
     @Slot(str)
     def set_order_size_type(self, value: str) -> None:
-        self._set_order_size_type(value)
+        self._broker_sim.set_order_size_type(value)
 
     @Slot(float)
     def set_order_size_value(self, value: float) -> None:
-        self._set_order_size_value(value)
+        self._broker_sim.set_order_size_value(value)
 
     @Slot(str)
     def set_order_size_text(self, value: str) -> None:
-        self._set_order_size_text(value)
+        self._broker_sim.set_order_size_text(value)
 
     @Slot(int)
     def set_pyramiding(self, value: int) -> None:
-        self._set_pyramiding(value)
+        self._broker_sim.set_pyramiding(value)
 
     @Slot(str)
     def set_commission_type(self, value: str) -> None:
-        self._set_commission_type(value)
+        self._broker_sim.set_commission_type(value)
 
     @Slot(float)
     def set_commission_value(self, value: float) -> None:
-        self._set_commission_value(value)
+        self._broker_sim.set_commission_value(value)
 
     @Slot(str)
     def set_commission_text(self, value: str) -> None:
-        self._set_commission_text(value)
+        self._broker_sim.set_commission_text(value)
 
     @Slot(int)
     def set_slippage_ticks(self, value: int) -> None:
-        self._set_slippage_ticks(value)
+        self._broker_sim.set_slippage_ticks(value)
 
     @Slot(float)
     def set_long_leverage(self, value: float) -> None:
-        self._set_long_leverage(value)
+        self._broker_sim.set_long_leverage(value)
 
     @Slot(float)
     def set_short_leverage(self, value: float) -> None:
-        self._set_short_leverage(value)
+        self._broker_sim.set_short_leverage(value)
 
     @Property("QVariantList", constant=True)
     def timeRangePresetOptions(self) -> list[dict[str, str]]:
-        return [
-            {"value": TimeRangePreset.LAST_7_DAYS.value, "label": "7 ngày qua"},
-            {"value": TimeRangePreset.LAST_30_DAYS.value, "label": "30 ngày qua"},
-            {"value": TimeRangePreset.LAST_90_DAYS.value, "label": "90 ngày qua"},
-            {"value": TimeRangePreset.LAST_365_DAYS.value, "label": "365 ngày qua"},
-            {"value": TimeRangePreset.ALL_HISTORY.value, "label": "Toàn bộ lịch sử"},
-            {"value": TimeRangePreset.CUSTOM.value, "label": "Tuỳ chỉnh"},
-        ]
+        return self._time_range.presetOptions
 
     def _get_time_range_preset(self) -> str:
-        return self._time_range_preset
+        return self._time_range.preset
 
     def _set_time_range_preset(self, value: str) -> None:
-        if value != self._time_range_preset:
-            self._time_range_preset = value
-            self.timeRangePresetChanged.emit()
+        self._time_range.preset = value
 
     timeRangePreset = Property(
         str,
@@ -826,10 +804,7 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_selected_time_range_preset_label(self) -> str:
-        for opt in self.timeRangePresetOptions:
-            if opt.get("value") == self._time_range_preset:
-                return opt.get("label", self._time_range_preset)
-        return self._time_range_preset
+        return self._time_range.selectedPresetLabel
 
     selectedTimeRangePresetLabel = Property(
         str,
@@ -838,12 +813,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_custom_start_text(self) -> str:
-        return self._custom_start_text
+        return self._time_range.customStartText
 
     def _set_custom_start_text(self, value: str) -> None:
-        if value != self._custom_start_text:
-            self._custom_start_text = value
-            self.customStartTextChanged.emit()
+        self._time_range.customStartText = value
 
     customStartText = Property(
         str,
@@ -853,12 +826,10 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_custom_end_text(self) -> str:
-        return self._custom_end_text
+        return self._time_range.customEndText
 
     def _set_custom_end_text(self, value: str) -> None:
-        if value != self._custom_end_text:
-            self._custom_end_text = value
-            self.customEndTextChanged.emit()
+        self._time_range.customEndText = value
 
     customEndText = Property(
         str, _get_custom_end_text, _set_custom_end_text, notify=customEndTextChanged
@@ -870,16 +841,14 @@ class BackTestViewModel(BaseQmlViewModel):
 
     @Property("QVariantList", constant=True)
     def displayTimezoneOptions(self) -> list[dict[str, str]]:
-        return get_supported_timezones()
+        return self._time_range.displayTimezoneOptions
 
     def _get_display_timezone(self) -> str:
-        return self._display_timezone
+        return self._time_range.displayTimezone
 
     @Slot(str)
     def set_display_timezone(self, value: str) -> None:
-        if value != self._display_timezone:
-            self._display_timezone = value
-            self.displayTimezoneChanged.emit()
+        self._time_range.set_display_timezone(value)
 
     displayTimezone = Property(
         str,
@@ -889,7 +858,7 @@ class BackTestViewModel(BaseQmlViewModel):
     )
 
     def _get_display_timezone_label(self) -> str:
-        return get_display_timezone_label(self._display_timezone)
+        return self._time_range.displayTimezoneLabel
 
     displayTimezoneLabel = Property(
         str,
@@ -901,31 +870,34 @@ class BackTestViewModel(BaseQmlViewModel):
     # Result / status (written from Python only)
     # ------------------------------------------------------------------ #
 
+    # --- `EPIC-003F5` facade -> `RunProgressViewModel` /
+    # `RunResultViewModel` --------------------------------------------- #
+    # `showExtendedMetrics` stays on the facade: it is a UI disclosure
+    # toggle, not part of the run's outcome — it survives a new run.
+
     def _get_result_text(self) -> str:
-        return self._result_text
+        return self._run_result.resultText
 
     resultText = Property(str, _get_result_text, notify=resultChanged)
 
     def _get_result_is_error(self) -> bool:
-        return self._result_is_error
+        return self._run_result.resultIsError
 
     resultIsError = Property(bool, _get_result_is_error, notify=resultChanged)
 
     @Slot(str, bool)
     def set_result(self, text: str, is_error: bool) -> None:
-        self._result_text = text
-        self._result_is_error = is_error
-        self.resultChanged.emit()
+        self._run_result.set_result(text, is_error)
 
     def _get_backtest_progress_percent(self) -> float:
-        return self._backtest_progress_percent
+        return self._run_progress.backtestProgressPercent
 
     backtestProgressPercent = Property(
         float, _get_backtest_progress_percent, notify=backtestProgressChanged
     )
 
     def _get_backtest_progress_text(self) -> str:
-        return self._backtest_progress_text
+        return self._run_progress.backtestProgressText
 
     backtestProgressText = Property(
         str, _get_backtest_progress_text, notify=backtestProgressChanged
@@ -933,61 +905,59 @@ class BackTestViewModel(BaseQmlViewModel):
 
     @Slot(float, str)
     def set_backtest_progress(self, percent: float, text: str) -> None:
-        self._backtest_progress_percent = percent
-        self._backtest_progress_text = text
-        self.backtestProgressChanged.emit()
+        self._run_progress.set_backtest_progress(percent, text)
 
     @Slot()
     def reset_backtest_progress(self) -> None:
-        self.set_backtest_progress(0.0, "")
+        self._run_progress.reset_backtest_progress()
 
     syncProgressPercent = Property(
-        float, lambda self: self._sync_progress_percent, notify=syncProgressChanged
+        float,
+        lambda self: self._run_progress.syncProgressPercent,
+        notify=syncProgressChanged,
     )
     syncProgressText = Property(
-        str, lambda self: self._sync_progress_text, notify=syncProgressChanged
+        str,
+        lambda self: self._run_progress.syncProgressText,
+        notify=syncProgressChanged,
     )
 
     @Slot(float, str)
     def set_sync_progress(self, percent: float, text: str) -> None:
-        self._sync_progress_percent = percent
-        self._sync_progress_text = text
-        self.syncProgressChanged.emit()
+        self._run_progress.set_sync_progress(percent, text)
 
     @Slot()
     def reset_sync_progress(self) -> None:
-        self.set_sync_progress(0.0, "")
+        self._run_progress.reset_sync_progress()
 
     isDataFullyCovered = Property(
         bool,
-        lambda self: self._is_data_fully_covered,
+        lambda self: self._run_result.isDataFullyCovered,
         notify=dataCoverageChanged,
     )
     dataCoverageMessage = Property(
         str,
-        lambda self: self._data_coverage_message,
+        lambda self: self._run_result.dataCoverageMessage,
         notify=dataCoverageChanged,
     )
 
     @Slot(bool, str)
     def set_data_coverage(self, is_fully_covered: bool, message: str) -> None:
-        self._is_data_fully_covered = is_fully_covered
-        self._data_coverage_message = message
-        self.dataCoverageChanged.emit()
+        self._run_result.set_data_coverage(is_fully_covered, message)
 
     # ------------------------------------------------------------------ #
     # Performance stat cards (BOT-055)
     # ------------------------------------------------------------------ #
 
     def _get_primary_stat_cards(self) -> list[dict[str, str]]:
-        return self._primary_stat_cards
+        return self._run_result.primaryStatCards
 
     primaryStatCards = Property(
         "QVariantList", _get_primary_stat_cards, notify=statCardsChanged
     )
 
     def _get_extended_stat_cards(self) -> list[dict[str, str]]:
-        return self._extended_stat_cards
+        return self._run_result.extendedStatCards
 
     extendedStatCards = Property(
         "QVariantList", _get_extended_stat_cards, notify=statCardsChanged
@@ -999,43 +969,19 @@ class BackTestViewModel(BaseQmlViewModel):
         primary: list[dict[str, str]],
         extended: list[dict[str, str]],
     ) -> None:
-        """Empty lists clear the panel (no result yet, or the last run
-        failed/returned nothing) — QML hides the cards row when
-        `primaryStatCards` is empty."""
-        self._primary_stat_cards = primary
-        self._extended_stat_cards = extended
-        self.statCardsChanged.emit()
+        self._run_result.set_stat_cards(primary, extended)
 
     def extended_metrics_snapshot(self) -> ExtendedMetricsSnapshot | None:
-        """Plain Python accessor (no QML `Property`) for
-        `MetricsDetailDialogWidget`'s composition root — see the field's own
-        docstring in `__init__` and `ExtendedMetricsSnapshot`'s module
-        docstring for why this is a separate retention from
-        `extendedStatCards` rather than the same list re-read."""
-        return self._extended_metrics_snapshot
+        return self._run_result.extended_metrics_snapshot()
 
     @Slot(object)
     def set_extended_metrics_snapshot(
         self, snapshot: ExtendedMetricsSnapshot | None
     ) -> None:
-        """Set by `BackTestPresenter` right alongside `set_stat_cards(...)`.
-        `None` clears it (no result yet / last run failed or returned no
-        data) — same convention `set_stat_cards([], [])` already uses for
-        the QML-facing lists.
-
-        `@Slot(object)` even though no `.qml` ever calls this (no QML
-        `Property` reads it back either — see `extended_metrics_snapshot()`):
-        every other `set_*` mutator on this class carries `@Slot`, and
-        `test_bug031_cross_thread_timer.py::test_backtest_view_model_set_ui_mode_has_slot_decorator`
-        (`unprotected_mutators()`, EPIC covering `BUG-031`) flags any
-        `set_*`/`append*`/`clear*`/`hide_*` method with neither `@Slot` nor
-        `@ui_mutator` — `object` is PySide6's accept-any-Python-value slot
-        type, which is what an `ExtendedMetricsSnapshot | None` argument
-        needs (it is not a Qt-registrable type on its own)."""
-        self._extended_metrics_snapshot = snapshot
+        self._run_result.set_extended_metrics_snapshot(snapshot)
 
     def _get_result_warning_text(self) -> str:
-        return self._result_warning_text
+        return self._run_result.resultWarningText
 
     resultWarningText = Property(
         str, _get_result_warning_text, notify=resultWarningTextChanged
@@ -1043,23 +989,16 @@ class BackTestViewModel(BaseQmlViewModel):
 
     @Slot(str)
     def set_result_warning_text(self, text: str) -> None:
-        """BOT-079 follow-up. Empty string means "no warning" — QML hides its
-        row entirely rather than showing a blank line."""
-        if text != self._result_warning_text:
-            self._result_warning_text = text
-            self.resultWarningTextChanged.emit()
+        self._run_result.set_result_warning_text(text)
 
     def _get_limitations(self) -> list[str]:
-        return self._limitations
+        return self._run_result.limitations
 
     limitations = Property("QStringList", _get_limitations, notify=limitationsChanged)
 
     @Slot("QStringList")
     def set_limitations(self, limitations: list[str]) -> None:
-        """BOT-081. Empty list means "no result yet" — same convention as
-        `set_stat_cards([], [])`."""
-        self._limitations = list(limitations)
-        self.limitationsChanged.emit()
+        self._run_result.set_limitations(limitations)
 
     def _get_show_extended_metrics(self) -> bool:
         return self._show_extended_metrics
@@ -1081,19 +1020,13 @@ class BackTestViewModel(BaseQmlViewModel):
     # ------------------------------------------------------------------ #
 
     def _get_needs_data_sync(self) -> bool:
-        return self._needs_data_sync
+        return self._run_result.needsDataSync
 
-    #: True only after a run comes back "no historical data" — drives the
-    #: "Đồng bộ ngay" button's `visible` in QML. Read-only from QML by
-    #: design: only the Presenter (via `set_needs_data_sync`) knows whether
-    #: the last run actually hit that case.
     needsDataSync = Property(bool, _get_needs_data_sync, notify=needsDataSyncChanged)
 
     @Slot(bool)
     def set_needs_data_sync(self, value: bool) -> None:
-        if value != self._needs_data_sync:
-            self._needs_data_sync = value
-            self.needsDataSyncChanged.emit()
+        self._run_result.set_needs_data_sync(value)
 
     def _get_is_chart_preview(self) -> bool:
         return self._is_chart_preview
