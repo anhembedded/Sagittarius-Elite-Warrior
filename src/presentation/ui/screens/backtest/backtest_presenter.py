@@ -768,13 +768,13 @@ class BackTestPresenter(BasePresenter):
 
         self._backtest_cancellation_token = CancellationToken()
         self._cancelling_action_id = None
-        self._view_model.reset_backtest_progress()
+        self._view_model.run_progress.reset_backtest_progress()
         action = self._begin_action(
             BacktestActionKind.BACKTEST,
             config,
             previous_state or self.fsm.current_state,
         )
-        self._view_model.reset_sync_progress()
+        self._view_model.run_progress.reset_sync_progress()
         self._view_model.set_result(_RUNNING_MESSAGE, is_error=False)
         self._log_dev_trace("run_worker_submitted")
         self._thread_manager.submit(
@@ -896,11 +896,11 @@ class BackTestPresenter(BasePresenter):
         self._cancelling_action_id = None
         if kind is BacktestActionKind.SYNC:
             self._sync_cancellation_token = None
-            self._view_model.reset_sync_progress()
+            self._view_model.run_progress.reset_sync_progress()
             message = "Đã hủy đồng bộ dữ liệu."
         else:
             self._backtest_cancellation_token = None
-            self._view_model.reset_backtest_progress()
+            self._view_model.run_progress.reset_backtest_progress()
             message = "Đã hủy Backtest. Kết quả trước đó được giữ nguyên."
         self._view_model.set_result(message, is_error=False)
         self._emit_ui_log(message, "info")
@@ -1006,7 +1006,7 @@ class BackTestPresenter(BasePresenter):
             "full": "Chạy toàn bộ dữ liệu",
         }.get(phase, "Đang chạy")
         eta_label = f" · ETA ~{eta_seconds}s" if eta_seconds is not None else ""
-        self._view_model.set_backtest_progress(
+        self._view_model.run_progress.set_backtest_progress(
             percent, f"{phase_label}: {percent:.0f}%{eta_label}"
         )
 
@@ -1521,7 +1521,7 @@ class BackTestPresenter(BasePresenter):
         if not self._is_current_pending_action(action_id, BacktestActionKind.SYNC):
             return
         percent = min(100.0, max(0.0, current / total * 100.0)) if total > 0 else 0.0
-        self._view_model.set_sync_progress(
+        self._view_model.run_progress.set_sync_progress(
             percent,
             f"Đang đồng bộ nến: {current:,}/{total:,} ({percent:.0f}%)",
         )
@@ -1577,7 +1577,7 @@ class BackTestPresenter(BasePresenter):
     def _on_sync_succeeded(self) -> None:
         self._log_dev_trace("sync_succeeded")
         self._logger.log_sync_event("Đồng bộ dữ liệu thành công.")
-        self._view_model.reset_sync_progress()
+        self._view_model.run_progress.reset_sync_progress()
         # Sync is just an inserted precondition, not an independent user
         # action — the user already asked to run a backtest, "no data" got
         # in the way, and now that it's synced the original intent should
@@ -1602,7 +1602,7 @@ class BackTestPresenter(BasePresenter):
     def _on_sync_failed(self, message: str) -> None:
         self._log_dev_trace("sync_failed", message=message)
         self._logger.log_sync_event(f"Đồng bộ thất bại: {message}", is_error=True)
-        self._view_model.reset_sync_progress()
+        self._view_model.run_progress.reset_sync_progress()
         # needsDataSync / _last_no_data_config are left untouched — the sync
         # that just failed was for genuinely missing data, so "Đồng bộ ngay"
         # should stay offered for the user to retry.

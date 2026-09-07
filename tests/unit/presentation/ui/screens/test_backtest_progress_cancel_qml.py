@@ -162,7 +162,7 @@ def test_progress_banner_status_text_and_percent_are_wired(
     progress_widget = view.top_widget._progress_banner_widget
     view_model = presenter._view_model
 
-    view_model.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
+    view_model.run_progress.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
     view_model.set_ui_mode("SYNCING")
     qapp.processEvents()
 
@@ -172,7 +172,7 @@ def test_progress_banner_status_text_and_percent_are_wired(
     assert percent.property("text") == "45%"
 
     view_model.set_ui_mode("IDLE")
-    view_model.set_backtest_progress(80.0, "Chạy toàn bộ dữ liệu: 80%")
+    view_model.run_progress.set_backtest_progress(80.0, "Chạy toàn bộ dữ liệu: 80%")
     view_model.set_ui_mode("RUNNING")
     qapp.processEvents()
 
@@ -194,7 +194,7 @@ def test_progress_banner_clamps_an_out_of_range_percent(
     progress_widget = view.top_widget._progress_banner_widget
     view_model = presenter._view_model
 
-    view_model.set_backtest_progress(150.0, "over")
+    view_model.run_progress.set_backtest_progress(150.0, "over")
     view_model.set_ui_mode("RUNNING")
     qapp.processEvents()
 
@@ -202,7 +202,7 @@ def test_progress_banner_clamps_an_out_of_range_percent(
     assert percent.property("text") == "100%"
 
     view_model.set_ui_mode("IDLE")
-    view_model.set_backtest_progress(-10.0, "under")
+    view_model.run_progress.set_backtest_progress(-10.0, "under")
     view_model.set_ui_mode("RUNNING")
     qapp.processEvents()
 

@@ -1411,11 +1411,11 @@ def test_sync_progress_updates_only_the_active_sync_action(
 
     presenter._on_sync_progress_for_action(sync_action.action_id, 45, 100)
 
-    assert view_model.syncProgressPercent == 45.0
-    assert "45/100" in view_model.syncProgressText
+    assert view_model.run_progress.syncProgressPercent == 45.0
+    assert "45/100" in view_model.run_progress.syncProgressText
     presenter._finish_action(sync_action.action_id, BacktestActionOutcome.INVALIDATED)
     presenter._on_sync_progress_for_action(sync_action.action_id, 90, 100)
-    assert view_model.syncProgressPercent == 45.0
+    assert view_model.run_progress.syncProgressPercent == 45.0
 
 
 def test_timeframe_change_submits_background_preview_with_snapshot(
@@ -3413,7 +3413,7 @@ def test_progress_updates_are_ignored_after_cancel(presenter, view_model):
             elapsed_seconds=2.0,
         )
     )
-    assert view_model.backtestProgressPercent == 50.0
+    assert view_model.run_progress.backtestProgressPercent == 50.0
 
     view_model.requestCancelBacktest()
     presenter._on_backtest_progress_for_action(
@@ -3426,7 +3426,7 @@ def test_progress_updates_are_ignored_after_cancel(presenter, view_model):
         )
     )
 
-    assert view_model.backtestProgressPercent == 50.0
+    assert view_model.run_progress.backtestProgressPercent == 50.0
 
 
 def test_qml_run_button_requests_cancel_while_backtest_is_running(

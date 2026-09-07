@@ -103,8 +103,6 @@ class BackTestViewModel(BaseQmlViewModel):
     customStartTextChanged = Signal()
     customEndTextChanged = Signal()
     resultChanged = Signal()
-    backtestProgressChanged = Signal()
-    syncProgressChanged = Signal()
     dataCoverageChanged = Signal()
     statCardsChanged = Signal()
     #: BOT-079 follow-up — separate from `statCardsChanged` on purpose: the
@@ -273,8 +271,6 @@ class BackTestViewModel(BaseQmlViewModel):
         self._run_progress = RunProgressViewModel(parent=self)
         self._run_result = RunResultViewModel(parent=self)
         for source, forwarded in (
-            (self._run_progress.backtestProgressChanged, self.backtestProgressChanged),
-            (self._run_progress.syncProgressChanged, self.syncProgressChanged),
             (self._run_result.resultChanged, self.resultChanged),
             (self._run_result.statCardsChanged, self.statCardsChanged),
             (
@@ -320,6 +316,46 @@ class BackTestViewModel(BaseQmlViewModel):
     def script_model(self) -> IndicatorScriptListModel:
         """Pythonic accessor for the Presenter."""
         return self._script_model
+
+    # ------------------------------------------------------------------ #
+    # `EPIC-003F6` Phase 0 — the six sub-ViewModels, reachable by name.
+    #
+    # Purely additive: nothing here changes a single existing call site.
+    # It is what lets a call site be migrated OFF the forwarding property
+    # (`vm.backtestProgressPercent`) and ONTO the object that actually owns
+    # the state (`vm.run_progress.backtestProgressPercent`), one group at a
+    # time, before any forwarding member is deleted.
+    #
+    # Plain `@property`, not `Property(QObject, constant=True)`: `EPIC-006`
+    # removed every `.qml` from this app, so nothing marshals these to QML
+    # and the Qt wrapper would be ceremony. Read-only on purpose — a
+    # sub-ViewModel is constructed once, in `__init__`, and reseating one
+    # would leave every signal connected to the old instance.
+    # ------------------------------------------------------------------ #
+
+    @property
+    def trade_log(self) -> TradeLogViewModel:
+        return self._trade_log
+
+    @property
+    def strategy_params(self) -> StrategyParamsViewModel:
+        return self._strategy_params
+
+    @property
+    def time_range(self) -> TimeRangeViewModel:
+        return self._time_range
+
+    @property
+    def broker_sim(self) -> BrokerSimViewModel:
+        return self._broker_sim
+
+    @property
+    def run_progress(self) -> RunProgressViewModel:
+        return self._run_progress
+
+    @property
+    def run_result(self) -> RunResultViewModel:
+        return self._run_result
 
     # ------------------------------------------------------------------ #
     # Strategy selection
@@ -888,47 +924,6 @@ class BackTestViewModel(BaseQmlViewModel):
     @Slot(str, bool)
     def set_result(self, text: str, is_error: bool) -> None:
         self._run_result.set_result(text, is_error)
-
-    def _get_backtest_progress_percent(self) -> float:
-        return self._run_progress.backtestProgressPercent
-
-    backtestProgressPercent = Property(
-        float, _get_backtest_progress_percent, notify=backtestProgressChanged
-    )
-
-    def _get_backtest_progress_text(self) -> str:
-        return self._run_progress.backtestProgressText
-
-    backtestProgressText = Property(
-        str, _get_backtest_progress_text, notify=backtestProgressChanged
-    )
-
-    @Slot(float, str)
-    def set_backtest_progress(self, percent: float, text: str) -> None:
-        self._run_progress.set_backtest_progress(percent, text)
-
-    @Slot()
-    def reset_backtest_progress(self) -> None:
-        self._run_progress.reset_backtest_progress()
-
-    syncProgressPercent = Property(
-        float,
-        lambda self: self._run_progress.syncProgressPercent,
-        notify=syncProgressChanged,
-    )
-    syncProgressText = Property(
-        str,
-        lambda self: self._run_progress.syncProgressText,
-        notify=syncProgressChanged,
-    )
-
-    @Slot(float, str)
-    def set_sync_progress(self, percent: float, text: str) -> None:
-        self._run_progress.set_sync_progress(percent, text)
-
-    @Slot()
-    def reset_sync_progress(self) -> None:
-        self._run_progress.reset_sync_progress()
 
     isDataFullyCovered = Property(
         bool,

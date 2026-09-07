@@ -1,7 +1,11 @@
-"""`EPIC-003F5` — `BackTestViewModel`'s progress bars and run-result
-members now forward to `RunProgressViewModel` / `RunResultViewModel`.
-This file proves the forwarding; the behaviour is tested directly on the
-two sub-ViewModels in `view_models/`.
+"""`EPIC-003F5` — `BackTestViewModel`'s run-result members forward to
+`RunResultViewModel`. This file proves the forwarding; the behaviour is
+tested directly on the sub-ViewModel in `view_models/`.
+
+`EPIC-003F6` Phase 1 removed the progress half: `RunProgressViewModel` is
+reached as `vm.run_progress.*` now, with no forwarding property left to
+prove anything about. Its behaviour is covered by
+`view_models/test_run_progress_view_model.py`.
 """
 
 from __future__ import annotations
@@ -9,17 +13,6 @@ from __future__ import annotations
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.backtest_view_model import (
     BackTestViewModel,
 )
-
-
-def test_progress_written_through_the_facade_is_readable_through_it(qapp) -> None:
-    vm = BackTestViewModel()
-
-    vm.set_backtest_progress(30.0, "Đang chạy…")
-    vm.set_sync_progress(60.0, "Đang tải…")
-
-    assert (vm.backtestProgressPercent, vm.backtestProgressText) == (30.0, "Đang chạy…")
-    assert (vm.syncProgressPercent, vm.syncProgressText) == (60.0, "Đang tải…")
-    assert vm._run_progress.backtestProgressPercent == 30.0
 
 
 def test_result_members_forward_to_the_run_result_view_model(qapp) -> None:
@@ -51,15 +44,13 @@ def test_each_facade_signal_fires_exactly_once_per_change(qapp) -> None:
     vm.statCardsChanged.connect(lambda: seen.append("cards"))
     vm.limitationsChanged.connect(lambda: seen.append("limits"))
     vm.needsDataSyncChanged.connect(lambda: seen.append("needs_sync"))
-    vm.backtestProgressChanged.connect(lambda: seen.append("progress"))
 
     vm.set_result("Xong", False)
     vm.set_stat_cards([], [])
     vm.set_limitations([])
     vm.set_needs_data_sync(True)
-    vm.set_backtest_progress(10.0, "…")
 
-    assert seen == ["result", "cards", "limits", "needs_sync", "progress"]
+    assert seen == ["result", "cards", "limits", "needs_sync"]
 
 
 def test_show_extended_metrics_stays_on_the_facade_across_a_new_run(qapp) -> None:

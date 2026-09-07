@@ -127,7 +127,7 @@ def test_progress_banner_is_visible_while_backtest_runs(view, qapp):
     v, vm = view
     assert v.top_widget._progress_banner.isVisible() is False
 
-    vm.set_backtest_progress(42.0, "Chạy toàn bộ dữ liệu: 42% · ETA ~8s")
+    vm.run_progress.set_backtest_progress(42.0, "Chạy toàn bộ dữ liệu: 42% · ETA ~8s")
     vm.set_ui_mode("RUNNING")
     qapp.processEvents()
 
@@ -139,7 +139,7 @@ def test_sync_progress_and_coverage_warning_are_visible(view, qapp):
 
     vm.set_data_coverage(False, "Thiếu nến từ 2026-01-01 00:00 UTC.")
     vm.set_needs_data_sync(True)
-    vm.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
+    vm.run_progress.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
     vm.set_ui_mode("SYNCING")
     qapp.processEvents()
 

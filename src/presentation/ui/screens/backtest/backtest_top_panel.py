@@ -572,8 +572,8 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         vm.uiModeChanged.connect(self._sync_run_button)
         vm.isConfigDirtyChanged.connect(self._sync_run_button)
         vm.isConfigDirtyChanged.connect(self._sync_banners)
-        vm.backtestProgressChanged.connect(self._sync_banners)
-        vm.syncProgressChanged.connect(self._sync_banners)
+        vm.run_progress.backtestProgressChanged.connect(self._sync_banners)
+        vm.run_progress.syncProgressChanged.connect(self._sync_banners)
         vm.uiModeChanged.connect(self._sync_banners)
         vm.isChartPreviewChanged.connect(self._sync_banners)
         vm.dataCoverageChanged.connect(self._sync_banners)
@@ -673,15 +673,19 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
                 self._progress_banner_widget.set_indeterminate(True)
             elif mode == "SYNCING":
                 self._progress_banner_widget.set_indeterminate(False)
-                self._progress_banner_widget.set_status_text(vm.syncProgressText)
+                self._progress_banner_widget.set_status_text(
+                    vm.run_progress.syncProgressText
+                )
                 self._progress_banner_widget.set_percent(
-                    _clamp_percent(vm.syncProgressPercent)
+                    _clamp_percent(vm.run_progress.syncProgressPercent)
                 )
             else:
                 self._progress_banner_widget.set_indeterminate(False)
-                self._progress_banner_widget.set_status_text(vm.backtestProgressText)
+                self._progress_banner_widget.set_status_text(
+                    vm.run_progress.backtestProgressText
+                )
                 self._progress_banner_widget.set_percent(
-                    _clamp_percent(vm.backtestProgressPercent)
+                    _clamp_percent(vm.run_progress.backtestProgressPercent)
                 )
 
         self._preview_banner.setVisible(bool(vm.isChartPreview))
