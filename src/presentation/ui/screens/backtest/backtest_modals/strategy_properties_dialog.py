@@ -20,6 +20,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.param_field import (
+    BotParamFieldWidget,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     Overlay,
 )
@@ -32,7 +35,6 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.kit.widget_value import (
 )
 
 from ..logic.broker_properties_schema import BROKER_PROPERTY_FIELDS
-from ._bot_param_field import _BotParamFieldWidget
 from ._layout import _ACCENT, _field_row, _section_header
 
 if TYPE_CHECKING:
@@ -85,7 +87,7 @@ class StrategyPropertiesDialog(Overlay):
         self.setObjectName("botParamsDialog")
         self._vm = view_model
         self._strategy_name = ""
-        self._field_widgets: list[_BotParamFieldWidget] = []
+        self._field_widgets: list[BotParamFieldWidget] = []
         self.resize(680, 620)
 
         self._tabs = QTabWidget()
@@ -368,7 +370,7 @@ class StrategyPropertiesDialog(Overlay):
                     _section_header("~", row.get("groupLabel", ""))
                 )
             elif row_type == "field":
-                field_widget = _BotParamFieldWidget(row.get("field", {}), self._vm)
+                field_widget = BotParamFieldWidget(row.get("field", {}), self._vm)
                 self._inputs_layout.addWidget(field_widget)
                 self._field_widgets.append(field_widget)
         self._wire_commit_on_edit(fw.input_widget for fw in self._field_widgets)

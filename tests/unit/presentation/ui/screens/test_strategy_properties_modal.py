@@ -242,7 +242,7 @@ def test_editing_a_strategy_input_field_and_saving_uses_the_typed_value(
     above only ever calls `vm.requestStrategyPropertiesSave(payload)` with a
     hand-built payload — it never exercises `_collect_payload()`'s own read of
     the real field widgets. This drives the actual dialog: types into the
-    real `_BotParamFieldWidget`'s QLineEdit and clicks the real Save button,
+    real `BotParamFieldWidget`'s QLineEdit and clicks the real Save button,
     so a bug in collecting live widget values (as opposed to the coordinator
     plumbing behind them) would actually get caught. Confirms the mechanism
     is sound: a user report of "changing a strategy parameter has no effect"

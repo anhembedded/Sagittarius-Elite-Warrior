@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QVBoxLayout,
@@ -54,6 +55,23 @@ _TOGGLE_BUSY_TEXT = "Đang xử lý..."
 #: `EPIC-021M` — the equity chart's `ChartCard(symbol=...)` title; not a
 #: real trading symbol, just what `Card`'s header shows.
 _EQUITY_CHART_TITLE = "Vốn"
+
+# --- `EPIC-022D` strategy card ---------------------------------------- #
+#: Domain terminology fixed by `ui-presentation-rule.md`: strategy
+#: parameters are "Thông số Chiến lược", never the general Bot settings.
+_PARAMS_BUTTON_TEXT = "Thông số Chiến lược…"
+_ARM_TEXT = "Nạp chiến lược"
+_DISARM_TEXT = "Gỡ"
+_NOT_ARMED_TEXT = "Chưa nạp chiến lược nào."
+_NO_SIGNAL_TEXT = "Chưa có tín hiệu nào."
+#: Sizing is a percentage of equity; 0 would mean "never order anything",
+#: which is what "Gỡ" is for, so the floor is a real minimum position.
+_SIZING_MIN_PERCENT = 0.1
+_SIZING_MAX_PERCENT = 100.0
+#: Binance USD-M Futures allows up to 125x. The app does not raise the
+#: exchange's own ceiling; it only refuses to invent one lower than it.
+_LEVERAGE_MIN = 1.0
+_LEVERAGE_MAX = 125.0
 
 
 class TradingView(BaseView):
@@ -138,6 +156,44 @@ class TradingView(BaseView):
             )
         )
 
+        # --- `EPIC-022D` strategy card --------------------------------- #
+        self._apply_strategy_options(
+            view_model.strategyOptions, view_model.intervalOptions
+        )
+        self._apply_strategy_selection(view_model)
+        self._apply_armed_summary(
+            view_model.armedSummary, view_model.strategyBusy, view_model.enabled
+        )
+        self._apply_last_signal(view_model.lastSignalText)
+
+        self._strategy_combo.currentIndexChanged.connect(
+            lambda _index: view_model.requestStrategySelection(
+                self._strategy_combo.currentData() or ""
+            )
+        )
+        self._interval_combo.currentTextChanged.connect(
+            view_model.requestIntervalSelection
+        )
+        self._sizing_spin.valueChanged.connect(view_model.requestSizingPercent)
+        self._leverage_spin.valueChanged.connect(view_model.requestLeverage)
+        self._arm_button.clicked.connect(view_model.requestArm)
+        self._disarm_button.clicked.connect(view_model.requestDisarm)
+        self._params_button.clicked.connect(self._open_strategy_params_dialog)
+
+        view_model.strategyConfigChanged.connect(
+            lambda: self._on_strategy_config_changed(view_model)
+        )
+        # The card is also disabled by trading turning on, which arrives on
+        # `tradingStateChanged`, not on `strategyConfigChanged`.
+        view_model.tradingStateChanged.connect(
+            lambda: self._apply_armed_summary(
+                view_model.armedSummary, view_model.strategyBusy, view_model.enabled
+            )
+        )
+        view_model.lastSignalChanged.connect(
+            lambda: self._apply_last_signal(view_model.lastSignalText)
+        )
+
     def set_positions(self, rows: list[PositionRow]) -> None:
         self._positions_panel.set_rows(rows)
 
@@ -186,6 +242,87 @@ class TradingView(BaseView):
     def _apply_session_stats(self, orders_sent: int, open_symbols_count: int) -> None:
         self._orders_sent_value.setText(str(orders_sent))
         self._open_symbols_value.setText(str(open_symbols_count))
+
+    # --- `EPIC-022D` strategy card ------------------------------------- #
+
+    def _on_strategy_config_changed(self, view_model: TradingViewModel) -> None:
+        self._apply_strategy_options(
+            view_model.strategyOptions, view_model.intervalOptions
+        )
+        self._apply_strategy_selection(view_model)
+        self._apply_armed_summary(
+            view_model.armedSummary, view_model.strategyBusy, view_model.enabled
+        )
+
+    def _apply_strategy_options(
+        self, options: list[dict], interval_options: list[str]
+    ) -> None:
+        """@details Each row's registry key rides on `setItemData`, never
+        on the visible text: the label is humanised for reading
+        ("Ema Crossover") while `ArmStrategyCommand` needs the exact key
+        (`ema_crossover`). Deriving one from the other by string surgery
+        is how a renamed strategy silently stops being armable."""
+        self._strategy_combo.blockSignals(True)
+        self._strategy_combo.clear()
+        for option in options:
+            self._strategy_combo.addItem(option.get("label", ""), option.get("key", ""))
+        self._strategy_combo.blockSignals(False)
+
+        self._interval_combo.blockSignals(True)
+        self._interval_combo.clear()
+        self._interval_combo.addItems(interval_options)
+        self._interval_combo.blockSignals(False)
+
+    def _apply_strategy_selection(self, view_model: TradingViewModel) -> None:
+        self._strategy_combo.blockSignals(True)
+        index = self._strategy_combo.findData(view_model.selectedStrategyKey)
+        if index >= 0:
+            self._strategy_combo.setCurrentIndex(index)
+        self._strategy_combo.blockSignals(False)
+
+        self._interval_combo.blockSignals(True)
+        if view_model.liveInterval:
+            self._interval_combo.setCurrentText(view_model.liveInterval)
+        self._interval_combo.blockSignals(False)
+
+        for spin, value in (
+            (self._sizing_spin, view_model.sizingPercent),
+            (self._leverage_spin, view_model.leverage),
+        ):
+            spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(False)
+
+    def _apply_armed_summary(
+        self, summary: str, busy: bool, trading_enabled: bool
+    ) -> None:
+        self._armed_label.setText(summary or _NOT_ARMED_TEXT)
+        self._armed_label.setStyleSheet(
+            f"color: {Palette.SUCCESS if summary else Palette.MUTED}; font-size: 11px;"
+        )
+        # `EPIC-022` §4.1 — swapping the engine under an open position is
+        # refused by the command handler too; this is the same rule made
+        # visible before the click rather than after it.
+        editable = not busy and not trading_enabled
+        for widget in self._strategy_controls:
+            widget.setEnabled(editable)
+
+    def _apply_last_signal(self, text: str) -> None:
+        self._last_signal_label.setText(text or _NO_SIGNAL_TEXT)
+
+    def _open_strategy_params_dialog(self) -> None:
+        """@details Built fresh per opening rather than kept alive: the
+        form's fields are rebuilt from the schema of whichever strategy is
+        currently picked, and a retained dialog would have to be told to
+        forget the previous strategy's widgets anyway. Imported lazily —
+        the dialog pulls in `QScrollArea`/`Overlay` chrome no user who
+        never opens it should pay for at screen construction."""
+        if self._view_model is None:
+            return
+        from .trading_strategy_params_dialog import TradingStrategyParamsDialog
+
+        dialog = TradingStrategyParamsDialog(self._view_model, self)
+        dialog.exec()
 
     # ------------------------------------------------------------------ #
     # Layout
@@ -286,6 +423,107 @@ class TradingView(BaseView):
         return workspace
 
     def _build_rail(self) -> QWidget:
+        """`EPIC-022D` — the rail became a column of cards rather than one
+        card: strategy configuration, the latest signal, then the session
+        counters. Ordered by how often a user acts on them, not by when
+        they were built."""
+        rail = QWidget()
+        column = QVBoxLayout(rail)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(12)
+        column.addWidget(self._build_strategy_card())
+        column.addWidget(self._build_last_signal_card())
+        column.addWidget(self._build_session_card())
+        column.addStretch(1)
+        return rail
+
+    def _build_strategy_card(self) -> QWidget:
+        card = Card("CHIẾN LƯỢC")
+        card.setObjectName("tradingStrategyCard")
+        card.body_layout.setContentsMargins(12, 12, 12, 12)
+        card.body_layout.setSpacing(8)
+
+        card.body_layout.addWidget(self._field_label("Chiến lược"))
+        self._strategy_combo = QComboBox()
+        self._strategy_combo.setObjectName("cboLiveStrategy")
+        card.body_layout.addWidget(self._strategy_combo)
+
+        card.body_layout.addWidget(self._field_label("Khung thời gian giao dịch"))
+        self._interval_combo = QComboBox()
+        self._interval_combo.setObjectName("cboLiveInterval")
+        card.body_layout.addWidget(self._interval_combo)
+
+        card.body_layout.addWidget(self._field_label("% vốn mỗi lệnh"))
+        self._sizing_spin = QDoubleSpinBox()
+        self._sizing_spin.setObjectName("spnLiveSizingPercent")
+        self._sizing_spin.setRange(_SIZING_MIN_PERCENT, _SIZING_MAX_PERCENT)
+        self._sizing_spin.setSingleStep(1.0)
+        self._sizing_spin.setSuffix(" %")
+        card.body_layout.addWidget(self._sizing_spin)
+
+        card.body_layout.addWidget(self._field_label("Đòn bẩy"))
+        self._leverage_spin = QDoubleSpinBox()
+        self._leverage_spin.setObjectName("spnLiveLeverage")
+        self._leverage_spin.setRange(_LEVERAGE_MIN, _LEVERAGE_MAX)
+        self._leverage_spin.setSingleStep(1.0)
+        self._leverage_spin.setSuffix(" x")
+        card.body_layout.addWidget(self._leverage_spin)
+
+        self._params_button = StyledButton(
+            _PARAMS_BUTTON_TEXT, role=StyleRole.SECONDARY_BUTTON
+        )
+        self._params_button.setObjectName("btnStrategyParams")
+        self._params_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        card.body_layout.addWidget(self._params_button)
+
+        actions = QWidget()
+        actions_row = QHBoxLayout(actions)
+        actions_row.setContentsMargins(0, 0, 0, 0)
+        actions_row.setSpacing(8)
+        self._arm_button = StyledButton(_ARM_TEXT, role=StyleRole.PRIMARY_BUTTON)
+        self._arm_button.setObjectName("btnArmStrategy")
+        self._arm_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._disarm_button = StyledButton(
+            _DISARM_TEXT, role=StyleRole.SECONDARY_BUTTON
+        )
+        self._disarm_button.setObjectName("btnDisarmStrategy")
+        self._disarm_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        actions_row.addWidget(self._arm_button, 1)
+        actions_row.addWidget(self._disarm_button, 1)
+        card.body_layout.addWidget(actions)
+
+        self._armed_label = QLabel(_NOT_ARMED_TEXT)
+        self._armed_label.setObjectName("lblArmedStrategy")
+        self._armed_label.setWordWrap(True)
+        card.body_layout.addWidget(self._armed_label)
+
+        #: Everything above is disabled while trading is on. The command
+        #: handlers refuse a swap anyway (`EPIC-022` §4.1) — this is the
+        #: half of that rule the user can see before clicking, rather
+        #: than a refusal after.
+        self._strategy_controls = (
+            self._strategy_combo,
+            self._interval_combo,
+            self._sizing_spin,
+            self._leverage_spin,
+            self._params_button,
+            self._arm_button,
+            self._disarm_button,
+        )
+        return card
+
+    def _build_last_signal_card(self) -> QWidget:
+        card = Card("TÍN HIỆU GẦN NHẤT")
+        card.setObjectName("tradingLastSignalCard")
+        card.body_layout.setContentsMargins(12, 12, 12, 12)
+        card.body_layout.setSpacing(6)
+        self._last_signal_label = QLabel(_NO_SIGNAL_TEXT)
+        self._last_signal_label.setObjectName("lblLastSignal")
+        self._last_signal_label.setWordWrap(True)
+        card.body_layout.addWidget(self._last_signal_label)
+        return card
+
+    def _build_session_card(self) -> QWidget:
         card = Card("PHIÊN GIAO DỊCH")
         card.setObjectName("tradingSessionRail")
         card.body_layout.setContentsMargins(12, 12, 12, 12)
@@ -302,6 +540,4 @@ class TradingView(BaseView):
         self._open_symbols_value.setObjectName("lblOpenSymbolsCount")
         apply_role(self._open_symbols_value, StyleRole.STAT_VALUE)
         card.body_layout.addWidget(self._open_symbols_value)
-
-        card.body_layout.addStretch(1)
         return card

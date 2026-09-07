@@ -1,3 +1,14 @@
+"""`MarketTickEventHandler` is an adapter, and these tests hold it to that.
+
+`EPIC-022A` moved the symbol/interval filtering, the `on_tick()` call and
+the hand-off to `LiveTradingCoordinator` into `LiveStrategySession`, so
+the assertions that used to live here (including `BUG-085`'s
+interleaved-interval regressions) moved with them, to
+`tests/unit/application/services/test_live_strategy_session.py`. What
+stays here is what this class still owns: log level, and delegating every
+tick to the session unfiltered.
+"""
+
 from datetime import UTC, datetime
 from unittest.mock import Mock
 
@@ -36,12 +47,7 @@ def test_logs_at_debug_not_info():
     """`EPIC-021G` §2.5 / `BUG-042`: tick processing runs every candle,
     every symbol — it must never be `INFO`, or `SignalLogHandler` mirrors
     it to the UI's queued log model on every single tick."""
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=None,
-        live_trading_coordinator=None,
-    )
+    handler = MarketTickEventHandler(Mock())
     handler.logger = Mock()
 
     handler.handle(MarketTickEvent(market_data=_market_data()))
@@ -53,150 +59,16 @@ def test_logs_at_debug_not_info():
     assert "BTCUSDT" in call_args
 
 
-def test_no_strategy_engine_configured_does_nothing_further():
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=None,
-        live_trading_coordinator=None,
-    )
+def test_every_tick_is_handed_to_the_session_unfiltered():
+    """The handler deliberately does NOT pre-filter by symbol/interval:
+    `LiveStrategySession` owns that decision because it is the only place
+    that can read the armed config and the engine as one consistent
+    snapshot (`EPIC-022A`). A handler that filtered too would be a second
+    copy of the rule, free to disagree with the first."""
+    session = Mock()
+    handler = MarketTickEventHandler(session)
+    event = MarketTickEvent(market_data=_market_data("ETHUSDT"))
 
-    # Would raise if it tried to call .on_tick() on None.
-    handler.handle(MarketTickEvent(market_data=_market_data()))
-
-
-def test_feeds_the_engine_when_the_tick_matches_symbol_and_interval():
-    engine = Mock()
-    engine.on_tick.return_value = None
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=engine,
-        live_trading_coordinator=None,
-    )
-
-    event = MarketTickEvent(market_data=_market_data("BTCUSDT"))
     handler.handle(event)
 
-    engine.on_tick.assert_called_once_with(event.market_data)
-
-
-def test_ignores_a_tick_for_a_different_symbol():
-    """Corrupting one `StrategyEngine`'s indicator state by feeding it a
-    different symbol's candles is exactly what this guards against
-    (`EPIC-021G` — single-symbol live trading, see the handler's own
-    docstring)."""
-    engine = Mock()
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=engine,
-        live_trading_coordinator=None,
-    )
-
-    handler.handle(MarketTickEvent(market_data=_market_data("ETHUSDT")))
-
-    engine.on_tick.assert_not_called()
-
-
-def test_ignores_a_tick_for_a_different_interval_same_symbol():
-    """`BUG-085`: the same corruption `test_ignores_a_tick_for_a_different_
-    symbol` guards against also happens when two intervals of the SAME
-    symbol are streaming — an EMA fed alternating `1m` and `5m` closes is
-    neither timeframe's EMA."""
-    engine = Mock()
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=engine,
-        live_trading_coordinator=None,
-    )
-
-    handler.handle(
-        MarketTickEvent(
-            market_data=_market_data("BTCUSDT", TimeFrame.FIVE_MINUTES.value)
-        )
-    )
-
-    engine.on_tick.assert_not_called()
-
-
-def test_feeds_only_the_configured_interval_when_intervals_are_interleaved():
-    """`BUG-085` regression: alternating `1m` and `5m` ticks for the same
-    symbol must reach the engine as an unbroken `1m`-only stream, not a
-    mix of both."""
-    engine = Mock()
-    engine.on_tick.return_value = None
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=engine,
-        live_trading_coordinator=None,
-    )
-    one_minute_tick = MarketTickEvent(
-        market_data=_market_data("BTCUSDT", TimeFrame.ONE_MINUTE.value)
-    )
-    five_minute_tick = MarketTickEvent(
-        market_data=_market_data("BTCUSDT", TimeFrame.FIVE_MINUTES.value)
-    )
-
-    handler.handle(one_minute_tick)
-    handler.handle(five_minute_tick)
-    handler.handle(one_minute_tick)
-
-    assert engine.on_tick.call_count == 2
-    for call in engine.on_tick.call_args_list:
-        assert call.args[0].interval == TimeFrame.ONE_MINUTE.value
-
-
-def test_no_live_interval_configured_ignores_every_tick():
-    """An empty configured interval means "no live interval configured"
-    (`BUG-085` §4.2) — it must never fall back to matching everything."""
-    engine = Mock()
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval="",
-        strategy_engine=engine,
-        live_trading_coordinator=None,
-    )
-
-    handler.handle(MarketTickEvent(market_data=_market_data("BTCUSDT")))
-
-    engine.on_tick.assert_not_called()
-
-
-def test_forwards_an_actionable_signal_straight_to_the_coordinator():
-    """The safety-critical wiring: `on_tick()`'s returned `Signal` goes
-    directly to `LiveTradingCoordinator.handle()`, never through the
-    shared `SignalGeneratedEvent` bus a backtest run also publishes on
-    (see both classes' own module docstrings for why)."""
-    engine = Mock()
-    signal = Mock()
-    engine.on_tick.return_value = signal
-    coordinator = Mock()
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=engine,
-        live_trading_coordinator=coordinator,
-    )
-
-    handler.handle(MarketTickEvent(market_data=_market_data("BTCUSDT")))
-
-    coordinator.handle.assert_called_once_with(signal)
-
-
-def test_no_signal_does_not_call_the_coordinator():
-    engine = Mock()
-    engine.on_tick.return_value = None
-    coordinator = Mock()
-    handler = MarketTickEventHandler(
-        live_symbol="BTCUSDT",
-        live_interval=TimeFrame.ONE_MINUTE.value,
-        strategy_engine=engine,
-        live_trading_coordinator=coordinator,
-    )
-
-    handler.handle(MarketTickEvent(market_data=_market_data("BTCUSDT")))
-
-    coordinator.handle.assert_not_called()
+    session.dispatch_tick.assert_called_once_with(event.market_data)

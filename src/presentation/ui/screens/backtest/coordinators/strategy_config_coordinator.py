@@ -11,12 +11,12 @@ from Sagittarius_Elite_Warrior.src.domain.entities.symbol_market_metadata import
     OrderIntent,
     validate_order_intent,
 )
-
-from ..logic.bot_params_form import (
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.bot_params_form import (
     build_bot_params_rows,
     build_bot_params_schema,
     parse_bot_params,
 )
+
 from ..logic.broker_properties_schema import BROKER_PROPERTY_FIELDS
 from ..logic.pre_backtest_assertions import (
     PreBacktestAssertionPipeline,

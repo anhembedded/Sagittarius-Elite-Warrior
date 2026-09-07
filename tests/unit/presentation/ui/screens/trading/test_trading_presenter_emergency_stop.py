@@ -28,6 +28,12 @@ import pytest
 from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
     EquityCurveRecorder,
 )
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
+from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+    StrategyRegistry,
+)
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
 )
@@ -124,7 +130,13 @@ def equity_recorder():
 
 @pytest.fixture
 def container(
-    mock_config, mock_dispatcher, mock_thread_manager, session_state, equity_recorder
+    mock_config,
+    mock_dispatcher,
+    mock_thread_manager,
+    session_state,
+    equity_recorder,
+    strategy_session,
+    strategy_registry,
 ):
     c = MagicMock()
 
@@ -139,6 +151,10 @@ def container(
             return session_state
         if interface is EquityCurveRecorder:
             return equity_recorder
+        if interface is LiveStrategySession:
+            return strategy_session
+        if interface is StrategyRegistry:
+            return strategy_registry
         return MagicMock()
 
     c.resolve.side_effect = resolve

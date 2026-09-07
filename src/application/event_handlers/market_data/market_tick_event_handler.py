@@ -1,10 +1,7 @@
 import logging
 
-from Sagittarius_Elite_Warrior.src.application.services.live_trading_coordinator import (
-    LiveTradingCoordinator,
-)
-from Sagittarius_Elite_Warrior.src.application.services.strategy_engine import (
-    StrategyEngine,
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
 )
 from Sagittarius_Elite_Warrior.src.domain.events.market_tick_event import (
     MarketTickEvent,
@@ -35,14 +32,23 @@ class MarketTickEventHandler:
     via `ICommandDispatcher`, never `ITradingClient` directly.
 
     @par Single-symbol, single-interval only, on purpose
-    Every indicator inside `strategy_engine` holds mutable, incrementally
-    updated state (`BOT-042B`/`C`). Feeding it candles from two different
-    symbols would corrupt that state — an EMA fed alternating BTCUSDT and
-    ETHUSDT closes is neither symbol's EMA. The same is true for mixing
-    intervals of the same symbol (`BUG-085`): an EMA fed alternating `1m`
-    and `5m` closes is neither timeframe's EMA. Multi-symbol / multi-
-    interval live trading needs one `StrategyEngine` each, which is
-    `EPIC-021I`'s screen to configure, not this handler's job to guess at.
+    Every indicator inside the engine holds mutable, incrementally updated
+    state (`BOT-042B`/`C`). Feeding it candles from two different symbols
+    would corrupt that state — an EMA fed alternating BTCUSDT and ETHUSDT
+    closes is neither symbol's EMA. The same is true for mixing intervals
+    of the same symbol (`BUG-085`): an EMA fed alternating `1m` and `5m`
+    closes is neither timeframe's EMA. That filtering now lives in
+    `LiveStrategySession.dispatch_tick()`, next to the engine it protects,
+    rather than here.
+
+    @par Why this class no longer holds the engine (`EPIC-022A`)
+    It used to take `live_symbol`, `live_interval`, `strategy_engine` and
+    `live_trading_coordinator` as constructor arguments, which made "which
+    strategy is live" a decision only `boot()` could make, once. The
+    Trading screen's strategy picker needs to change it mid-session, so
+    all four moved behind `LiveStrategySession`, and this class went back
+    to being what its name says: the adapter from one event-bus event to
+    one application call.
 
     @par `logger.debug()`, not `.info()` — `BUG-042`
     `SignalLogHandler` mirrors every `"App"` `INFO+` line to the UI's log
@@ -63,18 +69,9 @@ class MarketTickEventHandler:
     of.
     """
 
-    def __init__(
-        self,
-        live_symbol: str,
-        live_interval: str,
-        strategy_engine: StrategyEngine | None,
-        live_trading_coordinator: LiveTradingCoordinator | None,
-    ) -> None:
+    def __init__(self, session: LiveStrategySession) -> None:
         self.logger = logging.getLogger("App.TradingStrategy")
-        self._live_symbol = live_symbol
-        self._live_interval = live_interval
-        self._strategy_engine = strategy_engine
-        self._live_trading_coordinator = live_trading_coordinator
+        self._session = session
 
     def handle(self, event: MarketTickEvent) -> None:
         """
@@ -82,14 +79,4 @@ class MarketTickEventHandler:
         """
         md = event.market_data
         self.logger.debug(f"Processing tick for {md.symbol} at {md.close_price}")
-
-        if (
-            self._strategy_engine is None
-            or md.symbol != self._live_symbol
-            or md.interval != self._live_interval
-        ):
-            return
-
-        signal = self._strategy_engine.on_tick(md)
-        if signal is not None and self._live_trading_coordinator is not None:
-            self._live_trading_coordinator.handle(signal)
+        self._session.dispatch_tick(md)

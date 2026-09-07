@@ -22,6 +22,12 @@ import pytest
 from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
     EquityCurveRecorder,
 )
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
+from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+    StrategyRegistry,
+)
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
 )
@@ -97,6 +103,8 @@ def container(
     session_state,
     equity_recorder,
     mock_event_bus,
+    strategy_session,
+    strategy_registry,
 ):
     c = MagicMock()
 
@@ -113,6 +121,10 @@ def container(
             return equity_recorder
         if interface is IEventBus:
             return mock_event_bus
+        if interface is LiveStrategySession:
+            return strategy_session
+        if interface is StrategyRegistry:
+            return strategy_registry
         return MagicMock()
 
     c.resolve.side_effect = resolve

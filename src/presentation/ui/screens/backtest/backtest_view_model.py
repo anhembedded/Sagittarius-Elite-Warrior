@@ -14,15 +14,15 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFra
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.indicator_scripts.list_model import (
     IndicatorScriptListModel,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.bot_params_form import (
+    step_numeric_param_value,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.timeframe_picker import (
     all_options as all_timeframe_options,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.backtest_state import (
     BacktestExecutionMode,
     BacktestUiState,
-)
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.bot_params_form import (
-    step_numeric_param_value,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.extended_metrics_snapshot import (
     ExtendedMetricsSnapshot,

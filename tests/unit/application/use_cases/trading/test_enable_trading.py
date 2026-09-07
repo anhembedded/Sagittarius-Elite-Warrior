@@ -61,7 +61,12 @@ def _handler(
     status: ExchangeConnectionStatus | None = None,
     position_payloads: list[dict] | None = None,
     open_order_payloads: list[dict] | None = None,
+    strategy_armed: bool = True,
 ) -> tuple[EnableTradingCommandHandler, TradingSessionState, Mock, Mock]:
+    """@param strategy_armed `EPIC-022B` — every pre-existing test here
+    was written when enabling did not depend on a strategy at all, so the
+    default keeps them describing what they were written to describe. The
+    one test that cares flips it to False."""
     account_reader = Mock()
     account_reader.check_connection.return_value = status or _ready_status()
 
@@ -77,6 +82,8 @@ def _handler(
     metadata_provider = Mock()
     session_state = TradingSessionState()
     user_data_stream = Mock()
+    strategy_session = Mock()
+    strategy_session.is_armed = strategy_armed
 
     return (
         EnableTradingCommandHandler(
@@ -87,6 +94,7 @@ def _handler(
             metadata_provider,
             session_state,
             user_data_stream,
+            strategy_session,
         ),
         session_state,
         user_data_stream,
@@ -205,5 +213,28 @@ def test_refuses_and_does_not_enable_when_unexpected_position_exists() -> None:
     assert result.block_reason is EnableTradingBlockReason.UNEXPECTED_POSITIONS
     assert len(result.reconciled_positions) == 1
     assert result.reconciled_positions[0].symbol == "BTCUSDT"
+    assert session_state.enabled is False
+    user_data_stream.start.assert_not_called()
+
+
+def test_blocked_when_no_strategy_is_armed_before_touching_the_network() -> None:
+    """`EPIC-022B` — the fix for the state a user actually hit: with
+    `trading.live_strategy_key` empty (the shipped default), enabling used
+    to succeed, paint the toggle green, and run a system that could not
+    produce a single signal.
+
+    The second assertion is the point of the ordering: the check must come
+    before `check_connection()`, so an incomplete configuration is
+    reported instantly instead of after a Binance round-trip that was
+    never going to change the answer."""
+    handler, session_state, user_data_stream, account_reader = _handler(
+        strategy_armed=False
+    )
+
+    result = handler.execute(EnableTradingCommand())
+
+    assert result.enabled is False
+    assert result.block_reason is EnableTradingBlockReason.NO_STRATEGY_ARMED
+    account_reader.check_connection.assert_not_called()
     assert session_state.enabled is False
     user_data_stream.start.assert_not_called()

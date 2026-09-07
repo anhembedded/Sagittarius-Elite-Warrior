@@ -13,6 +13,9 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_trading_account_reader im
 from Sagittarius_Elite_Warrior.src.application.ports.i_user_data_stream import (
     IUserDataStream,
 )
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
 )
@@ -76,6 +79,7 @@ class EnableTradingCommandHandler(
         metadata_provider: IMarketMetadataProvider,
         session_state: TradingSessionState,
         user_data_stream: IUserDataStream,
+        strategy_session: LiveStrategySession,
     ) -> None:
         self._trading_venue = trading_venue
         self._account_reader = account_reader
@@ -84,12 +88,19 @@ class EnableTradingCommandHandler(
         self._metadata_provider = metadata_provider
         self._session_state = session_state
         self._user_data_stream = user_data_stream
+        self._strategy_session = strategy_session
 
     def execute(self, command: EnableTradingCommand) -> EnableTradingResult:
         logger.debug("Handling EnableTradingCommand")
 
         if self._trading_venue is not TradingVenue.FUTURES_TESTNET:
             return self._blocked(EnableTradingBlockReason.TRADING_VENUE_DISABLED)
+
+        # `EPIC-022B` — before any network call. With nothing armed, no
+        # tick can produce a signal, so "trading enabled" would describe a
+        # system that cannot trade. See the block reason's own comment.
+        if not self._strategy_session.is_armed:
+            return self._blocked(EnableTradingBlockReason.NO_STRATEGY_ARMED)
 
         # `BUG-088` — read *before* the two network round-trips below, not
         # after: `enable()` only applies if nothing else (a concurrent

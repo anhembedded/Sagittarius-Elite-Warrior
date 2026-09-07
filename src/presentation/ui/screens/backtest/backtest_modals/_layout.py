@@ -15,14 +15,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.form_field_style import (
+    FIELD_STYLE,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     SelectableCard,
 )
 
-_FIELD_STYLE = (
-    f"background-color: {Palette.BG_CARD_HEADER}; border: 1px solid {Palette.STATE_NAV_BORDER}; border-radius: 4px; "
-    f"color: {Palette.TEXT_PRIMARY}; padding: 0 6px;"
-)
+#: `EPIC-022C` — moved to `components/form_field_style.py` so the
+#: parameter-field widget, now shared with the Trading screen, could stop
+#: importing backwards into this package. Same string, same pixels.
+_FIELD_STYLE = FIELD_STYLE
 
 _ACCENT = Palette.ACCENT
 

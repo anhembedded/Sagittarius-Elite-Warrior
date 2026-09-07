@@ -19,7 +19,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.theme i
     BEAR_COLOR,
     BULL_COLOR,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.strategy_trend_zones import (
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_overlay.strategy_trend_zones import (
     compute_strategy_trend_zones,
 )
 

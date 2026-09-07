@@ -1,13 +1,11 @@
 """One editable bot-parameter field, and the numeric line edit it builds.
 
 Together, not separately: `_NumericStepLineEdit` is constructed in
-exactly one place, inside `_BotParamFieldWidget`, and nothing else
+exactly one place, inside `BotParamFieldWidget`, and nothing else
 builds either. They are a single scope in the sense `code-rule.md`
 means, so splitting them further would break that rule, not follow it."""
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator, QIntValidator
@@ -20,15 +18,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.form_field_style import (
+    FIELD_STYLE,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit.widget_value import (
     read_widget_value,
     write_widget_value,
 )
 
-from ._layout import _FIELD_STYLE
-
-if TYPE_CHECKING:
-    from ..backtest_view_model import BackTestViewModel
+from .param_stepper import ParamStepper
 
 
 def _schema_value(kind: str, raw: object) -> object:
@@ -47,14 +45,16 @@ def _schema_value(kind: str, raw: object) -> object:
 class _NumericStepLineEdit(QLineEdit):
     """Port of `BotParamField.qml`'s `Keys.onPressed`/`WheelHandler`: Up/Down
     keys and mouse-wheel scrolls step a numeric field through
-    `BackTestViewModel.step_bot_param_value()` (Python-side normalisation —
-    the QML original deliberately did NOT reimplement this in JS math)."""
+    the screen ViewModel's `step_bot_param_value()` (Python-side
+    normalisation — the QML original deliberately did NOT reimplement this
+    in JS math). Typed as `ParamStepper`, not as one screen's ViewModel,
+    since `EPIC-022C` made this widget shared."""
 
     def __init__(
         self,
         text: str,
         field_name: str,
-        view_model: BackTestViewModel,
+        view_model: ParamStepper,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(text, parent)
@@ -87,7 +87,7 @@ class _NumericStepLineEdit(QLineEdit):
         event.accept()
 
 
-class _BotParamFieldWidget(QWidget):  # base-exempt: a label stacked over a field
+class BotParamFieldWidget(QWidget):  # base-exempt: a label stacked over a field
     """Port of `BotParamField.qml`: picks a widget purely from
     `field_data["kind"]`, mirroring exactly what the QML `Loader` did.
 
@@ -98,7 +98,7 @@ class _BotParamFieldWidget(QWidget):  # base-exempt: a label stacked over a fiel
     def __init__(
         self,
         field_data: dict,
-        view_model: BackTestViewModel,
+        view_model: ParamStepper,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -156,7 +156,7 @@ class _BotParamFieldWidget(QWidget):  # base-exempt: a label stacked over a fiel
         self._input.setObjectName(f"fldBotParam_{self.field_name}")
         self._input.setFixedHeight(32)
         if isinstance(self._input, (QLineEdit, QComboBox)):
-            self._input.setStyleSheet(_FIELD_STYLE)
+            self._input.setStyleSheet(FIELD_STYLE)
         layout.addWidget(self._input)
 
     @property

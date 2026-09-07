@@ -9,13 +9,15 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.indicator_scripts.
     IndicatorScriptRunner,
     qualified_line_name,
 )
-
-from ..logic.chart_canvas_view import ChartDisplayMode
-from ..logic.strategy_indicator_lines import (
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_overlay.strategy_indicator_lines import (
     assign_strategy_line_colors,
     compute_strategy_indicator_lines,
 )
-from ..logic.strategy_trend_zones import compute_strategy_trend_zones
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_overlay.strategy_trend_zones import (
+    compute_strategy_trend_zones,
+)
+
+from ..logic.chart_canvas_view import ChartDisplayMode
 from ..ports.i_backtest_screen_state import IBacktestScreenState
 
 #: Width for a strategy line the strategy itself does not specify.

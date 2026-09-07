@@ -80,7 +80,7 @@ _STYLE_MODULE_NAME = "style.py"
 #: surfaces authored as `class X(QWidget)` and sailed straight through —
 #: `LogPanelWidget`, `AppProgressBarWidget`, `TimeRangeCardWidget`,
 #: `DevBoardPanel`, `BackTestTopPanel`, `BackTestTradeLogsPanel`,
-#: `DynamicTabBarWidget`, `_CachedFrameOverlay`, `_BotParamFieldWidget`. The
+#: `DynamicTabBarWidget`, `_CachedFrameOverlay`, `BotParamFieldWidget`. The
 #: "12" this guard used to report was a floor, not a count.
 _BARE_QT_BASE_RE = re.compile(r"^\s*class\s+\w+\((QFrame|QDialog|QWidget)\)\s*:")
 

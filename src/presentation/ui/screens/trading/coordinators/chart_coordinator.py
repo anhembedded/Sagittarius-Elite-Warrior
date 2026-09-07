@@ -78,7 +78,7 @@ class ChartCoordinator:
         *,
         thread_manager: IThreadManager,
         dispatcher: IDispatcher,
-        emit_history_ready: Callable[[str, list, list], None],
+        emit_history_ready: Callable[[str, list, list, list], None],
         emit_load_finished: Callable[[], None],
         emit_stream_started: Callable[[str], None],
         emit_stream_failed: Callable[[str], None],
@@ -143,7 +143,14 @@ class ChartCoordinator:
             self._emit_log(f"Không có dữ liệu lịch sử cho {symbol}.")
             return
         ordered = list(reversed(klines))
-        self._emit_history_ready(symbol, map_klines(ordered), map_volume(ordered))
+        # `EPIC-022E` — the raw `MarketData` rows ride along beside the
+        # chart-shaped tuples. `StrategyOverlayCoordinator` replays the
+        # strategy over real candles (it reads `close_time`/`close_price`),
+        # which `map_klines`' 5-tuples no longer carry; re-fetching them
+        # for the overlay would be a second identical query.
+        self._emit_history_ready(
+            symbol, map_klines(ordered), map_volume(ordered), ordered
+        )
 
     def _start_stream(self, symbol: str, interval: TimeFrame) -> None:
         self._emit_log(f"Đang mở luồng trực tiếp cho {symbol}...")

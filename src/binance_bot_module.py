@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import timedelta
@@ -59,11 +60,11 @@ from Sagittarius_Elite_Warrior.src.application.services.in_flight_sync_guard imp
 from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registry import (
     IndicatorScriptRegistry,
 )
-from Sagittarius_Elite_Warrior.src.application.services.live_trading_coordinator import (
-    LiveTradingCoordinator,
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory import (
+    LiveStrategyFactory,
 )
-from Sagittarius_Elite_Warrior.src.application.services.strategy_factory import (
-    build_engine,
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
 )
 from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
     StrategyRegistry,
@@ -158,9 +159,17 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.sync.sync_market_data i
     SyncMarketDataCommand,
     SyncMarketDataCommandHandler,
 )
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
+    ArmStrategyCommand,
+    ArmStrategyCommandHandler,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
     DisableTradingCommand,
     DisableTradingCommandHandler,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy import (
+    DisarmStrategyCommand,
+    DisarmStrategyCommandHandler,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.emergency_stop import (
     EmergencyStopCommand,
@@ -229,6 +238,11 @@ from Sagittarius_Elite_Warrior.src.domain.trading.order_submission_mode import (
 from Sagittarius_Elite_Warrior.src.domain.trading.policies.trading_limit_policy import (
     TradingLimitPolicy,
     TradingLimits,
+)
+from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+    DEFAULT_LEVERAGE,
+    DEFAULT_SIZING_PERCENT,
+    LiveStrategyConfig,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.market_data_venue import (
     MarketDataVenue,
@@ -478,6 +492,26 @@ class BinanceBotModule(BaseModule):
         # EPIC-021G: one per app process — never persisted, never seeded
         # from config on boot (see the class's own docstring for why).
         app.container.singleton(TradingSessionState, TradingSessionState)
+        # EPIC-022A: unlike `TradingSessionState`, this one IS seeded from
+        # config at boot (`_arm_from_config`) — remembering which strategy
+        # to run is not the same risk as remembering that trading was on.
+        # Singleton because the tick path, the Arm/Disarm command handlers
+        # and `EnableTradingCommand`'s "is anything armed" check must all
+        # see one instance.
+        app.container.singleton(
+            LiveStrategyFactory,
+            lambda c: LiveStrategyFactory(
+                c.resolve(StrategyRegistry),
+                c.resolve(IEventPublisher),
+                c.resolve(ICommandDispatcher),
+                c.resolve(ITradingAccountReader),
+                c.resolve(IMarketMetadataProvider),
+            ),
+        )
+        app.container.singleton(
+            LiveStrategySession,
+            lambda c: LiveStrategySession(c.resolve(LiveStrategyFactory)),
+        )
 
     def _register_use_cases(self, app: App) -> None:
         """Binds CQRS commands to their respective use case command handlers."""
@@ -495,6 +529,8 @@ class BinanceBotModule(BaseModule):
         app.container.bind(RepairDataGapCommand, RepairDataGapCommandHandler)
         app.container.bind(PruneEmptyShardsCommand, PruneEmptyShardsCommandHandler)
         app.container.bind(SubmitOrderCommand, SubmitOrderCommandHandler)
+        app.container.bind(ArmStrategyCommand, ArmStrategyCommandHandler)
+        app.container.bind(DisarmStrategyCommand, DisarmStrategyCommandHandler)
         app.container.bind(EnableTradingCommand, EnableTradingCommandHandler)
         app.container.bind(DisableTradingCommand, DisableTradingCommandHandler)
         app.container.bind(ExecuteOrderCommand, ExecuteOrderCommandHandler)
@@ -553,50 +589,76 @@ class BinanceBotModule(BaseModule):
         adapter = app.container.resolve(LiveStreamEngineAdapter)
         app.context.hosted_services.register(adapter)
 
-        # EPIC-021G: a `StrategyEngine`/`LiveTradingCoordinator` pair is
-        # only built when a live symbol, a live strategy, AND a live
-        # interval (`BUG-085`) are all configured — an empty
-        # `TRADING_LIVE_STRATEGY_KEY`/`TRADING_LIVE_INTERVAL` (the default)
-        # means "no live strategy/interval configured", and
-        # `MarketTickEventHandler` stays the inert logger it has always
-        # been. A missing interval must never default to a guessed one —
-        # a wrong guess is a wrong strategy.
-        config: IConfig = app.container.resolve(IConfig)
-        live_symbol = str(config.get(ConfigKeys.TRADING_LIVE_SYMBOL.value, ""))
-        live_strategy_key = str(
-            config.get(ConfigKeys.TRADING_LIVE_STRATEGY_KEY.value, "")
-        )
-        live_interval = str(config.get(ConfigKeys.TRADING_LIVE_INTERVAL.value, ""))
-        # `BUG-084` — real config-backed controls, not a hardcoded 20%/1x
-        # inside `LiveTradingCoordinator` itself.
-        live_sizing_percent = float(
-            config.get(ConfigKeys.TRADING_LIVE_SIZING_PERCENT.value, 20.0)
-        )
-        live_leverage = float(config.get(ConfigKeys.TRADING_LIVE_LEVERAGE.value, 1.0))
-
-        strategy_engine = None
-        live_trading_coordinator = None
-        if live_symbol and live_strategy_key and live_interval:
-            strategy_engine = build_engine(
-                app.container.resolve(StrategyRegistry),
-                live_strategy_key,
-                app.container.resolve(IEventPublisher),
-            )
-            live_trading_coordinator = LiveTradingCoordinator(
-                live_symbol,
-                app.container.resolve(ICommandDispatcher),
-                app.container.resolve(ITradingAccountReader),
-                app.container.resolve(IMarketMetadataProvider),
-                app.container.resolve(IEventPublisher),
-                live_sizing_percent,
-                live_leverage,
-            )
+        # `EPIC-022A`: which strategy runs live is no longer decided here
+        # once and frozen — `LiveStrategySession` holds it, and the Trading
+        # screen's strategy card re-arms it through `ArmStrategyCommand`.
+        # Boot only seeds it from config, so an install that was
+        # configured by file keeps working exactly as before.
+        session = app.container.resolve(LiveStrategySession)
+        self._arm_from_config(app.container.resolve(IConfig), session)
 
         # Initialize Event Handlers and subscribe to the Event Bus
-        event_handler = MarketTickEventHandler(
-            live_symbol, live_interval, strategy_engine, live_trading_coordinator
-        )
+        event_handler = MarketTickEventHandler(session)
         app.event_bus.on(MarketTickEvent, event_handler.handle)
+
+    @staticmethod
+    def _arm_from_config(config: IConfig, session: LiveStrategySession) -> None:
+        """Seeds the live strategy from `trading.live_*` at startup.
+
+        @details The gate is the same three-way check `EPIC-021G` used —
+        a live symbol, a live strategy AND a live interval (`BUG-085`) —
+        now asked of `LiveStrategyConfig.is_complete`. An empty
+        `TRADING_LIVE_STRATEGY_KEY`/`TRADING_LIVE_INTERVAL` (the shipped
+        default) still means "nothing armed", and every tick is ignored
+        until the user arms one from the screen. A missing interval must
+        never default to a guessed one — a wrong guess is a wrong strategy.
+
+        A bad saved config (a strategy key that no longer exists, a
+        parameter a strategy stopped declaring) is logged and left
+        disarmed rather than crashing the whole app boot: the user can
+        pick a working one on the Trading screen, which is exactly the
+        recovery path that did not exist before `EPIC-022`.
+        """
+        params_raw = str(config.get(ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value, ""))
+        try:
+            stored_params = json.loads(params_raw) if params_raw else {}
+        except json.JSONDecodeError:
+            logger.warning(
+                "Ignoring unreadable %s — expected JSON.",
+                ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value,
+            )
+            stored_params = {}
+        if not isinstance(stored_params, dict):
+            stored_params = {}
+
+        live_config = LiveStrategyConfig(
+            strategy_key=str(
+                config.get(ConfigKeys.TRADING_LIVE_STRATEGY_KEY.value, "")
+            ),
+            symbol=str(config.get(ConfigKeys.TRADING_LIVE_SYMBOL.value, "")),
+            interval=str(config.get(ConfigKeys.TRADING_LIVE_INTERVAL.value, "")),
+            strategy_params=stored_params,
+            # `BUG-084` — real config-backed controls, not a hardcoded
+            # 20%/1x inside `LiveTradingCoordinator` itself.
+            sizing_percent=float(
+                config.get(
+                    ConfigKeys.TRADING_LIVE_SIZING_PERCENT.value,
+                    DEFAULT_SIZING_PERCENT,
+                )
+            ),
+            leverage=float(
+                config.get(ConfigKeys.TRADING_LIVE_LEVERAGE.value, DEFAULT_LEVERAGE)
+            ),
+        )
+        if not live_config.is_complete:
+            return
+        try:
+            session.arm(live_config)
+        except ValueError as exc:
+            logger.warning(
+                "Could not arm the strategy saved in config (%s) — starting disarmed.",
+                exc,
+            )
 
     def shutdown(self, app: App) -> None:
         """Release application-owned database engines and external client connections during engine shutdown."""

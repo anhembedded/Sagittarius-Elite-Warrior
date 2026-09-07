@@ -96,6 +96,15 @@ class ConfigKeys(str, Enum):
     #: string (the default) means "no live strategy configured" —
     #: `MarketTickEventHandler` then stays the inert logger it always was.
     TRADING_LIVE_STRATEGY_KEY = "trading.live_strategy_key"
+    #: `EPIC-022F` — the parameter values for `TRADING_LIVE_STRATEGY_KEY`'s
+    #: strategy, as a JSON object string (`{"fast_period": 12}`). A JSON
+    #: blob rather than one config key per parameter because the parameter
+    #: SET is declared by each strategy's own `setup()` and differs per
+    #: strategy — a fixed key list could not describe six strategies, and
+    #: would go stale the moment a seventh declares a new input. Empty
+    #: string (the default) means "every declared default", which is what
+    #: `build_engine(params=None)` already does.
+    TRADING_LIVE_STRATEGY_PARAMS = "trading.live_strategy_params"
     #: The one `TimeFrame` `MarketTickEventHandler`'s live strategy path
     #: reacts to — every tick for any other interval is ignored, the same
     #: reason `TRADING_LIVE_SYMBOL` filters by symbol (`BUG-085`: mixing
