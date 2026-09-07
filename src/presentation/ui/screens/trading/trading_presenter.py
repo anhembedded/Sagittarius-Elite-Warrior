@@ -50,6 +50,7 @@ from Sagittarius_Elite_Warrior.src.domain.trading.order_status import OrderStatu
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     SUPPORTED_LIVE_INTERVALS,
 )
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
     FALLBACK_INTERVAL,
     FALLBACK_SYMBOL,
@@ -107,22 +108,34 @@ _ARM_ACTION = "arm_strategy"
 #: separate UI list could only ever drift into offering a value that
 #: arming would then refuse.
 
-_BLOCK_REASON_MESSAGES: dict[EnableTradingBlockReason, str] = {
-    EnableTradingBlockReason.TRADING_VENUE_DISABLED: (
-        "Trading venue đang tắt trong cấu hình — chỉ hỗ trợ Futures Testnet."
-    ),
-    EnableTradingBlockReason.CONNECTION_NOT_READY: (
-        "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
-    ),
-    EnableTradingBlockReason.NO_STRATEGY_ARMED: (
-        'Chưa nạp chiến lược — chọn chiến lược rồi bấm "Nạp chiến lược" trước.'
-    ),
-    EnableTradingBlockReason.UNEXPECTED_POSITIONS: (
-        "Tài khoản đang có vị thế mở ngoài dự kiến — vui lòng xử lý thủ công "
-        "trên sàn trước khi bật giao dịch."
-    ),
-}
-_UNKNOWN_BLOCK_REASON_MESSAGE = "Không thể bật giao dịch."
+#: `EnumLabels`, not a bare dict: the table was already missing
+#: `SUPERSEDED_BY_CONCURRENT_STATE_CHANGE`, and the `.get(..., generic)`
+#: below hid that — the one refusal a user most needs explained (an
+#: Emergency Stop landing mid-enable, `BUG-088`) read as "Không thể bật
+#: giao dịch." Construction now refuses an incomplete table at import.
+_BLOCK_REASON_MESSAGES = EnumLabels(
+    EnableTradingBlockReason,
+    {
+        EnableTradingBlockReason.TRADING_VENUE_DISABLED: (
+            "Trading venue đang tắt trong cấu hình — chỉ hỗ trợ Futures Testnet."
+        ),
+        EnableTradingBlockReason.CONNECTION_NOT_READY: (
+            "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
+        ),
+        EnableTradingBlockReason.NO_STRATEGY_ARMED: (
+            'Chưa nạp chiến lược — chọn chiến lược rồi bấm "Nạp chiến lược" trước.'
+        ),
+        EnableTradingBlockReason.UNEXPECTED_POSITIONS: (
+            "Tài khoản đang có vị thế mở ngoài dự kiến — vui lòng xử lý thủ công "
+            "trên sàn trước khi bật giao dịch."
+        ),
+        EnableTradingBlockReason.SUPERSEDED_BY_CONCURRENT_STATE_CHANGE: (
+            "Một thao tác khác (thường là DỪNG KHẨN CẤP) đã thay đổi trạng thái "
+            "trong lúc đang đối soát — không bật giao dịch. Kiểm tra lại rồi thử "
+            "lại nếu vẫn muốn bật."
+        ),
+    },
+)
 
 #: `ActionOwnershipTracker`'s `TKind` for the Emergency Stop button —
 #: tracked on its own `_emergency_stop_tracker` (`BUG-089`), never shared
@@ -586,10 +599,9 @@ class TradingPresenter(BasePresenter):
                 order.client_order_id: order for order in result.reconciled_open_orders
             }
         else:
-            message = _BLOCK_REASON_MESSAGES.get(
-                result.block_reason, _UNKNOWN_BLOCK_REASON_MESSAGE
+            self._view_model.set_status(
+                _BLOCK_REASON_MESSAGES[result.block_reason], True
             )
-            self._view_model.set_status(message, True)
             self._positions = {
                 position.symbol: position for position in result.reconciled_positions
             }

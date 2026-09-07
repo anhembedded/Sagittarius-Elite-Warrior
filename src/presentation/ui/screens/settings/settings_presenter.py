@@ -25,6 +25,7 @@ from Sagittarius_Elite_Warrior.src.infrastructure.binance.binance_endpoints impo
 from Sagittarius_Elite_Warrior.src.presentation.cli.exchange_status_formatter import (
     format_exchange_connection_status,
 )
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
     ActionOutcome,
     ActionOwnershipTracker,
@@ -89,11 +90,14 @@ _VENUES_LOCKED_MESSAGE = (
 #: whether the field must be locked (an edit that would silently be
 #: ignored, because an environment variable always wins, must not be
 #: offered as if it would do something).
-_CREDENTIALS_SOURCE_LABELS: dict[CredentialsSource, str] = {
-    CredentialsSource.ENV: "Đang dùng key từ biến môi trường",
-    CredentialsSource.FILE: "Đang dùng key từ secrets.local.json",
-    CredentialsSource.NONE: "Chưa cấu hình API key/secret",
-}
+_CREDENTIALS_SOURCE_LABELS = EnumLabels(
+    CredentialsSource,
+    {
+        CredentialsSource.ENV: "Đang dùng key từ biến môi trường",
+        CredentialsSource.FILE: "Đang dùng key từ secrets.local.json",
+        CredentialsSource.NONE: "Chưa cấu hình API key/secret",
+    },
+)
 
 
 class SettingsPresenter(BasePresenter):

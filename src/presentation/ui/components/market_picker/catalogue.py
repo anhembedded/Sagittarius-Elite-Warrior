@@ -9,14 +9,19 @@ renders a flat list — nothing here does that job over again.
 
 from __future__ import annotations
 
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
+
 from .....domain.value_objects.market_type import MarketType
 
 #: Display order and Vietnamese label per market.
-_LABELS: dict[MarketType, str] = {
-    MarketType.SPOT: "Spot",
-    MarketType.FUTURES_USD_M: "Futures (USD-M)",
-    MarketType.FUTURES_COIN_M: "Futures (COIN-M)",
-}
+_LABELS = EnumLabels(
+    MarketType,
+    {
+        MarketType.SPOT: "Spot",
+        MarketType.FUTURES_USD_M: "Futures (USD-M)",
+        MarketType.FUTURES_COIN_M: "Futures (COIN-M)",
+    },
+)
 
 #: `SelectListVM.rows()` reads this exact shape (`id`/`label`) — the same
 #: contract `StrategyPickerDialog`'s `get_options` already returns.

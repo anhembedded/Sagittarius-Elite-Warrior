@@ -9,6 +9,7 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_stat
     ConnectionFailureKind,
     ExchangeConnectionStatus,
 )
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 
 #: python-binance's own default `recvWindow` — matches what
 #: `ExchangeSessionFactory.create_trading_client()` implicitly uses (no
@@ -16,33 +17,36 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_stat
 #: judged against, not an arbitrary display cutoff.
 _RECV_WINDOW_MS = 5000
 
-_FAILURE_GUIDANCE: dict[ConnectionFailureKind, str] = {
-    ConnectionFailureKind.NOT_CONFIGURED: (
-        "Chưa cấu hình API key/secret. Lấy key tại testnet.binancefuture.com, "
-        "rồi lưu qua màn Settings hoặc biến môi trường "
-        "BINANCE_FUTURES_TESTNET_API_KEY/BINANCE_FUTURES_TESTNET_API_SECRET."
-    ),
-    ConnectionFailureKind.BAD_SIGNATURE: (
-        "Chữ ký request không hợp lệ. Kiểm tra lại API Secret đã sao chép "
-        "đúng, không thừa hay thiếu ký tự."
-    ),
-    ConnectionFailureKind.CLOCK_SKEW: (
-        "Đồng hồ máy lệch quá xa giờ sàn. Đồng bộ lại giờ hệ thống (NTP) rồi thử lại."
-    ),
-    ConnectionFailureKind.KEY_EXPIRED: (
-        "Key testnet đã hết hạn hoặc bị reset. Lấy key mới tại "
-        "testnet.binancefuture.com.\n"
-        "  (Lưu ý: key Spot Testnet và key mainnet KHÔNG dùng được ở đây.)"
-    ),
-    ConnectionFailureKind.NETWORK: (
-        "Không kết nối được tới sàn. Kiểm tra mạng/proxy rồi thử lại."
-    ),
-    ConnectionFailureKind.HEDGE_MODE_UNSUPPORTED: (
-        "Tài khoản đang ở Hedge Mode. Epic này giả định One-way Mode — đổi "
-        "lại ở Binance Futures > Settings > Position Mode trên web/app "
-        "Binance, rồi kiểm tra kết nối lại."
-    ),
-}
+_FAILURE_GUIDANCE = EnumLabels(
+    ConnectionFailureKind,
+    {
+        ConnectionFailureKind.NOT_CONFIGURED: (
+            "Chưa cấu hình API key/secret. Lấy key tại testnet.binancefuture.com, "
+            "rồi lưu qua màn Settings hoặc biến môi trường "
+            "BINANCE_FUTURES_TESTNET_API_KEY/BINANCE_FUTURES_TESTNET_API_SECRET."
+        ),
+        ConnectionFailureKind.BAD_SIGNATURE: (
+            "Chữ ký request không hợp lệ. Kiểm tra lại API Secret đã sao chép "
+            "đúng, không thừa hay thiếu ký tự."
+        ),
+        ConnectionFailureKind.CLOCK_SKEW: (
+            "Đồng hồ máy lệch quá xa giờ sàn. Đồng bộ lại giờ hệ thống (NTP) rồi thử lại."
+        ),
+        ConnectionFailureKind.KEY_EXPIRED: (
+            "Key testnet đã hết hạn hoặc bị reset. Lấy key mới tại "
+            "testnet.binancefuture.com.\n"
+            "  (Lưu ý: key Spot Testnet và key mainnet KHÔNG dùng được ở đây.)"
+        ),
+        ConnectionFailureKind.NETWORK: (
+            "Không kết nối được tới sàn. Kiểm tra mạng/proxy rồi thử lại."
+        ),
+        ConnectionFailureKind.HEDGE_MODE_UNSUPPORTED: (
+            "Tài khoản đang ở Hedge Mode. Epic này giả định One-way Mode — đổi "
+            "lại ở Binance Futures > Settings > Position Mode trên web/app "
+            "Binance, rồi kiểm tra kết nối lại."
+        ),
+    },
+)
 
 
 def _require_failure_kind(status: ExchangeConnectionStatus) -> ConnectionFailureKind:

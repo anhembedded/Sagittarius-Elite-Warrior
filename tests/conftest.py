@@ -2,6 +2,10 @@
 Root conftest.py — shared fixtures available to all tests.
 """
 
+from collections.abc import Mapping
+from typing import Any
+from unittest.mock import Mock
+
 import pytest
 
 
@@ -153,3 +157,73 @@ def qml_item():
         button.clicked.emit()
     """
     return find_qml_item
+
+
+# --------------------------------------------------------------------- #
+# One fake DI container for Presenter tests
+#
+# Twenty-six test modules each hand-rolled the same object: a `Mock()`
+# whose `resolve` is an `if interface is X: return y` ladder ending in
+# `return Mock()`. Not twenty-six fakes — one mechanism copied, and the
+# copies made adding a Presenter dependency cost one edit per module.
+#
+# This session hit that twice (`TradingSessionState`, `LiveStrategySession`)
+# and the second time did worse than break tests: the ladders end in
+# `Mock()`, so an un-taught container answered `session_state.enabled`
+# with a truthy `Mock` and the tests kept passing while exercising the
+# wrong branch. A shared fake does not remove that hazard, but it puts the
+# fallback in one reviewable place instead of twenty-six.
+#
+# Not the real container: that one auto-wires, so it would build real
+# infrastructure inside a unit test. Answering `Mock()` for the
+# uninteresting collaborators is the point.
+# --------------------------------------------------------------------- #
+
+
+def fake_container(bindings: Mapping[Any, Any] | None = None, **extra: Any) -> Mock:
+    """@brief A container that resolves `bindings` and mocks the rest.
+
+    @param bindings Interface/class -> instance. Matched by identity
+    first, then by class name — some test modules import `IConfig` from a
+    different path than the code under test does, which an `is` check
+    alone silently misses (that is why several of the hand-rolled ladders
+    carried an `interface.__name__ == "IConfig"` branch).
+    @param extra Convenience for the common one-off:
+    `fake_container(config=cfg)` binds by attribute name rather than
+    needing the class imported.
+
+    @returns A `Mock` with `resolve` wired up — still a `Mock`, so a test
+    that wants to assert on resolution order can.
+    """
+    by_identity = dict(bindings or {})
+    by_name = {
+        getattr(key, "__name__", str(key)): value for key, value in by_identity.items()
+    }
+    by_name.update(extra)
+    #: Remembered so repeated resolutions of the same unbound interface
+    #: hand back the SAME mock. A fresh one per call quietly breaks any
+    #: test that resolves twice and expects one object — which is what
+    #: production code does whenever two collaborators share a service.
+    invented: dict[Any, Mock] = {}
+
+    def resolve(interface: Any) -> Any:
+        if interface in by_identity:
+            return by_identity[interface]
+        name = getattr(interface, "__name__", None)
+        if name is not None and name in by_name:
+            return by_name[name]
+        return invented.setdefault(interface, Mock())
+
+    container = Mock()
+    container.resolve.side_effect = resolve
+    return container
+
+
+@pytest.fixture
+def make_container():
+    """Factory fixture around `fake_container` — `make_container({IConfig: cfg})`."""
+    return fake_container
+
+
+#: Importable by the test modules that build a Presenter.
+__all__ = ["fake_container", "make_container"]

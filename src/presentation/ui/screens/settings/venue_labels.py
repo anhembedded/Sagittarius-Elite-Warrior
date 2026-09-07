@@ -21,18 +21,25 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.market_data_venue import
 from Sagittarius_Elite_Warrior.src.domain.value_objects.trading_venue import (
     TradingVenue,
 )
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 
-MARKET_DATA_VENUE_LABELS: dict[MarketDataVenue, str] = {
-    MarketDataVenue.MAINNET_PUBLIC: "Mainnet — giá thật, công khai (mainnet_public)",
-    MarketDataVenue.FUTURES_TESTNET: "Futures Testnet — giá testnet (futures_testnet)",
-}
+MARKET_DATA_VENUE_LABELS = EnumLabels(
+    MarketDataVenue,
+    {
+        MarketDataVenue.MAINNET_PUBLIC: "Mainnet — giá thật, công khai (mainnet_public)",
+        MarketDataVenue.FUTURES_TESTNET: "Futures Testnet — giá testnet (futures_testnet)",
+    },
+)
 
-TRADING_VENUE_LABELS: dict[TradingVenue, str] = {
-    TradingVenue.DISABLED: "TẮT — không gửi lệnh đi đâu cả (disabled)",
-    TradingVenue.FUTURES_TESTNET: (
-        "BẬT — Futures Testnet, tiền giả lập (futures_testnet)"
-    ),
-}
+TRADING_VENUE_LABELS = EnumLabels(
+    TradingVenue,
+    {
+        TradingVenue.DISABLED: "TẮT — không gửi lệnh đi đâu cả (disabled)",
+        TradingVenue.FUTURES_TESTNET: (
+            "BẬT — Futures Testnet, tiền giả lập (futures_testnet)"
+        ),
+    },
+)
 
 
 def market_data_venue_label(venue: MarketDataVenue) -> str:

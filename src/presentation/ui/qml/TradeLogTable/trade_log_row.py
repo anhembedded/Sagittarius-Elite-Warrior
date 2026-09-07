@@ -10,6 +10,7 @@ from Sagittarius_Elite_Warrior.src.domain.backtesting.trade import Trade
 from Sagittarius_Elite_Warrior.src.domain.value_objects.position_side import (
     PositionSide,
 )
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.theme import (
     BEAR_COLOR,
     BULL_COLOR,
@@ -36,13 +37,16 @@ _POSITION_LABEL: dict[PositionSide, str] = {
 #: `STOP_LOSS`/`TAKE_PROFIT`/`LIQUIDATION` are declared but unreachable until
 #: `BOT-041`/`BOT-049` — kept here anyway so the table never crashes on an
 #: unrecognized `ExitReason` once they start showing up.
-_EXIT_REASON_LABELS: dict[ExitReason, str] = {
-    ExitReason.STRATEGY_SIGNAL: "Tín hiệu chiến lược",
-    ExitReason.END_OF_BACKTEST: "Kết thúc backtest",
-    ExitReason.STOP_LOSS: "Chạm Stop Loss (SL)",
-    ExitReason.TAKE_PROFIT: "Chạm Take Profit (TP)",
-    ExitReason.LIQUIDATION: "Thanh lý (Liquidation)",
-}
+_EXIT_REASON_LABELS = EnumLabels(
+    ExitReason,
+    {
+        ExitReason.STRATEGY_SIGNAL: "Tín hiệu chiến lược",
+        ExitReason.END_OF_BACKTEST: "Kết thúc backtest",
+        ExitReason.STOP_LOSS: "Chạm Stop Loss (SL)",
+        ExitReason.TAKE_PROFIT: "Chạm Take Profit (TP)",
+        ExitReason.LIQUIDATION: "Thanh lý (Liquidation)",
+    },
+)
 
 
 @dataclass(frozen=True)

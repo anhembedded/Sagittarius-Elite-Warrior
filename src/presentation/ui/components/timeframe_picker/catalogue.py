@@ -21,6 +21,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
+
 from .....domain.value_objects.timeframe import TimeFrame
 
 
@@ -39,12 +41,15 @@ class TimeframeGroup(Enum):
 
 
 #: Section heading per group, in display order.
-GROUP_LABELS: dict[TimeframeGroup, str] = {
-    TimeframeGroup.SECONDS: "GIÂY",
-    TimeframeGroup.MINUTES: "PHÚT",
-    TimeframeGroup.HOURS: "GIỜ",
-    TimeframeGroup.DAYS: "NGÀY TRỞ LÊN",
-}
+GROUP_LABELS = EnumLabels(
+    TimeframeGroup,
+    {
+        TimeframeGroup.SECONDS: "GIÂY",
+        TimeframeGroup.MINUTES: "PHÚT",
+        TimeframeGroup.HOURS: "GIỜ",
+        TimeframeGroup.DAYS: "NGÀY TRỞ LÊN",
+    },
+)
 
 #: Short annotation shown beside each section heading in the QML picker
 #: (`qml/TimeframePicker/`) — context a bare "PHÚT" does not give: which

@@ -153,28 +153,21 @@ def container(
     equity_recorder,
     strategy_session,
     strategy_registry,
+    make_container,
 ):
-    c = MagicMock()
-
-    def resolve(interface):
-        if interface is IConfig:
-            return mock_config
-        if interface is IDispatcher:
-            return mock_dispatcher
-        if interface is IThreadManager:
-            return mock_thread_manager
-        if interface is TradingSessionState:
-            return session_state
-        if interface is EquityCurveRecorder:
-            return equity_recorder
-        if interface is LiveStrategySession:
-            return strategy_session
-        if interface is StrategyRegistry:
-            return strategy_registry
-        return MagicMock()
-
-    c.resolve.side_effect = resolve
-    return c
+    # `BOT-125` review — one shared fake, so adding a Presenter
+    # dependency stops costing one edit per test module.
+    return make_container(
+        {
+            IConfig: mock_config,
+            IDispatcher: mock_dispatcher,
+            IThreadManager: mock_thread_manager,
+            TradingSessionState: session_state,
+            EquityCurveRecorder: equity_recorder,
+            LiveStrategySession: strategy_session,
+            StrategyRegistry: strategy_registry,
+        }
+    )
 
 
 @pytest.fixture

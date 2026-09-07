@@ -28,6 +28,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 
 from .trade_log_filter import TradeLogFilter, filter_trade_log_rows
 from .trade_log_row import TradeLogRow, trade_log_rows_to_qml
@@ -44,13 +45,16 @@ _FILTER_ORDER: tuple[TradeLogFilter, ...] = (
     TradeLogFilter.LOSS,
 )
 
-_FILTER_LABELS: dict[TradeLogFilter, str] = {
-    TradeLogFilter.ALL: "Tất cả",
-    TradeLogFilter.LONG: "Mua (LONG)",
-    TradeLogFilter.SHORT: "Bán (SHORT)",
-    TradeLogFilter.WIN: "Lệnh thắng",
-    TradeLogFilter.LOSS: "Lệnh thua",
-}
+_FILTER_LABELS = EnumLabels(
+    TradeLogFilter,
+    {
+        TradeLogFilter.ALL: "Tất cả",
+        TradeLogFilter.LONG: "Mua (LONG)",
+        TradeLogFilter.SHORT: "Bán (SHORT)",
+        TradeLogFilter.WIN: "Lệnh thắng",
+        TradeLogFilter.LOSS: "Lệnh thua",
+    },
+)
 
 
 class TradeLogVM(QObject):

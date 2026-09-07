@@ -1,12 +1,16 @@
 from PySide6 import QtCore, QtWidgets
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 
 from .chart_canvas_view import ChartDisplayMode
 
-_MODE_LABELS: dict[ChartDisplayMode, str] = {
-    ChartDisplayMode.OHLC: "Nến Nhật",
-    ChartDisplayMode.EQUITY: "Đường Vốn",
-    ChartDisplayMode.BOTH: "Song song",
-}
+_MODE_LABELS = EnumLabels(
+    ChartDisplayMode,
+    {
+        ChartDisplayMode.OHLC: "Nến Nhật",
+        ChartDisplayMode.EQUITY: "Đường Vốn",
+        ChartDisplayMode.BOTH: "Song song",
+    },
+)
 
 
 class BacktestChartControls(QtWidgets.QWidget):

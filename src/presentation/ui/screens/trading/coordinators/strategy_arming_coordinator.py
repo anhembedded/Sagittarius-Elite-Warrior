@@ -36,6 +36,7 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     LiveStrategyConfig,
 )
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
     ActionOutcome,
     ActionOwnershipTracker,
@@ -55,18 +56,21 @@ logger = logging.getLogger("App.TradingStrategyArming")
 #: `ArmStrategyBlockReason` has a line here — a missing one would surface
 #: as a silent no-op button, which is the failure mode this whole epic
 #: exists to remove.
-ARM_BLOCK_MESSAGES: dict[ArmStrategyBlockReason, str] = {
-    ArmStrategyBlockReason.TRADING_IS_ENABLED: (
-        "Đang giao dịch — hãy tắt giao dịch trước khi đổi chiến lược."
-    ),
-    ArmStrategyBlockReason.STRATEGY_NOT_FOUND: (
-        "Không tìm thấy chiến lược này trong danh sách đã đăng ký."
-    ),
-    ArmStrategyBlockReason.INVALID_PARAMS: "Thông số Chiến lược không hợp lệ.",
-    ArmStrategyBlockReason.MISSING_SYMBOL_OR_INTERVAL: (
-        "Cần chọn cả symbol và khung thời gian giao dịch."
-    ),
-}
+ARM_BLOCK_MESSAGES = EnumLabels(
+    ArmStrategyBlockReason,
+    {
+        ArmStrategyBlockReason.TRADING_IS_ENABLED: (
+            "Đang giao dịch — hãy tắt giao dịch trước khi đổi chiến lược."
+        ),
+        ArmStrategyBlockReason.STRATEGY_NOT_FOUND: (
+            "Không tìm thấy chiến lược này trong danh sách đã đăng ký."
+        ),
+        ArmStrategyBlockReason.INVALID_PARAMS: "Thông số Chiến lược không hợp lệ.",
+        ArmStrategyBlockReason.MISSING_SYMBOL_OR_INTERVAL: (
+            "Cần chọn cả symbol và khung thời gian giao dịch."
+        ),
+    },
+)
 DISARM_BLOCKED_MESSAGE = "Đang giao dịch — hãy tắt giao dịch trước khi gỡ chiến lược."
 
 
@@ -285,9 +289,9 @@ class StrategyArmingCoordinator:
             self._append_log(f"Đã nạp chiến lược: {summary}")
             return
 
-        message = ARM_BLOCK_MESSAGES.get(
-            result.block_reason, "Không nạp được chiến lược."
-        )
+        # A total mapping — `result.block_reason` is non-None on this
+        # branch, and every member has a line by construction.
+        message = ARM_BLOCK_MESSAGES[result.block_reason]
         if result.error_message:
             message = f"{message} ({result.error_message})"
         self._set_status(message, True)
