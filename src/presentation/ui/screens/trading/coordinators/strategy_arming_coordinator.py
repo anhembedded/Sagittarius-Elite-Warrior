@@ -17,11 +17,13 @@ background work.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, Protocol
 
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_config_store import (
+    LiveStrategyConfigStore,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
     ArmStrategyBlockReason,
     ArmStrategyCommand,
@@ -31,11 +33,15 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy
     DisarmStrategyCommand,
     DisarmStrategyResult,
 )
-from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
-    DEFAULT_LEVERAGE,
-    DEFAULT_SIZING_PERCENT,
     LiveStrategyConfig,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
+    ActionOutcome,
+    ActionOwnershipTracker,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_display import (
+    humanize_strategy_key,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params import (
     build_bot_params_rows,
@@ -64,19 +70,50 @@ ARM_BLOCK_MESSAGES: dict[ArmStrategyBlockReason, str] = {
 DISARM_BLOCKED_MESSAGE = "Đang giao dịch — hãy tắt giao dịch trước khi gỡ chiến lược."
 
 
-def humanize_strategy_key(key: str) -> str:
-    """`ema_crossover` -> `Ema Crossover`.
+class CommandDispatcher(Protocol):
+    """The one method this Coordinator needs from the dispatcher.
 
-    @details Same transformation `BackTestPresenter._humanize_strategy_key`
-    applies, and for the same reason: `BaseStrategy` declares no display
-    name, so the key is all there is. Duplicated as a two-line pure
-    function rather than imported across screens — importing
-    `screens/backtest/` from `screens/trading/` is the dependency
-    direction `EPIC-021L` removed. If a third caller appears, or
-    strategies ever declare a real display name, this is the place that
-    becomes a shared lookup.
+    @details `architecture-rule.md` requires explicit contracts rather
+    than implicit duck-typing. This used to be an untyped `dispatcher`
+    parameter, which said nothing about what was expected and let a test
+    pass anything at all (`BOT-125` review).
     """
-    return key.replace("_", " ").title()
+
+    def dispatch(self, command: object) -> Any: ...
+
+
+class StrategyCardViewModel(Protocol):
+    """What the strategy card's Coordinator reads from and writes to.
+
+    @details Narrower than `TradingViewModel` on purpose: this Coordinator
+    has no business touching the toggle, the chart, or the session stats
+    that ViewModel also carries, and naming only what it uses is what makes
+    that reviewable.
+    """
+
+    @property
+    def selectedStrategyKey(self) -> str: ...
+
+    @property
+    def liveInterval(self) -> str: ...
+
+    @property
+    def sizingPercent(self) -> float: ...
+
+    @property
+    def leverage(self) -> float: ...
+
+    def set_strategy_options(
+        self, strategy_options: list[dict], interval_options: list[str]
+    ) -> None: ...
+
+    def set_strategy_selection(
+        self, strategy_key: str, interval: str, sizing_percent: float, leverage: float
+    ) -> None: ...
+
+    def set_bot_params(self, schema: list[dict], rows: list[dict]) -> None: ...
+
+    def set_bot_params_error(self, message: str) -> None: ...
 
 
 class StrategyArmingCoordinator:
@@ -85,18 +122,35 @@ class StrategyArmingCoordinator:
 
     def __init__(
         self,
-        view_model,
+        view_model: StrategyCardViewModel,
         config,
-        dispatcher,
+        dispatcher: CommandDispatcher,
         available_strategies: Callable[[], Mapping[str, type]],
         get_active_symbol: Callable[[], str],
+        get_armed_config: Callable[[], LiveStrategyConfig | None],
+        tracker: ActionOwnershipTracker,
+        arm_action_kind: str,
+        set_status: Callable[[str, bool], None],
+        append_log: Callable[[str], None],
+        on_armed_changed: Callable[[LiveStrategyConfig | None, bool], None],
     ) -> None:
         self._view_model = view_model
-        self._config = config
         self._dispatcher = dispatcher
         self._available_strategies = available_strategies
         self._get_active_symbol = get_active_symbol
+        self._get_armed_config = get_armed_config
+        #: Owned by `TradingPresenter`, handed in — never minted here
+        #: (`async-ui-action-rule.md` §2).
+        self._tracker = tracker
+        self._arm_action_kind = arm_action_kind
+        self._set_status = set_status
+        self._append_log = append_log
+        self._on_armed_changed = on_armed_changed
+        self._store = LiveStrategyConfigStore(config)
         self._params: dict[str, Any] = {}
+        #: Sentinel for "the form has never been built", distinct from
+        #: `""` which legitimately means "no strategy is picked".
+        self._last_form_strategy_key = "\x00never-built"
 
     # ------------------------------------------------------------------ #
     # Restore (`EPIC-022F`)
@@ -119,9 +173,17 @@ class StrategyArmingCoordinator:
             [{"key": key, "label": humanize_strategy_key(key)} for key in available],
             interval_options,
         )
-        saved_key = str(
-            self._config.get(ConfigKeys.TRADING_LIVE_STRATEGY_KEY.value, "")
-        )
+        try:
+            saved = self._store.load()
+        except ValueError as exc:
+            # A saved config the domain rejects (leverage 0, an interval
+            # live trading does not support) must not blank the card or
+            # crash the screen — show the defaults and say why.
+            logger.warning("Cấu hình chiến lược đã lưu không hợp lệ: %s", exc)
+            saved = LiveStrategyConfig(strategy_key="", symbol="", interval="")
+            self._view_model.set_bot_params_error(str(exc))
+
+        saved_key = saved.strategy_key
         if saved_key not in available:
             # A saved key that no longer exists (renamed, removed) must
             # not be shown as if it were selectable. The combo falls back
@@ -129,34 +191,11 @@ class StrategyArmingCoordinator:
             # nothing is armed either way, so the fallback can only ever
             # become live if the user presses "Nạp chiến lược" on it.
             saved_key = available[0] if available else ""
-        self._params = self._read_saved_params()
+        self._params = dict(saved.strategy_params)
         self._view_model.set_strategy_selection(
-            saved_key,
-            str(self._config.get(ConfigKeys.TRADING_LIVE_INTERVAL.value, "")),
-            float(
-                self._config.get(
-                    ConfigKeys.TRADING_LIVE_SIZING_PERCENT.value,
-                    DEFAULT_SIZING_PERCENT,
-                )
-            ),
-            float(
-                self._config.get(
-                    ConfigKeys.TRADING_LIVE_LEVERAGE.value, DEFAULT_LEVERAGE
-                )
-            ),
+            saved_key, saved.interval, saved.sizing_percent, saved.leverage
         )
         self.refresh_params_rows()
-
-    def _read_saved_params(self) -> dict[str, Any]:
-        raw = str(self._config.get(ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value, ""))
-        if not raw:
-            return {}
-        try:
-            stored = json.loads(raw)
-        except json.JSONDecodeError:
-            logger.warning("Bỏ qua thông số chiến lược đã lưu — không đọc được JSON.")
-            return {}
-        return stored if isinstance(stored, dict) else {}
 
     # ------------------------------------------------------------------ #
     # "Thông số Chiến lược"
@@ -209,6 +248,87 @@ class StrategyArmingCoordinator:
             leverage=self._view_model.leverage,
         )
 
+    def on_arm_clicked(self) -> None:
+        """The "Nạp chiến lược" button, end to end.
+
+        @details Moved here from `TradingPresenter` (`BOT-125` review):
+        the Presenter had grown to 926 lines, well past the 400 that
+        `architecture-rule.md` §5 makes a hard split threshold, and this
+        block is one coherent feature slice — the same reason
+        `async-ui-action-rule.md` §2 gives for Coordinators existing.
+
+        Action ownership stays the Presenter's: it owns the tracker and
+        hands it in, which §2 explicitly sanctions ("a single shared
+        tracker the Presenter owns and hands to every Coordinator") and
+        distinguishes from a Coordinator minting its own action ids.
+        """
+        action = self._tracker.start_action(self._arm_action_kind, None)
+        if action is None:
+            return
+        self._report_state(busy=True)
+        try:
+            result = self.arm()
+        except Exception as exc:  # noqa: BLE001 - reported, never swallowed
+            self._tracker.finish_action(action.action_id, ActionOutcome.FAILED)
+            self._report_state(busy=False)
+            self._set_status(f"Lỗi khi nạp chiến lược: {exc}", True)
+            return
+
+        self._tracker.finish_action(
+            action.action_id,
+            ActionOutcome.SUCCEEDED if result.armed else ActionOutcome.FAILED,
+        )
+        self._report_state(busy=False)
+        if result.armed:
+            summary = self.armed_summary(self._get_armed_config())
+            self._set_status(f"Đã nạp chiến lược: {summary}", False)
+            self._append_log(f"Đã nạp chiến lược: {summary}")
+            return
+
+        message = ARM_BLOCK_MESSAGES.get(
+            result.block_reason, "Không nạp được chiến lược."
+        )
+        if result.error_message:
+            message = f"{message} ({result.error_message})"
+        self._set_status(message, True)
+
+    def on_disarm_clicked(self) -> None:
+        """The "Gỡ" button, end to end."""
+        try:
+            result = self.disarm()
+        except Exception as exc:  # noqa: BLE001 - reported, never swallowed
+            self._set_status(f"Lỗi khi gỡ chiến lược: {exc}", True)
+            return
+        self._report_state(busy=False)
+        if result.disarmed:
+            self._set_status("Đã gỡ chiến lược.", False)
+        else:
+            self._set_status(DISARM_BLOCKED_MESSAGE, True)
+
+    def on_strategy_selection_changed(self) -> None:
+        """Rebuilds the parameter form when the PICKED strategy changes.
+
+        @details Picking is not arming: nothing here dispatches a command,
+        rebuilds an engine or touches the exchange. `BUG-101` was exactly
+        this distinction being lost on the Backtest screen, where a value
+        arriving through a setter ran real work.
+
+        `strategyConfigChanged` also fires for sizing/leverage/interval
+        edits, so the key is compared first — rebuilding the whole form on
+        each of those would discard values the user is mid-way through
+        typing.
+        """
+        key = self._view_model.selectedStrategyKey
+        if key == self._last_form_strategy_key:
+            return
+        self._last_form_strategy_key = key
+        self.refresh_params_rows()
+
+    def _report_state(self, *, busy: bool) -> None:
+        """Pushes what the SESSION says is armed, never what the combo
+        shows — the two differ on purpose between picking and arming."""
+        self._on_armed_changed(self._get_armed_config(), busy)
+
     def arm(self) -> ArmStrategyResult:
         """Runs `ArmStrategyCommand`; persists only on success.
 
@@ -220,34 +340,11 @@ class StrategyArmingCoordinator:
         """
         result = self._dispatcher.dispatch(ArmStrategyCommand(self.build_config()))
         if result.armed:
-            self._persist()
+            self._store.save(self.build_config())
         return result
 
     def disarm(self) -> DisarmStrategyResult:
         return self._dispatcher.dispatch(DisarmStrategyCommand())
-
-    def _persist(self) -> None:
-        config = self.build_config()
-        self._config.set(
-            ConfigKeys.TRADING_LIVE_STRATEGY_KEY.value, config.strategy_key
-        )
-        self._config.set(ConfigKeys.TRADING_LIVE_SYMBOL.value, config.symbol)
-        self._config.set(ConfigKeys.TRADING_LIVE_INTERVAL.value, config.interval)
-        self._config.set(
-            ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value,
-            json.dumps(dict(config.strategy_params), sort_keys=True),
-        )
-        self._config.set(
-            ConfigKeys.TRADING_LIVE_SIZING_PERCENT.value, config.sizing_percent
-        )
-        self._config.set(ConfigKeys.TRADING_LIVE_LEVERAGE.value, config.leverage)
-        # `save()` belongs to `ConfigManager`, not to the `IConfig` port —
-        # same duck-check `SettingsPresenter` uses, so a config
-        # implementation without it degrades to "kept for this session"
-        # rather than raising.
-        save = getattr(self._config, "save", None)
-        if callable(save):
-            save()
 
     def armed_summary(self, config: LiveStrategyConfig | None) -> str:
         """One line describing what is actually running, or "" for nothing.

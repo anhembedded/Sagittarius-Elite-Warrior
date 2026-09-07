@@ -11,6 +11,12 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+    MAX_LEVERAGE,
+    MAX_SIZING_PERCENT,
+    MIN_LEVERAGE,
+    MIN_SIZING_PERCENT,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
     Palette,
     get_icon_loader,
@@ -64,14 +70,12 @@ _ARM_TEXT = "Nạp chiến lược"
 _DISARM_TEXT = "Gỡ"
 _NOT_ARMED_TEXT = "Chưa nạp chiến lược nào."
 _NO_SIGNAL_TEXT = "Chưa có tín hiệu nào."
-#: Sizing is a percentage of equity; 0 would mean "never order anything",
-#: which is what "Gỡ" is for, so the floor is a real minimum position.
-_SIZING_MIN_PERCENT = 0.1
-_SIZING_MAX_PERCENT = 100.0
-#: Binance USD-M Futures allows up to 125x. The app does not raise the
-#: exchange's own ceiling; it only refuses to invent one lower than it.
-_LEVERAGE_MIN = 1.0
-_LEVERAGE_MAX = 125.0
+#: The spin-box ranges come from `LiveStrategyConfig`'s own bounds, not
+#: from literals typed here (`BOT-125` review). A widget can only constrain
+#: what is typed into it; these values also arrive from `app_config.json`
+#: at boot and from a restored session, so the value object is where the
+#: rule has to live — this just keeps the widget from offering something
+#: the domain would reject.
 
 
 class TradingView(BaseView):
@@ -456,7 +460,7 @@ class TradingView(BaseView):
         card.body_layout.addWidget(self._field_label("% vốn mỗi lệnh"))
         self._sizing_spin = QDoubleSpinBox()
         self._sizing_spin.setObjectName("spnLiveSizingPercent")
-        self._sizing_spin.setRange(_SIZING_MIN_PERCENT, _SIZING_MAX_PERCENT)
+        self._sizing_spin.setRange(MIN_SIZING_PERCENT, MAX_SIZING_PERCENT)
         self._sizing_spin.setSingleStep(1.0)
         self._sizing_spin.setSuffix(" %")
         card.body_layout.addWidget(self._sizing_spin)
@@ -464,7 +468,7 @@ class TradingView(BaseView):
         card.body_layout.addWidget(self._field_label("Đòn bẩy"))
         self._leverage_spin = QDoubleSpinBox()
         self._leverage_spin.setObjectName("spnLiveLeverage")
-        self._leverage_spin.setRange(_LEVERAGE_MIN, _LEVERAGE_MAX)
+        self._leverage_spin.setRange(MIN_LEVERAGE, MAX_LEVERAGE)
         self._leverage_spin.setSingleStep(1.0)
         self._leverage_spin.setSuffix(" x")
         card.body_layout.addWidget(self._leverage_spin)

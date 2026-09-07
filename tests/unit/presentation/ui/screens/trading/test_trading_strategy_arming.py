@@ -26,9 +26,14 @@ from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     LiveStrategyConfig,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
+    ActionOwnershipTracker,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_display import (
+    humanize_strategy_key,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.coordinators.strategy_arming_coordinator import (
     StrategyArmingCoordinator,
-    humanize_strategy_key,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.trading_view_model import (
     TradingViewModel,
@@ -72,13 +77,24 @@ def dispatcher() -> MagicMock:
     return dispatcher
 
 
-def _coordinator(view_model, dispatcher, strategy_registry, config=None):
+def _coordinator(view_model, dispatcher, strategy_registry, config=None, armed=None):
+    """@param armed What the session reports as armed, for the tests that
+    exercise the summary/status path. Everything the Presenter used to do
+    inline is now handed in, so these tests drive the same code the real
+    button does rather than a coordinator missing half its collaborators.
+    """
     return StrategyArmingCoordinator(
         view_model=view_model,
         config=config or _FakeConfig(),
         dispatcher=dispatcher,
         available_strategies=strategy_registry.available,
         get_active_symbol=lambda: "BTCUSDT",
+        get_armed_config=lambda: armed,
+        tracker=ActionOwnershipTracker(),
+        arm_action_kind="arm_strategy",
+        set_status=lambda _message, _is_error: None,
+        append_log=lambda _line: None,
+        on_armed_changed=lambda _config, _busy: None,
     )
 
 

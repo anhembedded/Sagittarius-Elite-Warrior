@@ -58,6 +58,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_track
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
     default_symbol,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_display import (
+    humanize_strategy_key,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.symbol_options_coordinator import (
     SymbolOptionsCoordinator,
 )
@@ -200,10 +203,6 @@ _DEFAULT_CHART_KLINES_FETCH_LIMIT = 200_000
 #: therefore stop one full bar behind ``now``; this is a deterministic data
 #: watermark, not a claim that the chart has no newer in-progress candle.
 _LIVE_BACKTEST_END_DELAY_INTERVALS = 1
-
-
-def _humanize_strategy_key(key: str) -> str:
-    return key.replace("_", " ").title()
 
 
 def _parse_custom_datetime(raw: str) -> datetime | None:
@@ -492,7 +491,7 @@ class BackTestPresenter(BasePresenter):
                 # (built for the fuller BOT-040 mockup) expects both roles.
                 {
                     "key": key,
-                    "name": _humanize_strategy_key(key),
+                    "name": humanize_strategy_key(key),
                     "category": "",
                     "description": "",
                 }

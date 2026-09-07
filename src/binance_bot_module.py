@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from datetime import timedelta
@@ -59,6 +58,9 @@ from Sagittarius_Elite_Warrior.src.application.services.in_flight_sync_guard imp
 )
 from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registry import (
     IndicatorScriptRegistry,
+)
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_config_store import (
+    LiveStrategyConfigStore,
 )
 from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory import (
     LiveStrategyFactory,
@@ -238,11 +240,6 @@ from Sagittarius_Elite_Warrior.src.domain.trading.order_submission_mode import (
 from Sagittarius_Elite_Warrior.src.domain.trading.policies.trading_limit_policy import (
     TradingLimitPolicy,
     TradingLimits,
-)
-from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
-    DEFAULT_LEVERAGE,
-    DEFAULT_SIZING_PERCENT,
-    LiveStrategyConfig,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.market_data_venue import (
     MarketDataVenue,
@@ -619,37 +616,16 @@ class BinanceBotModule(BaseModule):
         pick a working one on the Trading screen, which is exactly the
         recovery path that did not exist before `EPIC-022`.
         """
-        params_raw = str(config.get(ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value, ""))
         try:
-            stored_params = json.loads(params_raw) if params_raw else {}
-        except json.JSONDecodeError:
+            live_config = LiveStrategyConfigStore(config).load()
+        except ValueError as exc:
             logger.warning(
-                "Ignoring unreadable %s — expected JSON.",
-                ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value,
+                "Cấu hình chiến lược đã lưu không hợp lệ (%s) — khởi động ở "
+                "trạng thái chưa nạp.",
+                exc,
             )
-            stored_params = {}
-        if not isinstance(stored_params, dict):
-            stored_params = {}
+            return
 
-        live_config = LiveStrategyConfig(
-            strategy_key=str(
-                config.get(ConfigKeys.TRADING_LIVE_STRATEGY_KEY.value, "")
-            ),
-            symbol=str(config.get(ConfigKeys.TRADING_LIVE_SYMBOL.value, "")),
-            interval=str(config.get(ConfigKeys.TRADING_LIVE_INTERVAL.value, "")),
-            strategy_params=stored_params,
-            # `BUG-084` — real config-backed controls, not a hardcoded
-            # 20%/1x inside `LiveTradingCoordinator` itself.
-            sizing_percent=float(
-                config.get(
-                    ConfigKeys.TRADING_LIVE_SIZING_PERCENT.value,
-                    DEFAULT_SIZING_PERCENT,
-                )
-            ),
-            leverage=float(
-                config.get(ConfigKeys.TRADING_LIVE_LEVERAGE.value, DEFAULT_LEVERAGE)
-            ),
-        )
         if not live_config.is_complete:
             return
         try:

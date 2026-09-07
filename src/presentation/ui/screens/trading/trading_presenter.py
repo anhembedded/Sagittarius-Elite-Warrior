@@ -47,6 +47,9 @@ from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
 from Sagittarius_Elite_Warrior.src.domain.trading.live_position import LivePosition
 from Sagittarius_Elite_Warrior.src.domain.trading.order import Order
 from Sagittarius_Elite_Warrior.src.domain.trading.order_status import OrderStatus
+from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+    SUPPORTED_LIVE_INTERVALS,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
     FALLBACK_INTERVAL,
     FALLBACK_SYMBOL,
@@ -77,8 +80,6 @@ from sagittarius_engine.runtime.tasks.cancellation_token import CancellationToke
 from ...common.action_ownership_tracker import ActionOutcome, ActionOwnershipTracker
 from .coordinators.chart_coordinator import ChartCoordinator
 from .coordinators.strategy_arming_coordinator import (
-    ARM_BLOCK_MESSAGES,
-    DISARM_BLOCKED_MESSAGE,
     StrategyArmingCoordinator,
 )
 from .coordinators.strategy_overlay_coordinator import (
@@ -100,15 +101,11 @@ _TOGGLE_ACTION = "toggle_trading"
 #: active action regardless of kind, so sharing an instance would let an
 #: arm click landing mid-toggle fence the toggle's own result as stale.
 _ARM_ACTION = "arm_strategy"
-#: Sentinel for "the parameter form has never been built", distinct from
-#: `""` which legitimately means "no strategy is picked".
-_NO_STRATEGY_PICKED_YET = "\x00never-built"
-#: The timeframes the Trading screen offers for the live strategy. Same
-#: list `ChartCard`'s toolbar shows, kept here as its own constant rather
-#: than read off the toolbar widget: what the chart displays and what the
-#: strategy trades are two decisions that only happen to coincide today,
-#: and reading one from the other would silently couple them.
-_INTERVAL_OPTIONS = ("1m", "5m", "15m", "1h", "4h", "1d")
+#: What the interval combo offers comes from the domain
+#: (`SUPPORTED_LIVE_INTERVALS`), not from a list typed here (`BOT-125`
+#: review). `LiveStrategyConfig` rejects anything outside it, so a
+#: separate UI list could only ever drift into offering a value that
+#: arming would then refuse.
 
 _BLOCK_REASON_MESSAGES: dict[EnableTradingBlockReason, str] = {
     EnableTradingBlockReason.TRADING_VENUE_DISABLED: (
@@ -280,6 +277,15 @@ class TradingPresenter(BasePresenter):
         self._strategy_session: LiveStrategySession = container.resolve(
             LiveStrategySession
         )
+        self._arm_tracker: ActionOwnershipTracker[str, None, None] = (
+            ActionOwnershipTracker()
+        )
+        self._overlay_coordinator = StrategyOverlayCoordinator(
+            get_chart=lambda: self.view.chart,
+            available_strategies=lambda: container.resolve(
+                StrategyRegistry
+            ).available(),
+        )
         self._arming_coordinator = StrategyArmingCoordinator(
             view_model=self._view_model,
             config=self.config,
@@ -288,22 +294,14 @@ class TradingPresenter(BasePresenter):
                 StrategyRegistry
             ).available(),
             get_active_symbol=lambda: self._active_symbol,
+            get_armed_config=lambda: self._strategy_session.config,
+            tracker=self._arm_tracker,
+            arm_action_kind=_ARM_ACTION,
+            set_status=self._view_model.set_status,
+            append_log=self._append_log,
+            on_armed_changed=self._on_armed_config_changed,
         )
-        self._arm_tracker: ActionOwnershipTracker[str, None, None] = (
-            ActionOwnershipTracker()
-        )
-        #: `strategyConfigChanged` also fires for sizing/leverage/interval
-        #: edits; rebuilding the whole parameter form on each of those
-        #: would discard values the user is mid-way through typing. The
-        #: sentinel is not "" because "" is a real state (nothing picked).
-        self._last_params_strategy_key = _NO_STRATEGY_PICKED_YET
-        self._overlay_coordinator = StrategyOverlayCoordinator(
-            get_chart=lambda: self.view.chart,
-            available_strategies=lambda: container.resolve(
-                StrategyRegistry
-            ).available(),
-        )
-        self._arming_coordinator.restore_into_view_model(list(_INTERVAL_OPTIONS))
+        self._arming_coordinator.restore_into_view_model(list(SUPPORTED_LIVE_INTERVALS))
         self._refresh_armed_summary(busy=False)
         # Boot may already have armed a strategy from config
         # (`_arm_from_config`), so the overlay starts from the session's
@@ -622,24 +620,15 @@ class TradingPresenter(BasePresenter):
         self._view_model.set_status("Đã tắt giao dịch.", False)
 
     # ================================================================== #
-    # Strategy card (`EPIC-022D`)
+    # Strategy card (`EPIC-022D`) — the button handlers live in
+    # `StrategyArmingCoordinator`; what stays here is what the Presenter
+    # genuinely owns: the ViewModel slots Qt connects to, and the signal
+    # feed (which is a screen-wide subscription, not part of the card).
     # ================================================================== #
 
     @Slot()
     def _on_strategy_selection_changed(self) -> None:
-        """Rebuilds the parameter form when the picked strategy changes.
-
-        @details Picking is not arming. Nothing here dispatches a command,
-        rebuilds an engine, or touches the exchange — the engine is only
-        replaced when the user presses "Nạp chiến lược". `BUG-101` was
-        exactly this distinction being lost on the Backtest screen, where
-        a value arriving through a setter ran real work.
-        """
-        key = self._view_model.selectedStrategyKey
-        if key == self._last_params_strategy_key:
-            return
-        self._last_params_strategy_key = key
-        self._arming_coordinator.refresh_params_rows()
+        self._arming_coordinator.on_strategy_selection_changed()
 
     @Slot("QVariantMap")
     @safe_ui_action
@@ -649,50 +638,23 @@ class TradingPresenter(BasePresenter):
 
     @Slot()
     def _on_arm_requested(self) -> None:
-        action = self._arm_tracker.start_action(_ARM_ACTION, None)
-        if action is None:
-            return
-        self._refresh_armed_summary(busy=True)
-        try:
-            result = self._arming_coordinator.arm()
-        except Exception as exc:  # noqa: BLE001 - reported, never swallowed
-            self._arm_tracker.finish_action(action.action_id, ActionOutcome.FAILED)
-            self._refresh_armed_summary(busy=False)
-            self._view_model.set_status(f"Lỗi khi nạp chiến lược: {exc}", True)
-            return
-
-        self._arm_tracker.finish_action(
-            action.action_id,
-            ActionOutcome.SUCCEEDED if result.armed else ActionOutcome.FAILED,
-        )
-        self._refresh_armed_summary(busy=False)
-        if result.armed:
-            summary = self._arming_coordinator.armed_summary(
-                self._strategy_session.config
-            )
-            self._view_model.set_status(f"Đã nạp chiến lược: {summary}", False)
-            self._append_log(f"Đã nạp chiến lược: {summary}")
-            return
-
-        message = ARM_BLOCK_MESSAGES.get(
-            result.block_reason, "Không nạp được chiến lược."
-        )
-        if result.error_message:
-            message = f"{message} ({result.error_message})"
-        self._view_model.set_status(message, True)
+        self._arming_coordinator.on_arm_clicked()
 
     @Slot()
     def _on_disarm_requested(self) -> None:
-        try:
-            result = self._arming_coordinator.disarm()
-        except Exception as exc:  # noqa: BLE001 - reported, never swallowed
-            self._view_model.set_status(f"Lỗi khi gỡ chiến lược: {exc}", True)
-            return
-        self._refresh_armed_summary(busy=False)
-        if result.disarmed:
-            self._view_model.set_status("Đã gỡ chiến lược.", False)
-        else:
-            self._view_model.set_status(DISARM_BLOCKED_MESSAGE, True)
+        self._arming_coordinator.on_disarm_clicked()
+
+    def _on_armed_config_changed(self, config, busy: bool) -> None:
+        """Called by the Coordinator whenever what is armed may have
+        changed — keeps the summary line and the chart overlay in step
+        from one place instead of each caller remembering both."""
+        self._view_model.set_armed_summary(
+            self._arming_coordinator.armed_summary(config), busy
+        )
+        self._overlay_coordinator.set_armed_config(config)
+
+    def _refresh_armed_summary(self, *, busy: bool) -> None:
+        self._on_armed_config_changed(self._strategy_session.config, busy)
 
     def _on_signal_generated(self, event) -> None:
         """Shows the strategy's latest decision, in its own words.
@@ -715,15 +677,6 @@ class TradingPresenter(BasePresenter):
         self._view_model.set_last_signal_text(
             f"{when} · {action} @ {signal.price:g} — {signal.reason}"
         )
-
-    def _refresh_armed_summary(self, *, busy: bool) -> None:
-        """Pushes what the SESSION says is armed, never what the combo
-        shows - the two differ on purpose between picking and arming."""
-        config = self._strategy_session.config
-        self._view_model.set_armed_summary(
-            self._arming_coordinator.armed_summary(config), busy
-        )
-        self._overlay_coordinator.set_armed_config(config)
 
     # ================================================================== #
     # Emergency Stop (`EPIC-021K` §2.2) — deliberately NOT `@safe_ui_action`
