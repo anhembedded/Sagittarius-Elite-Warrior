@@ -100,8 +100,9 @@ testnet-tier section covers what this tier is allowed to assert and why it stays
 
 ## 3. Qt integration directory and Desktop E2E
 
-`tests/integration/presentation/ui/` runs by default in every mode; `-IncludeFlakyUi` is a no-op
-kept for command-line compatibility. Its old `BOT-038` exclusion was cleared by re-verification
+`tests/integration/presentation/ui/` runs by default in every mode. The `-IncludeFlakyUi` switch
+that used to control it was **retired 2026-09-07** — passing it is now an error, not a no-op.
+Its old `BOT-038` exclusion was cleared by re-verification
 on 2026-08-25 (7 runs, sequential and under `-n 6` with `tests/sanity` concurrent, zero crash
 markers; closing note in `Tasks/completed/`). **A native crash resurfacing here is a *new*
 finding — file a fresh bug, do not reopen `BOT-038`:** that bug's mechanism may no longer exist,

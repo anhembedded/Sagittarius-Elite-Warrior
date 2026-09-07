@@ -80,6 +80,23 @@ class Palette:
     FONT_SIZE_SM = 11
     FONT_SIZE_MD = 12
     FONT_SIZE_LG = 14
+    #: `STAT_VALUE` reads `fontSizeXl`, and this app supplied no value for
+    #: it until 2026-09-07 — so every stat number on screen was sized by the
+    #: engine's own invented scale, which is the exact failure this class
+    #: exists to prevent. Set to 20 because that is what the engine's
+    #: default already produced: ownership moves, no pixel does.
+    FONT_SIZE_XL = 20
+
+    #: Spacing. `style.py` reads all three (`spaceXs` for badge/caption
+    #: padding, `spaceSm` and `spaceMd` for the rest) and, like
+    #: `fontSizeXl` above, this app supplied none of them until 2026-09-07.
+    #: Values are the engine's current defaults, for the same reason: this
+    #: change is about who decides, not about changing the look. Any future
+    #: retune of this app's spacing scale now happens here, visibly, instead
+    #: of arriving as a side effect of an engine upgrade.
+    SPACE_XS = 4
+    SPACE_SM = 8
+    SPACE_MD = 12
 
     @classmethod
     def _size_tokens(cls) -> dict[str, float]:
@@ -95,6 +112,10 @@ class Palette:
             "fontSizeSm": cls.FONT_SIZE_SM,
             "fontSizeMd": cls.FONT_SIZE_MD,
             "fontSizeLg": cls.FONT_SIZE_LG,
+            "fontSizeXl": cls.FONT_SIZE_XL,
+            "spaceXs": cls.SPACE_XS,
+            "spaceSm": cls.SPACE_SM,
+            "spaceMd": cls.SPACE_MD,
         }
 
     @classmethod

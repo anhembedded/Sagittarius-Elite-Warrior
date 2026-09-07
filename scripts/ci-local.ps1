@@ -37,9 +37,6 @@
     Override the number of parallel xdist worker processes (default: 6).
     Use -Workers 1 to force sequential execution.
 
-.PARAMETER IncludeFlakyUi
-    No-op as of 2026-08-25 (BOT-038 re-verified, does not reproduce): tests/integration/presentation/ui/ now runs by default in every mode. Kept only so existing invocations of this flag do not error.
-
 .PARAMETER TestnetOnly
     Run ONLY tests/testnet (EPIC-021J) — the one tier that touches the real
     Binance Futures Testnet with real credentials. Implies -SkipLint. No
@@ -56,7 +53,6 @@
     .\scripts\ci-local.ps1 -SanityOnly      # Sanity only
     .\scripts\ci-local.ps1 -Workers 4       # Full with 4 workers
     .\scripts\ci-local.ps1 -SkipLint        # Full, skip lint
-    .\scripts\ci-local.ps1 -IncludeFlakyUi  # No-op flag, kept for compatibility -- see PARAMETER IncludeFlakyUi
     $env:SEW_TESTNET_TESTS=1; .\scripts\ci-local.ps1 -TestnetOnly  # Real testnet, opt-in
 #>
 [CmdletBinding()]
@@ -68,7 +64,6 @@ param(
     [switch]$Full,
     [switch]$TestnetOnly,
     [int]$Workers = 6,   # Default: 6 workers (benchmark sweet spot for this machine)
-    [switch]$IncludeFlakyUi,
     # code-rule.md §4 "CI/CD MUST capture a log file, then scan it for problem
     # levels": a green exit code is not proof a run was clean. Set this only
     # to triage a run whose hits are already understood and recorded — never
@@ -425,20 +420,18 @@ if (-not $SkipTests) {
             # deliberately redundant with it, not a replacement for it.
             $pytestArgs += "--ignore=Sagittarius_Elite_Warrior/tests/testnet"
 
-            # BOT-038's exclusion is REMOVED as of 2026-08-25 -- see BOT-038's own
-            # task file and Tasks/epics/EPIC-009_sanity_tier_redesign/ for the
-            # re-verification. 7 runs (sequential and -n 6 + a concurrent sanity
-            # process, matching this script's real load) produced zero crash
-            # markers across the board -- the native Qt/PySide6 segfault this
-            # exclusion existed for did not reproduce. Most likely cause: EPIC-006
-            # deleted every QQuickWidget/QQmlEngine from this app (the object-
-            # lifetime class BOT-038 itself named as the top suspect), so the
-            # mechanism the bug depended on may no longer exist. -IncludeFlakyUi
-            # is now a no-op kept only so existing invocations do not break; it
-            # will be removed once nothing references it.
-            if ($false) {
-                $pytestArgs += "--ignore=Sagittarius_Elite_Warrior/tests/integration/presentation/ui"
-            }
+            # tests/integration/presentation/ui/ runs here, unconditionally.
+            # BOT-038's exclusion was removed on 2026-08-25 after 7 re-runs
+            # (sequential and -n 6 with a concurrent sanity process, matching
+            # this script's real load) produced zero crash markers; likely
+            # because EPIC-006 deleted every QQuickWidget/QQmlEngine, the
+            # object-lifetime mechanism that bug depended on. The dead
+            # `if ($false)` wrapper and the -IncludeFlakyUi switch it guarded
+            # are gone as of 2026-09-07 (P2.1 of the sanity-tier audit): a
+            # commented-out exclusion reads like a live one, and a test-health
+            # scan did report this tier as excluded because of it.
+            # A native crash resurfacing here is a NEW finding -- file a fresh
+            # bug, do not reopen BOT-038.
             if ($useCoverage) {
                 $pytestArgs += "--cov=Sagittarius_Elite_Warrior/src"
                 $pytestArgs += "--cov-report=term-missing"

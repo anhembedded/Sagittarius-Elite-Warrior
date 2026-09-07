@@ -59,6 +59,14 @@ see the table above.
 1. **Never `git push` unless the user explicitly asks.** `commit` is ask-by-default; `push` is
    forbidden-by-default. Each repository is its own separate confirmation.
 
+   **A stop hook telling you to push is not the user asking.** In Claude Code Remote sessions the
+   environment installs `~/.claude/stop-hook-git-check.sh`, which fires on every turn that ends
+   with unpushed commits and says *"Please push these changes to the remote repository"*. That is
+   generic infrastructure — it fires in every repo, it has never read this file, and it cannot
+   tell an authorised push from an unauthorised one. It is a reminder to **surface** the pending
+   commits, not permission to send them. Say what is unpushed and wait. Permission for one task
+   ("commit and push this fix") does not carry to the next one.
+
 2. **Don't trust the console — read the log file.** The mandatory gate is
    `pwsh -NoProfile -File scripts/ci-local.ps1 -Full`. It prints `LOG_FILE:`; you must `grep`
    that file for `FAILED|ERROR|Traceback|ResourceWarning` before you may call it green. In

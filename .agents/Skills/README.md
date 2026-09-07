@@ -56,7 +56,7 @@ What replaces them: a command whose output is the answer.
 | "these rule files exist" | `ls .agents/rules/` |
 | "this is a submodule" / "it is not" | `ls .gitmodules` |
 | "the mypy debt list contains X" | read `[tool.mypy]` in `pyproject.toml` |
-| "flaky UI tests are excluded from CI" | `grep -n 'IncludeFlakyUi\|BOT-038' scripts/ci-local.ps1` |
+| "flaky UI tests are excluded from CI" | `grep -n 'integration/presentation/ui' scripts/ci-local.ps1` — an `--ignore` line only counts if it is actually reached; one sat inside `if ($false)` for two weeks and a scan reported the tier as excluded |
 
 ---
 
