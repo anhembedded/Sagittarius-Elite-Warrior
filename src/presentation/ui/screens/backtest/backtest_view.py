@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QFrame, QScrollArea, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QSplitter, QVBoxLayout, QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.timeframe_pin_preferences import (
     TimeframePinPreferences,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.kit import PageShell
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
+    PageShell,
+    PreferredHeightScrollArea,
+)
 from sagittarius_engine.extensions.pyside_mvc import BaseView
 
 from .backtest_modals import BackTestModalsHost
@@ -93,7 +96,7 @@ class BackTestView(BaseView):
             "Backtest Engine", "Kiểm thử chiến lược trên dữ liệu lịch sử"
         )
 
-        self.scroll_area = QScrollArea()
+        self.scroll_area = PreferredHeightScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setHorizontalScrollBarPolicy(
