@@ -1,9 +1,9 @@
 # EPIC-002D — Lộ trình siết `--strict` dần theo module
 
 **Thuộc Epic:** [`EPIC-002`](../README.md)
-**Trạng thái:** 🟡 Đang làm — `src/domain/` (trừ 4 file strategy đã biết) đã bật `--strict` thật
-(2026-09-08, xem §5). Vẫn là backlog dài hạn theo đúng §3 — không có mốc "xong hẳn", mở rộng dần
-theo module.
+**Trạng thái:** 🟡 Đang làm — `src/domain/` và `src/application/` (mỗi bên trừ 1-4 file nợ thật đã
+biết) đã bật `--strict` thật (2026-09-08, xem §5/§6). Vẫn là backlog dài hạn theo đúng §3 — không
+có mốc "xong hẳn", mở rộng dần theo module.
 **Phụ thuộc:** [`EPIC-002B`](../completed/EPIC-002B_wire_mypy_into_ci_local.md).
 
 ---
@@ -156,3 +156,51 @@ hình chết — rồi gỡ hàm probe đó ra.
 `src/domain/indicator_scripts/base_indicator_script.py`, `src/domain/backtesting/backtest_metrics.py`.
 Không sửa hành vi runtime nào — toàn bộ thay đổi là annotation/cast/type alias, xác nhận bằng
 test suite xanh nguyên vẹn trước/sau.
+
+## 6. Module thứ hai — `src/application/` (2026-09-08, cùng phiên với §5)
+
+Đúng lộ trình §2 điểm 3 ("Mở rộng dần sang Application"). User yêu cầu tiếp tục ("làm tiếp module
+tiếp theo") — cùng quyền tự quyết đã giao ở §5.
+
+### 6.1. Đo baseline
+
+`mypy --strict` cô lập trên `src/application/` (126 file): **chỉ 2 lỗi trên 2 file** — sạch hơn cả
+Domain.
+
+### 6.2. Sửa thật 1/2 lỗi
+
+`src/application/services/live_strategy_config_store.py::__init__(self, config)` thiếu hẳn type
+annotation cho `config`. Cả 2 call site thật (`strategy_arming_coordinator.py`,
+`binance_bot_module.py::_arm_from_config`) đều truyền `IConfig` — annotate đúng
+`config: IConfig`, không phải suy đoán.
+
+### 6.3. Nợ thật, không sửa trong lượt này
+
+`src/application/use_cases/queries/get_historical_klines/handler.py` — **đã** nằm trong khối
+`exclude` chính (nợ baseline có từ `EPIC-002A`, không phải phát hiện mới): `_execute_single()`
+truyền thẳng `query.symbol` (kiểu `str | list[str]`) vào `IMarketDataRepository.get_klines()`
+(chỉ nhận `str`) — thiếu bước narrow giữa `_execute_single`/`_execute_multi`. Đây là bug tiềm
+tàng thật (không phải chỉ artifact của strict), nhưng ngoài phạm vi lượt siết-kiểu này — loại ra
+khỏi override strict bằng đúng kỹ thuật đã dùng cho 4 file strategy ở §5.3, để dành sửa riêng.
+
+### 6.4. Xác minh
+
+Cùng quy trình §5.5: tiêm hàm thiếu annotation vào `live_strategy_config_store.py`, xác nhận
+`mypy` bắt được (`no-untyped-def`) trước khi gỡ ra.
+
+- `mypy --config-file pyproject.toml --namespace-packages --explicit-package-bases src scripts`:
+  `Success: no issues found in 257 source files` — sạch ngay từ lần chạy đầu (không lặp lại lỗi
+  rò rỉ `strict = true` của §5.3 vì lần này viết đúng danh sách cờ ngay từ đầu).
+- `ruff check`/`ruff format --check`: sạch.
+- `pytest tests/unit/`: **3639 passed**.
+- `pytest tests/integration/`: **108 passed, 4 skipped**.
+- `pytest tests/sanity/`: **26 passed**.
+
+**File đổi:** `pyproject.toml` (2 override mới, cùng khuôn §5.3),
+`src/application/services/live_strategy_config_store.py`. Không đổi hành vi runtime.
+
+**Module tiếp theo (chưa làm):** `src/infrastructure/`/`src/presentation/` — theo đúng cảnh báo
+sẵn có ở §2 điểm 3, 2 layer này có nhiều phụ thuộc ngoài (PySide6, SQLAlchemy) nên nhiều khả năng
+cần `# type: ignore` có chủ đích thay vì sửa thật thuần tuý; `src/presentation/` riêng còn bị
+chặn bởi false positive `@Property` đã ghi ở §2.3, cần quyết định stub/plugin trước khi đo được
+gì có ý nghĩa.

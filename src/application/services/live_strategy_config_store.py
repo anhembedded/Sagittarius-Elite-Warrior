@@ -30,6 +30,7 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config imp
     DEFAULT_SIZING_PERCENT,
     LiveStrategyConfig,
 )
+from sagittarius_engine.interfaces.i_config import IConfig
 
 logger = logging.getLogger("App.LiveStrategyConfigStore")
 
@@ -37,7 +38,7 @@ logger = logging.getLogger("App.LiveStrategyConfigStore")
 class LiveStrategyConfigStore:
     """@brief Reads and writes the live strategy's `trading.live_*` keys."""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config: IConfig) -> None:
         self._config = config
 
     def load(self) -> LiveStrategyConfig:
