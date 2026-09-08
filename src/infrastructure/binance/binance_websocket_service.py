@@ -2,6 +2,7 @@ import asyncio
 import logging
 import threading
 from datetime import UTC, datetime
+from typing import Any
 
 from binance import AsyncClient, BinanceSocketManager
 from binance.ws.reconnecting_websocket import ReconnectingWebsocket
@@ -247,7 +248,7 @@ class BinanceWebsocketService(ILiveStreamService):
             except (KeyError, ValueError, TypeError) as e:
                 logger.error(f"Error parsing kline message: {e} | Message: {res}")
 
-    def _parse_kline(self, msg: dict) -> MarketData:
+    def _parse_kline(self, msg: dict[str, Any]) -> MarketData:
         k = msg["k"]
         return MarketData(
             symbol=k["s"],

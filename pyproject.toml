@@ -261,3 +261,58 @@ implicit_reexport = true
 strict_equality = false
 extra_checks = false
 
+[[tool.mypy.overrides]]
+# EPIC-002D — third module: Infrastructure, per §2.3's own caveat that
+# this layer (external deps — SQLAlchemy, python-binance) would likely
+# need deliberate `# type: ignore`s rather than real fixes more often than
+# Domain/Application did. Measured anyway rather than assumed: an isolated
+# `mypy --strict` run over `src/infrastructure/` (22 non-frozen-debt files)
+# found only 2 errors, both fixed for real — `_parse_kline(msg: dict)` was
+# missing its `[str, Any]` type argument, and `is_fill_execution()`
+# returned an un-narrowed `Any == str` comparison (wrapped in `bool(...)`,
+# same fix shape typeshed pushes for any `Any`-typed `==`). No
+# `# type: ignore` needed after all — the caveat in §2.3 was a reasonable
+# prior, not a rule to follow blindly without measuring first.
+module = ["Sagittarius_Elite_Warrior.src.infrastructure.*"]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_unused_ignores = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
+
+[[tool.mypy.overrides]]
+# The 4 files already frozen in the main `exclude` list above
+# (`client.py`, `models.py`, `sqlalchemy_repository.py`,
+# `kline_row_mapper.py` — SQLAlchemy ORM attribute typing debt, EPIC-002A)
+# stayed out of the isolated measurement above on purpose. Re-excluded
+# from the blanket Infrastructure strictness immediately above for the
+# same reason as every other carve-out in this file: real, unmeasured debt
+# is not this increment's job, and letting the broad override reach them
+# via a transitive import from another strict-checked Infrastructure
+# module would silently violate that.
+module = [
+    "Sagittarius_Elite_Warrior.src.infrastructure.binance.client",
+    "Sagittarius_Elite_Warrior.src.infrastructure.persistence.models",
+    "Sagittarius_Elite_Warrior.src.infrastructure.persistence.sqlalchemy_repository",
+    "Sagittarius_Elite_Warrior.src.infrastructure.persistence.kline_row_mapper",
+]
+disallow_any_generics = false
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+warn_unused_ignores = false
+warn_return_any = false
+implicit_reexport = true
+strict_equality = false
+extra_checks = false
+
