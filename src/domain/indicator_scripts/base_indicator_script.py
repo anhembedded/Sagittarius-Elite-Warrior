@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
 from Sagittarius_Elite_Warrior.src.domain.indicators.ema import EMA
@@ -142,6 +142,13 @@ class IndicatorHandle[T]:
         return self._series
 
 
+#: What every comparison helper below accepts. `_as_series()` only ever
+#: reads `.series` off an `IndicatorHandle`, never its `T`-typed reading, so
+#: the handle's own value type is irrelevant here — `Any`, not a specific
+#: `T`, is the honest bound rather than an arbitrary one.
+type SeriesLike = IndicatorHandle[Any] | Series
+
+
 class BaseIndicatorScript(ABC):
     """
     @brief Base for a "study": a named group of one or more chart lines,
@@ -249,19 +256,28 @@ class BaseIndicatorScript(ABC):
         suffix: str | None = None,
         step: float | None = None,
     ) -> int:
-        return self._inputs.declare(
-            build_input(
-                InputKind.INT,
-                name,
-                default,
-                label,
-                minval,
-                maxval,
-                None,
-                group,
-                suffix,
-                step,
-            )
+        # `InputDeclarations.declare()` returns `Any` — the real type varies
+        # by `spec.kind`, and only each `input_*()` wrapper knows which one
+        # it just declared. The `cast` states that known invariant; it does
+        # not paper over anything `declare()`/`_coerce()` don't already
+        # guarantee (`_coerce()` raises rather than return a wrong-typed
+        # value for `InputKind.INT`).
+        return cast(
+            int,
+            self._inputs.declare(
+                build_input(
+                    InputKind.INT,
+                    name,
+                    default,
+                    label,
+                    minval,
+                    maxval,
+                    None,
+                    group,
+                    suffix,
+                    step,
+                )
+            ),
         )
 
     def input_float(
@@ -276,19 +292,22 @@ class BaseIndicatorScript(ABC):
         suffix: str | None = None,
         step: float | None = None,
     ) -> float:
-        return self._inputs.declare(
-            build_input(
-                InputKind.FLOAT,
-                name,
-                default,
-                label,
-                minval,
-                maxval,
-                None,
-                group,
-                suffix,
-                step,
-            )
+        return cast(
+            float,
+            self._inputs.declare(
+                build_input(
+                    InputKind.FLOAT,
+                    name,
+                    default,
+                    label,
+                    minval,
+                    maxval,
+                    None,
+                    group,
+                    suffix,
+                    step,
+                )
+            ),
         )
 
     def input_bool(
@@ -299,8 +318,11 @@ class BaseIndicatorScript(ABC):
         label: str | None = None,
         group: str | None = None,
     ) -> bool:
-        return self._inputs.declare(
-            build_input(InputKind.BOOL, name, default, label, group=group)
+        return cast(
+            bool,
+            self._inputs.declare(
+                build_input(InputKind.BOOL, name, default, label, group=group)
+            ),
         )
 
     def input_string(
@@ -312,10 +334,13 @@ class BaseIndicatorScript(ABC):
         label: str | None = None,
         group: str | None = None,
     ) -> str:
-        return self._inputs.declare(
-            build_input(
-                InputKind.STRING, name, default, label, options=options, group=group
-            )
+        return cast(
+            str,
+            self._inputs.declare(
+                build_input(
+                    InputKind.STRING, name, default, label, options=options, group=group
+                )
+            ),
         )
 
     # ------------------------------------------------------------------ #
@@ -365,23 +390,23 @@ class BaseIndicatorScript(ABC):
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _as_series(operand: IndicatorHandle | Series) -> Series:
+    def _as_series(operand: SeriesLike) -> Series:
         return operand.series if isinstance(operand, IndicatorHandle) else operand
 
-    def crossed_above(self, a, b) -> bool:
+    def crossed_above(self, a: SeriesLike, b: SeriesLike) -> bool:
         """True only on the bar `a` crosses from below `b` to above it."""
         return crossed_above(self._as_series(a), self._as_series(b))
 
-    def crossed_below(self, a, b) -> bool:
+    def crossed_below(self, a: SeriesLike, b: SeriesLike) -> bool:
         return crossed_below(self._as_series(a), self._as_series(b))
 
-    def crossed(self, a, b) -> bool:
+    def crossed(self, a: SeriesLike, b: SeriesLike) -> bool:
         return crossed(self._as_series(a), self._as_series(b))
 
-    def is_above(self, a, b) -> bool:
+    def is_above(self, a: SeriesLike, b: SeriesLike) -> bool:
         return is_above(self._as_series(a), self._as_series(b))
 
-    def is_below(self, a, b) -> bool:
+    def is_below(self, a: SeriesLike, b: SeriesLike) -> bool:
         return is_below(self._as_series(a), self._as_series(b))
 
     # ------------------------------------------------------------------ #

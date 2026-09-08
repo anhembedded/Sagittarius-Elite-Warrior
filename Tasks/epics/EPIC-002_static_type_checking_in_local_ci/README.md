@@ -1,6 +1,8 @@
 # Epic EPIC-002 — Kiểm tra kiểu tĩnh (`mypy`) trong CI cục bộ
 
-**Trạng thái:** 🟡 Đang làm — 4/5 xong (23/08): `A`, `B`, `C`, `E` đã xong. Còn `EPIC-002D` (backlog dài hạn, không chặn gì).
+**Trạng thái:** 🟡 Đang làm — 4/5 xong (23/08): `A`, `B`, `C`, `E` đã xong. `EPIC-002D` (backlog
+dài hạn, không chặn gì, tự nó không có mốc "xong hẳn") đã bật `--strict` thật cho module đầu
+tiên — `src/domain/` — 2026-09-08.
 **Nguồn:** [`BUG-026`](../../bug_report/completed/BUG-026_shutdown_probe_missing_stream_historical_klines_implementation.md).
 
 ---
@@ -54,7 +56,7 @@ gian chứ không "bật hết 1 lần".
 | **[EPIC-002A](completed/EPIC-002A_mypy_baseline_audit.md)** | Đo baseline: `mypy` bắt bao nhiêu lỗi thật trên codebase hiện tại | ✅ Xong (21/08) — [báo cáo đầy đủ](../../reports/EPIC-002A_mypy_baseline_audit.md), phát hiện thêm 1 defect sống cùng lớp `BUG-026` (đã sửa: `BUG-027`) |
 | **[EPIC-002B](completed/EPIC-002B_wire_mypy_into_ci_local.md)** | Nối `mypy` (chế độ tối thiểu) vào `ci-local.ps1 -Full` | ✅ Xong (21/08) — verify thật qua `pwsh`, cổng chạy "Success: no issues found in 128 source files" |
 | **[EPIC-002C](completed/EPIC-002C_document_mypy_gate_in_rules.md)** | Ghi nhận cổng `mypy` vào `ci-rule.md`/`ONBOARDING.md` | ✅ Xong (21/08) — kèm sửa 1 câu sai trong `ONBOARDING.md` (PowerShell thật ra chạy được trên máy này qua `pwsh`) |
-| **[EPIC-002D](incomplete/EPIC-002D_incremental_strictness_rollout.md)** | Lộ trình siết `--strict` dần theo module (giai đoạn sau, không chặn 3 task trên) | 🔴 Chưa làm |
+| **[EPIC-002D](incomplete/EPIC-002D_incremental_strictness_rollout.md)** | Lộ trình siết `--strict` dần theo module (giai đoạn sau, không chặn 3 task trên) | 🟡 Đang làm — `src/domain/` bật `--strict` (2026-09-08) |
 | **[EPIC-002E](completed/EPIC-002E_drop_engine_ignore_missing_imports.md)** | Gỡ `sagittarius_engine` khỏi `ignore_missing_imports` (engine đã ship `py.typed` từ 2.2.0) | ✅ Xong (23/08) — 0 lỗi mới, cổng thật `RESULT: PASS`, mypy `no issues found in 134 source files` |
 
 Thứ tự bắt buộc: `A` → `B` → `C`. `D` là backlog dài hạn, không phụ thuộc

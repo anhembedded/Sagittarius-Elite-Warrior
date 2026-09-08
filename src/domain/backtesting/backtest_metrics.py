@@ -294,7 +294,11 @@ def _calmar_ratio(
     ).total_seconds() / _SECONDS_PER_YEAR
     if years < (1 / 365.25):
         return 0.0
-    cagr_percent = ((end_equity / start_equity) ** (1 / years) - 1) * 100
+    # `float ** float` is typed loosely upstream (a negative base raised to
+    # a fractional power is a `complex` at runtime) — annotating here states
+    # the real invariant this domain guarantees (`end_equity`/`start_equity`
+    # are always non-negative money amounts, so the result is always real).
+    cagr_percent: float = ((end_equity / start_equity) ** (1 / years) - 1) * 100
     return cagr_percent / max_drawdown_percent
 
 
