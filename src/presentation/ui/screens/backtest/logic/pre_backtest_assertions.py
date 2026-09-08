@@ -25,6 +25,25 @@ _TICK_MODE_REQUIRES_BOUNDED_RANGE_MESSAGE = (
     "giải tick (giây) không có điểm bắt đầu khiến việc xác minh dữ liệu "
     "chậm dần theo mỗi lần thử và không bao giờ bắt kịp."
 )
+#: `BUG-109` — `Tasks/reports/tick_data_feasibility.md` §3.2/§3.3 measured
+#: a single 7-day/1s coverage probe (query + handler) at ~17s and concluded
+#: it is "not usable synchronously — MUST run in background + progress +
+#: cancel". `_coverage_is_ready()` (`execution_coordinator.py`) calls this
+#: exact query type synchronously on a background thread with NO progress
+#: reporting of its own — a real session picked the standard "365 ngày qua"
+#: preset in tick mode (a *bounded* range, so the old unbounded-only check
+#: never caught it) and the app appeared to hang with nothing on screen for
+#: minutes. `GetBacktestRangeCoverageQueryHandler` has no cancellation
+#: token either (`BUG-073`'s own finding) — the only reliable mitigation is
+#: refusing to dispatch the hazardous shape at all, same approach `BUG-073`
+#: already established for the unbounded case.
+_MAX_TICK_MODE_RANGE_DAYS = 7
+_TICK_MODE_RANGE_TOO_WIDE_MESSAGE = (
+    "Chế độ Realtime (theo tick) chỉ hỗ trợ tối đa "
+    f"{_MAX_TICK_MODE_RANGE_DAYS} ngày mỗi lần chạy — khoảng đã chọn quá "
+    "rộng. Kiểm tra dữ liệu ở độ phân giải tick (giây) trên một phạm vi "
+    "rộng sẽ treo giao diện nhiều phút mà không có thanh tiến trình nào."
+)
 
 
 class BacktestInputField(str, Enum):
@@ -53,6 +72,14 @@ class PreBacktestInput:
     #: rather than importing BacktestExecutionMode, so this module stays
     #: decoupled from the FSM layer the way its other fields already are.
     is_tick_mode: bool = False
+    #: BUG-109 — the *resolved* range (post `resolve_time_range()`), not raw
+    #: preset/text: a preset like "365 ngày qua" is just as wide as a
+    #: hand-typed custom range, and both need the same width check. `None`
+    #: for either means "unknown/still resolving" — `TickModeRequiresBoundedRangeRule`
+    #: only checks width when both are present, so an unresolved transient
+    #: state (same one `is_unbounded_range` alone used to miss) never false-rejects.
+    start_time: datetime | None = None
+    end_time: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -125,8 +152,29 @@ class CustomDateRangeRule:
         return None
 
 
+def tick_mode_range_too_wide(
+    is_tick_mode: bool, start_time: datetime | None, end_time: datetime | None
+) -> bool:
+    """`BUG-109` — True when `is_tick_mode` and the resolved `(start_time,
+    end_time)` span exceeds `_MAX_TICK_MODE_RANGE_DAYS`. A plain function
+    (not only `TickModeRequiresBoundedRangeRule.validate()`) so
+    `ChartPreviewCoordinator` — which already has resolved datetimes from
+    `BacktestRunConfig`, not the raw preset/text `PreBacktestInput` reads —
+    can reuse the exact same threshold instead of re-deriving it under a
+    different number. Deliberately does NOT treat `start_time is None`
+    (unbounded) as "too wide" here — that is `is_unbounded_range`'s own,
+    differently-worded hazard in `TickModeRequiresBoundedRangeRule`; a
+    caller with only resolved datetimes (no `BacktestRunConfig` preset)
+    should still bounded-check ALL_HISTORY (`start_time is None`) itself
+    where it already does, unchanged since `BUG-073`."""
+    if not is_tick_mode or start_time is None or end_time is None:
+        return False
+    return (end_time - start_time).days > _MAX_TICK_MODE_RANGE_DAYS
+
+
 class TickModeRequiresBoundedRangeRule:
-    """Reject Realtime/tick mode combined with an unbounded start_time.
+    """Reject Realtime/tick mode combined with an unbounded start_time, OR
+    (`BUG-109`) a *bounded* range wider than `_MAX_TICK_MODE_RANGE_DAYS`.
 
     A None start_time makes GetBacktestRangeCoverageQuery's SQL scan every
     row ever synced for that symbol/interval with no lower bound (see
@@ -137,13 +185,28 @@ class TickModeRequiresBoundedRangeRule:
     forever because the coverage round-trip could never finish faster than
     the cutoff kept moving. BOT-075's own validated feasibility number was a
     bounded 7-day window, never unbounded history.
+
+    A *bounded* range does not dodge the same query cost: `BUG-109` reproduced
+    the identical hang via the plain "365 ngày qua" preset — start_time is a
+    real datetime, not None, so the check above alone never caught it. Both
+    hazards get the same treatment: refuse to dispatch rather than attempt a
+    query with no cancellation and no progress reporting.
     """
 
     def validate(self, input_: PreBacktestInput) -> BacktestInputIssue | None:
-        if input_.is_tick_mode and input_.is_unbounded_range:
+        if not input_.is_tick_mode:
+            return None
+        if input_.is_unbounded_range:
             return BacktestInputIssue(
                 BacktestInputField.TIME_RANGE_PRESET,
                 _TICK_MODE_REQUIRES_BOUNDED_RANGE_MESSAGE,
+            )
+        if tick_mode_range_too_wide(
+            input_.is_tick_mode, input_.start_time, input_.end_time
+        ):
+            return BacktestInputIssue(
+                BacktestInputField.TIME_RANGE_PRESET,
+                _TICK_MODE_RANGE_TOO_WIDE_MESSAGE,
             )
         return None
 

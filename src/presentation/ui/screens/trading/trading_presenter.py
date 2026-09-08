@@ -478,9 +478,10 @@ class TradingPresenter(BasePresenter):
         @details Deliberately does NOT go through `_restart_chart()`'s
         stop-then-start: there is no stream of this screen's own to stop
         yet (it has only ever read local history), so a `stop()` here would
-        do nothing but risk killing a stream Dev Board already has running.
-        `StartLiveStreamCommand` takes over the single process-wide stream
-        on its own — the original always-live open path never called
+        release nothing of this screen's own — `BOT-126` made
+        `ChartCoordinator.stop()` owner-scoped, so calling it early would
+        be a harmless no-op rather than a risk, but it is still skipped as
+        dead motion — the original always-live open path never called
         `stop()` first either.
         """
         if self._chart_live_requested:
