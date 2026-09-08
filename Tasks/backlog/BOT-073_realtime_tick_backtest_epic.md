@@ -72,14 +72,14 @@ cái kia**.
 
 ### 2.4. Bug thật đã tìm ra: checkbox mời bật rồi im lặng bỏ qua
 
-[`OrderExecutionMenu.qml`](../../src/presentation/ui/components/OrderExecutionMenu.qml)
+`OrderExecutionMenu.qml`
 có comment ghi rõ ý định *"the other 3 ... are shown-but-**disabled**"*, nhưng dữ
 liệu thật thì **ngược lại**: `"On bar close"` (cái duy nhất chạy thật) bị
 `locked: true` → làm mờ; 3 cái chưa làm được thì `locked: false` → bấm được bình
 thường. Và `grep` toàn repo: **không có `executionTrigger` nào ở Python** — trạng
 thái checkbox không bao giờ rời khỏi QML.
 
-→ Tách riêng thành [`BOT-074`](BOT-074_execution_trigger_rule_inverted_lock.md),
+→ Tách riêng thành [`BOT-074`](../completed/BOT-074_execution_trigger_rule_inverted_lock.md),
 làm ngay, không chờ epic.
 
 ## 3. Quyết định kiến trúc đã chốt
@@ -119,7 +119,7 @@ bởi cả Dev Board lẫn static backtest.
 
 | Task | Tên | Phụ thuộc | Ghi chú |
 | :--- | :--- | :---: | :--- |
-| [**BOT-074**](BOT-074_execution_trigger_rule_inverted_lock.md) | **Bug — Execution Trigger Rule: cờ `locked` đảo ngược** | — | Nhỏ, độc lập, **làm ngay**. Không chờ phần còn lại của epic. |
+| [**BOT-074**](../completed/BOT-074_execution_trigger_rule_inverted_lock.md) | **Bug — Execution Trigger Rule: cờ `locked` đảo ngược** | — | Nhỏ, độc lập, **làm ngay**. Không chờ phần còn lại của epic. |
 | [**BOT-075**](BOT-075_tick_data_feasibility_spike.md) | **Spike — khả thi & chi phí dữ liệu tick** | — | **Đo, không đoán.** Có thể đổi cả thiết kế → phải xong trước `BOT-076`. |
 | [**BOT-042**](BOT-042_tick_level_strategy_engine_support.md) | **Provisional vs Commit cho `IIndicator`/`Series`** | `BOT-020` ✅, `BOT-026` ✅ | Đã chốt hướng (b). Thay đổi contract tầng domain — rủi ro cao nhất epic. |
 | [**BOT-076**](../completed/BOT-076_realtime_backtest_engine.md) | **Realtime Backtest Engine** | `BOT-042`, `BOT-075` | Chế độ backtest thứ 2 thật sự. |
@@ -140,7 +140,7 @@ Sàn thật (Binance) không hoạt động vậy: SL/TP là **lệnh nằm sẵ
 (bracket/OCO), đặt kèm ngay lúc vào lệnh, sàn tự canh 24/7 — **bot không cần chạy lại
 lần nào**, bot sập nguồn thì SL vẫn còn đó.
 
-[`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md) đã định hướng đúng theo
+[`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md) đã định hướng đúng theo
 mô hình này rồi (*"SL/TP tự đóng vị thế, kiểm tra bằng `high`/`low` mỗi bar"*). Nếu
 SL/TP là **thuộc tính của vị thế** do `PaperExchange` tự canh thì kịch bản "cháy tài
 khoản vì trễ 50 phút" **không thể xảy ra**, kể cả khi vĩnh viễn không làm `BOT-077`.
@@ -195,7 +195,7 @@ trên vòng lặp tick của `BOT-076` (§3.5 của task đó), không phải en
 - [`BOT-020`](../completed/BOT-020_indicator_strategy_engine_core.md) ✅,
   [`BOT-026`](../completed/BOT-026_concrete_strategy_foundation.md) ✅ — nơi thay đổi
   contract xảy ra.
-- [`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md) — **không phụ thuộc
+- [`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md) — **không phụ thuộc
   epic này**, nhưng chính xác hơn hẳn khi có tick (với nến 1m không biết `high` hay
   `low` chạm trước; có tick thì biết). Cân nhắc làm `BOT-076` trước `BOT-041` nếu
   muốn SL/TP intra-bar đúng thật.

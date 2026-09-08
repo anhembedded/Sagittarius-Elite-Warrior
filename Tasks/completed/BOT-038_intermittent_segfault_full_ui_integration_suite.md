@@ -164,8 +164,8 @@ explanation, not a confirmed root cause.
 **Two real, deterministic failures were hiding behind the exclusion** and now
 surface on every run — filed separately as they are unrelated to the crash
 this task investigated:
-[`BUG-046`](../bug_report/incomplete/BUG-046_dashboard_exception_fallback_fsm_state_assumption_stale.md),
-[`BUG-047`](../bug_report/incomplete/BUG-047_dashboard_live_stream_candlestick_history_not_populated.md).
+[`BUG-046`](../bug_report/completed/BUG-046_dashboard_exception_fallback_fsm_state_assumption_stale.md),
+[`BUG-047`](../bug_report/completed/BUG-047_dashboard_live_stream_candlestick_history_not_populated.md).
 Both also fail at `f27649e` (the commit immediately before this re-verification
 session's own EPIC-009 work began), so neither is a regression from anything in
 this session — they were always broken, just never run in CI.

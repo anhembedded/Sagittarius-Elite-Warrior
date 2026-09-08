@@ -3,7 +3,7 @@
 - **Trạng thái:** ✅ Hoàn thành (2026-09-02)
 - **Repo:** Elite
 - **Chặn bởi:** — (độc lập với `021A`–`021H`, làm song song được) · **Chặn:** `EPIC-021I`
-- **Đóng bug:** [`BUG-082`](../../../bug_report/incomplete/BUG-082_shared_qml_widget_library_depends_on_screen_modules.md)
+- **Đóng bug:** [`BUG-082`](../../../bug_report/completed/BUG-082_shared_qml_widget_library_depends_on_screen_modules.md)
 
 ---
 

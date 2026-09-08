@@ -1053,7 +1053,7 @@ this guide** (PlantUML 1.2024.7 + Graphviz 2.43); none contain syntax errors.
   import re, pathlib
   doc = pathlib.Path("Tasks/epics/EPIC-021_ket_noi_binance_futures_testnet/"
                      "KNOWLEDGE_TRANSFER_tu_0_den_hero.md").read_text(encoding="utf-8")
-  for i, b in enumerate(re.findall(r"```plantuml\n(.*?)```", doc, re.S), 1):
+  for i, b in enumerate(re.findall(r"``plantuml\n(.*?)``", doc, re.S), 1):
       n = re.search(r"@startuml\s+(\S+)", b)
       pathlib.Path(f"{n.group(1) if n else i}.puml").write_text(b, encoding="utf-8")
   PY

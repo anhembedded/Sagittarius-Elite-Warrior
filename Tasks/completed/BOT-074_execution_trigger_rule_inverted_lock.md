@@ -25,7 +25,7 @@ User tick "Khi lệnh được khớp" → UI nhận, nhìn như đã bật → 
 
 ### 2.1. Cờ `locked` bị đảo
 
-[`OrderExecutionModal.qml`](../../src/presentation/ui/components/OrderExecutionModal.qml)
+`OrderExecutionModal.qml`
 có comment ghi rõ **ý định đúng**:
 
 > *"Only 'On bar close' is real today (`RunStaticBacktestCommandHandler` evaluates the

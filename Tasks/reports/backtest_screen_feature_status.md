@@ -19,11 +19,11 @@
   đôi khi cả QML thật) — nằm ở `tests/unit/presentation/ui/screens/`.
 - **Sanity (DI)**: chỉ verify **DI có wire đúng không** (command → đúng
   handler, registry có đúng key) qua app boot thật — nằm ở
-  [`tests/sanity/test_backtest_screen_di_sanity.py`](../../tests/sanity/test_backtest_screen_di_sanity.py).
+  [`tests/sanity/test_backtest_screen_di_sanity.py`](../reference/sanity_legacy/test_backtest_screen_di_sanity.py).
 - **Sanity (UI)**: verify **`BackTestView`/`BackTestPresenter` construct
   được thật** trên container thật (không mock dispatcher) + 2 tài liệu QML
   parse sạch — nằm ở
-  [`tests/sanity/test_backtest_screen_ui_sanity.py`](../../tests/sanity/test_backtest_screen_ui_sanity.py).
+  [`tests/sanity/test_backtest_screen_ui_sanity.py`](../reference/sanity_legacy/test_backtest_screen_ui_sanity.py).
   **Cố ý chỉ dừng ở construction** — không click nút, không dispatch thật,
   không chạy nền — để không lấn vào vùng crash đã biết của `BOT-038`.
 

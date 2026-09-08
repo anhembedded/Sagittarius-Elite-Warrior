@@ -32,12 +32,12 @@ file:///.../src/presentation/ui/qml/DatabaseStatusTable/DatabaseStatusRow.qml:10
 
 ## 3. Cách khắc phục (Fix)
 
-1. Trong [`DatabaseStatusTable.qml`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/qml/DatabaseStatusTable/DatabaseStatusTable.qml):
+1. Trong [`DatabaseStatusTable.qml`](../../../src/presentation/ui/qml/DatabaseStatusTable/DatabaseStatusTable.qml):
    - Thay `vm.rowCount` bằng `(vm ? vm.rowCount : 0)`.
    - Thay `model: vm.rowsModel` bằng `model: vm ? vm.rowsModel : null`.
    - Thay `visible: vm.rowCount === 0` bằng `visible: vm ? vm.rowCount === 0 : false`.
    - Bổ sung `if (vm)` trước `vm.setSearchText(text)`.
-2. Trong [`DatabaseStatusRow.qml`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/qml/DatabaseStatusTable/DatabaseStatusRow.qml):
+2. Trong [`DatabaseStatusRow.qml`](../../../src/presentation/ui/qml/DatabaseStatusTable/DatabaseStatusRow.qml):
    - Thay `enabled: vm.actionsEnabled` bằng `enabled: Boolean(vm && vm.actionsEnabled)`.
    - Bổ sung `if (vm)` trước `vm.requestAction(...)`.
 

@@ -42,7 +42,7 @@ Tuân thủ nghiêm ngặt tiêu chuẩn kim tự tháp kiểm thử 4 tầng th
    - `ruff format --check src tests`: ✅ 326 files formatted.
 
 2. **Tầng 2 — Unit Tests (`tests/unit/`)**:
-   - [`tests/unit/presentation/ui/test_asset_validator_extension.py`](file:///c:/Users/hoang/Documents/Sagittarius-Elite-Warrior/tests/unit/presentation/ui/test_asset_validator_extension.py):
+   - [`tests/unit/presentation/ui/test_asset_validator_extension.py`](../../tests/unit/presentation/ui/test_asset_validator_extension.py):
      - `test_all_declared_required_ui_icons_exist_on_disk`: Guard test bảo đảm toàn bộ 29 icon trong `REQUIRED_UI_ICONS` thực sự tồn tại trên disk.
      - `test_preflight_passes_cleanly_when_all_assets_exist`: Xác thực preflight hoàn tất khi đủ assets.
      - `test_preflight_fails_fast_in_dev_mode_when_asset_is_missing`: Xác thực `CRITICAL FAULT` + `sys.exit(1)` trong dev mode.
@@ -50,13 +50,13 @@ Tuân thủ nghiêm ngặt tiêu chuẩn kim tự tháp kiểm thử 4 tầng th
      - `test_preflight_custom_subset_passes`: Xác thực custom icon subset và custom directory.
 
 3. **Tầng 3 — Application & Integration Tests (`tests/integration/`)**:
-   - [`tests/integration/presentation/test_asset_preflight_integration.py`](file:///c:/Users/hoang/Documents/Sagittarius-Elite-Warrior/tests/integration/presentation/test_asset_preflight_integration.py):
+   - [`tests/integration/presentation/test_asset_preflight_integration.py`](../../tests/integration/presentation/test_asset_preflight_integration.py):
      - `test_asset_preflight_integration_passes_in_production_mode`: Tích hợp đa thành phần giữa `App`, `ConfigManager` và `AssetValidatorExtension`.
      - `test_asset_preflight_integration_fails_fast_in_dev_mode_with_broken_assets`: Kiểm tra vòng đời boot thực sự của App fail-fast khi thiếu asset ở dev mode.
      - `test_asset_preflight_integration_warns_and_continues_in_production_with_missing_assets`: Kiểm tra vòng đời boot thực sự của App cảnh báo và tiếp tục chạy ở production mode.
 
 4. **Tầng 4 — Sanity Tests (`tests/sanity/`)**:
-   - [`tests/sanity/test_asset_preflight_sanity.py`](file:///c:/Users/hoang/Documents/Sagittarius-Elite-Warrior/tests/sanity/test_asset_preflight_sanity.py):
+   - [`tests/sanity/test_asset_preflight_sanity.py`](../reference/sanity_legacy/test_asset_preflight_sanity.py):
      - `test_asset_validator_extension_is_wired_in_real_create_app`: Sanity DI wiring kiểm tra `create_app()` đăng ký đúng extension vào `app.modules`.
      - `test_asset_validator_boots_cleanly_in_real_app_boot`: Sanity Boot kiểm tra khởi động App thật hoàn tất sạch sẽ không ngoại lệ đối với assets thật trên ổ đĩa.
 

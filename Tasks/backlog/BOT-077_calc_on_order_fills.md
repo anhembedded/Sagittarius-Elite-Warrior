@@ -34,7 +34,7 @@ User nêu kịch bản: *"lệnh khớp phút 10, phải chờ tới phút 60 m�
 trễ 50 phút có thể cháy tài khoản."*
 
 **Cách giải quyết đúng không phải task này, mà là
-[`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md).**
+[`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md).**
 
 Pine **buộc phải** có `calc_on_order_fills` vì trong Pine, muốn đặt SL thì phải gọi
 `strategy.exit()` **từ trong script** → script không chạy thì không đặt được. Đó là
@@ -88,7 +88,7 @@ cảnh backtest"* — nhận định đó **đúng** với hoàn cảnh lúc b�
       bar, chốt ở đây sẽ đẩy sai lịch sử (đúng lớp lỗi `BOT-042` §3 câu 2 đã cảnh
       báo).
 - [ ] Mở khoá + nối dây lựa chọn "Khi lệnh được khớp" trong
-      [`OrderExecutionMenu.qml`](../../src/presentation/ui/components/OrderExecutionMenu.qml).
+      `OrderExecutionMenu.qml`.
 - [ ] Test: bật cờ → strategy được gọi thêm đúng 1 lần ngay sau fill, tại đúng giá
       tick đó; tắt cờ → số lần gọi không đổi so với `BOT-076`.
 
@@ -104,7 +104,7 @@ cảnh backtest"* — nhận định đó **đúng** với hoàn cảnh lúc b�
 ## 7. Phụ thuộc
 
 - [`BOT-076`](../completed/BOT-076_realtime_backtest_engine.md) — **chặn cứng** (xem §4).
-- [`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md) — không chặn nhau,
+- [`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md) — không chặn nhau,
   nhưng **ưu tiên cao hơn hẳn** (xem §2).
 - [`BOT-040`](BOT-040_backtest_screen_full_feature_epic.md) §2.1 — dòng "On order
   filled", nay đã rõ nghĩa.

@@ -70,7 +70,7 @@ Lập luận đó **đúng với `PythonBacktestChartHost`** — set 0 region đ
 
 ### Tầng 2 — Adapter native raise mà không nhìn payload
 
-[`native_backtest_chart_host_adapter.py:198`](../../../src/presentation/ui/screens/backtest/logic/native_backtest_chart_host_adapter.py):
+`native_backtest_chart_host_adapter.py:198`:
 
 ```python
 def set_script_regions(self, key, spans):
@@ -103,7 +103,7 @@ Nên giới hạn là **có thật** (đúng phạm vi `BOT-032`) — bug nằm 
 
 ### Vì sao bug sống sót lâu — test đã đóng băng chính hành vi sai
 
-[`test_native_backtest_chart_host_adapter.py:168`](../../../tests/unit/presentation/ui/screens/test_native_backtest_chart_host_adapter.py)
+`test_native_backtest_chart_host_adapter.py:168`
 (trước khi sửa):
 
 ```python

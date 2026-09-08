@@ -24,7 +24,7 @@ Nhưng tiến trình Python **không thoát** — một dòng log tiếp tục x
 
 ## 2. Nguyên nhân thật — xác minh bằng code, không đoán
 
-[`ThreadManagerExtension.shutdown()`](../../../../Sagittarius_Engine/sagittarius_engine/extensions/thread_manager/thread_manager_module.py)
+`ThreadManagerExtension.shutdown()`
 gọi `thread_manager.shutdown(wait=False)` với comment "individual tasks should still implement
 cancellation tokens" — nhưng **không task nào trong `ScanCoordinator`
 (`src/presentation/ui/screens/data_management/coordinators/scan_coordinator.py`) implement

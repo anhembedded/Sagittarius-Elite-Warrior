@@ -3,7 +3,7 @@
 > Không thuộc epic nào — refactor DRY độc lập trên
 > [`src/domain/indicators/rsi.py`](../../src/domain/indicators/rsi.py).
 > **Trạng thái:** ✅ **Hoàn thành (2026-08-21)**
-> **Không chặn, không bị chặn bởi [`BOT-042`](BOT-042_tick_level_strategy_engine_support.md)**
+> **Không chặn, không bị chặn bởi [`BOT-042`](../backlog/BOT-042_tick_level_strategy_engine_support.md)**
 > — nảy sinh từ review thiết kế `BOT-042A` nhưng cố tình tách ra để không
 > tăng rủi ro cho epic đó (`BOT-042` đã tự nhận "rủi ro cao nhất epic").
 > Ưu tiên thấp.

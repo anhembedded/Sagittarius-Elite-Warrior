@@ -4,7 +4,7 @@
 **Độ phức tạp:** 🔴 **L (Thinking Agent)**  
 **Trạng thái:** 🔴 **Backlog**  
 **Ưu tiên:** 🛡️ **P3 — Kiểm định Chống Overfitting & Đánh giá Rủi ro Phá sản (Anti-Overfitting & Ruin Risk)**  
-**Liên quan:** [`BOT-078`](BOT-078_backtest_trustworthiness_epic.md), [`BOT-021`](../completed/BOT-021_static_backtest_engine.md), [`BOT-076`](../completed/BOT-076_realtime_backtest_engine.md)
+**Liên quan:** [`BOT-078`](BOT-078_backtest_trustworthiness_epic.md), `BOT-021`, [`BOT-076`](../completed/BOT-076_realtime_backtest_engine.md)
 
 ---
 

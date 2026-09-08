@@ -3,7 +3,7 @@
 **Thuộc:** [`EPIC-006`](../README.md)
 **Trạng thái:** ✅ Xong (2026-08-24)
 **Thực hiện tại:** `Sagittarius_Engine` repo — `TASK-038`
-([`Tasks/completed/TASK-038_qtwidgets_base_classes_surface_overlay_controls.md`](../../../../../Sagittarius_Engine/Tasks/completed/TASK-038_qtwidgets_base_classes_surface_overlay_controls.md)
+(`Tasks/completed/TASK-038_qtwidgets_base_classes_surface_overlay_controls.md`
 trong repo Engine), commit `b1b90ee` trên `main`.
 
 ---

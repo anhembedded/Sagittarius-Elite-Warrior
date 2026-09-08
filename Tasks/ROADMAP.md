@@ -312,7 +312,7 @@ Sagittarius_Elite_Warrior/Tasks/
 >
 > 🤝 **HANDOFF (15/08) — Track A chuyển cho AI session khác, chưa code dòng nào.**
 > Phiên trước dừng ở prompt-adaptation (`.jules/bolt.prompt.md`, `.jules/palette.prompt.md`)
-> và tạo [`.agents/Handover.md`](../.agents/Handover.md).
+> và tạo `.agents/Handover.md`.
 > ⚠️ *Sửa 2026-08-25: `Handover.md` đã được viết lại hoàn toàn và **không còn** mục quy ước/gotcha
 > mà dòng trên hứa hẹn — quy ước thật ở [`.agents/ONBOARDING.md`](../.agents/ONBOARDING.md), bản
 > Handover cũ ở `git show f0e63ca:.agents/Handover.md`.* Trạng thái thật:

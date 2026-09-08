@@ -87,7 +87,7 @@ Xếp theo ROI = (số bug chặn được × mức nghiêm trọng) ÷ chi phí
 | 3 | [`BOT-068`](../completed/BOT-068_ui_thread_affinity_guard.md) | Guard thread-affinity + sanity test quét ViewModel | A | Trung bình |
 | 4 | [`BOT-069`](../completed/BOT-069_exclusive_action_single_flight.md) | `ExclusiveAction` — single-flight cho hành động user | D | Thấp |
 | 5 | [`BOT-070`](../completed/BOT-070_qml_value_normalizer.md) | `from_qml()` — chuẩn hoá giá trị qua ranh giới QML | E | Rất thấp |
-| 6 | [`BOT-071`](../backlog/BOT-071_boot_asset_preflight.md) | Pre-flight asset lúc boot (mở rộng cơ chế đã có) | F | Thấp |
+| 6 | [`BOT-071`](../completed/BOT-071_boot_asset_preflight.md) | Pre-flight asset lúc boot (mở rộng cơ chế đã có) | F | Thấp |
 
 ### 3.1. Thứ tự khuyến nghị: `BOT-066` → `BOT-067` → `BOT-068`
 
@@ -139,7 +139,7 @@ là kích nổ. Fix đã áp: thêm `@Slot(int, int, bool)` — nhưng làm **th
 method một**, và `set_stats()` ngay bên dưới vẫn chưa có.
 
 ### Lớp B — Lỗi bị nuốt
-`safe_ui_action` ([`thread_bridge.py:27-36`](../../../sagittarius_engine/extensions/pyside_mvc/thread_bridge.py#L27)):
+`safe_ui_action` (`thread_bridge.py:27-36`):
 `except Exception` → `print(...)` → duck-typed `ui_log_signal` → `return None`.
 Comment trong chính file đó thừa nhận: *"for now we just swallow to prevent crash"*.
 Ở `BOT-061`, `TypeError` từ `dict(QJSValue)` đi thẳng vào đây và biến mất — app

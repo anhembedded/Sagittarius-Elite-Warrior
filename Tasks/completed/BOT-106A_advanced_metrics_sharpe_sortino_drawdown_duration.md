@@ -1,7 +1,7 @@
 # Nhiệm vụ: Sharpe, Sortino, Calmar & Max Drawdown Duration Metrics
 
 **Mã Task:** `BOT-106A`  
-**Thuộc Epic:** [`BOT-106`](BOT-106_advanced_financial_analytics_and_reports_epic.md)  
+**Thuộc Epic:** [`BOT-106`](../backlog/BOT-106_advanced_financial_analytics_and_reports_epic.md)  
 **Độ phức tạp:** 🟡 **M (Standard Agent)**  
 **Trạng thái:** ✅ **Hoàn thành (2026-08-20)**  
 **Dependencies:** [`BOT-055`](../completed/BOT-055_backtest_performance_metrics_panel.md)

@@ -73,7 +73,7 @@ grep -rl "^import QmlShared 1.0" src/ --include="*.qml"
 ```
 
 Phía Python **không bị ảnh hưởng** — đã kiểm 281 symbol engine mà app này import, chỉ 1 chỗ
-hỏng và đó là [`BOT-118`](../../backlog/BOT-118_broken_state_tokens_import_in_test.md) đã biết
+hỏng và đó là [`BOT-118`](../../completed/BOT-118_broken_state_tokens_import_in_test.md) đã biết
 từ trước (`QmlShared.state_tokens`), không phải sinh ra bởi 2.0.0. Engine giữ
 `QmlShared.log_list_model` làm shim tương thích có chủ đích cho chính app này.
 
@@ -93,7 +93,7 @@ import QmlShared 1.0        →  import Sagittarius.UI 1.0
 1. Đổi import trong cả 26 file. Cơ học, nhưng **đừng sed mù** — kiểm lại từng file có import
    nào khác cùng dòng không.
 2. Gộp luôn `BOT-118` (`QmlShared.state_tokens` → `pyside_mvc.tokens.state_tokens`) và
-   [`BOT-117`](../../backlog/BOT-117_stale_pyside_mvc_paths_in_palette_docstring.md) — cùng một
+   [`BOT-117`](../../completed/BOT-117_stale_pyside_mvc_paths_in_palette_docstring.md) — cùng một
    gốc là đợt tái cấu trúc `pyside_mvc`, làm một thể thì rẻ hơn ba lần.
 3. Chạy `./scripts/ci-local.ps1 -Full`, xác nhận về **1702+ passed, 0 failed** — nghĩa là
    đủ, không phải "ít lỗi hơn".

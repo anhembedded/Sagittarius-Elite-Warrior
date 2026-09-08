@@ -1,6 +1,6 @@
 # Nhiệm vụ: BOT-095E — Khung Kiểm định Đầu vào Mở rộng (Pre-Backtest Assertion Pipeline) & Parameter Stepper
 
-> Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
+> Thuộc Epic [`BOT-095`](../backlog/BOT-095_backtest_signals_fsm_lifecycle_epic.md).
 > **Trọng tâm**: Thiết kế một **Khung Kiểm định Đầu vào Mở Rộng (Extensible Input Assertion Pipeline)** tuân thủ nguyên lý **OCP (Open/Closed Principle)** cho phép dễ dàng bổ sung các luật kiểm tra đầu vào mới (Min Capital / Binance Minimum Lot Size, Date format, Leverage bounds, Parameter ranges) mà không sửa đổi Presenter, kết hợp tính năng **Parameter Stepper with Hotkeys** để tăng tốc tinh chỉnh thông số trong modal.
 
 ---

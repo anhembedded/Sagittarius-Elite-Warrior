@@ -428,7 +428,7 @@ chiều cao mặc định của delegate = **một dòng text**. Nhãn 11px vừ
 
 Không ai thấy vì hai lớp che nhau: bảng thường trống lúc chụp ảnh, và test hỏi *"widget có tồn
 tại không"* chứ không hỏi *"nó có nhìn thấy được không"*. Hồ sơ:
-[`BUG-051`](../../../bug_report/completed/BUG-051_status_row_clipped_to_one_line_of_text.md).
+`BUG-051`.
 
 ### `BUG-008` lần thứ tư — lần này theo chiều ngược lại
 

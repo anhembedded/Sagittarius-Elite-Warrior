@@ -35,7 +35,7 @@ indicator mới (cần test riêng, đối chiếu công thức chuẩn).
   trên**, hay **nằm trong vùng** giữa 2 EMA?
 - Cách đo sideways (mục 2) + ngưỡng.
 - Thoát lệnh bằng gì: tín hiệu ngược, hay để SL/TP
-  ([`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md)) lo?
+  ([`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md)) lo?
 
 ## 4. Các bước thực hiện (Action Items)
 

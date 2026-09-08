@@ -44,7 +44,7 @@ DevBoardPanel.qml:358:    TypeError: Cannot read property 'enabled' of undefined
 `modelData.key`/`modelData.title`/`modelData.enabled` — nhưng **`modelData` không
 tồn tại** cho một `QAbstractListModel` khai nhiều role đặt tên (ở đây
 `IndicatorScriptListModel` có 3 role: `key`/`title`/`enabled`, xem
-[`indicator_script_list_model.py:38-42`](../../src/presentation/ui/screens/dashboard/indicator_script_list_model.py#L38)).
+`indicator_script_list_model.py:38-42`).
 `modelData` chỉ tự động có giá trị khi model là mảng JS thuần hoặc `QAbstractItemModel`
 với **đúng 1 role** — quy tắc này của chính Qt/QML, không phải bug của model.
 
@@ -72,7 +72,7 @@ property` (chế độ "strict") mà cũng không dùng bare role name (`key`/`t
 trực tiếp, chế độ "implicit") — dùng nhầm `modelData`, thứ chỉ hợp lệ cho model 1-role.
 
 **Bằng chứng pattern đúng vẫn tồn tại y hệt ở nơi khác**:
-[`IndicatorPickerMenu.qml:56-68`](../../src/presentation/ui/components/IndicatorPickerMenu.qml#L56)
+`IndicatorPickerMenu.qml:56-68`
 (component của `BOT-064`, màn Backtest, cũng bind `viewModel.scriptModel` y hệt) vẫn
 giữ đúng `required property var model` + `parent.model.key` — **không hỏng**. Đây
 chính là bản mẫu để sửa `DevBoardPanel.qml` theo, không cần thiết kế lại từ đầu.

@@ -1,6 +1,6 @@
 # EPIC-005E1 — `DatabaseScreen.qml` (màn chính) → QtWidgets
 
-**Thuộc:** [`EPIC-005E`](../incomplete/EPIC-005E_data_management.md)
+**Thuộc:** [`EPIC-005E`](EPIC-005E_data_management.md)
 **Trạng thái:** ✅ Xong (2026-08-24)
 **Phụ thuộc:** `EPIC-005D` ✅
 

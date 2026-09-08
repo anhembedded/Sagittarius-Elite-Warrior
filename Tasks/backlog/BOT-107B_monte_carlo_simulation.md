@@ -4,7 +4,7 @@
 **Thuộc Epic:** [`BOT-107`](BOT-107_strategy_robustness_and_monte_carlo_epic.md)  
 **Độ phức tạp:** 🔴 **L (Thinking Agent)**  
 **Trạng thái:** 🔴 **Backlog**  
-**Dependencies:** [`BOT-021`](../completed/BOT-021_static_backtest_engine.md), [`BOT-055`](../completed/BOT-055_backtest_performance_metrics_panel.md)
+**Dependencies:** `BOT-021`, [`BOT-055`](../completed/BOT-055_backtest_performance_metrics_panel.md)
 
 ---
 

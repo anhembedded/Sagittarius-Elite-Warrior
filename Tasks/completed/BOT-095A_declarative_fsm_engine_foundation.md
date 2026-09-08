@@ -1,6 +1,6 @@
 # Nhiệm vụ: BOT-095A — Hạ tầng Declarative State Machine & Event Dispatching (`sagittarius_engine.extensions.fsm`)
 
-> Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
+> Thuộc Epic [`BOT-095`](../backlog/BOT-095_backtest_signals_fsm_lifecycle_epic.md).
 > **Trọng tâm**: Xây dựng hạ tầng máy trạng thái hướng sự kiện khai báo (`DeclarativeStateMachine[StateT, EventT]`) trong tầng Engine (`sagittarius_engine`), cho phép định nghĩa vòng đời UI bằng ma trận sự kiện tập trung `(State, Event) -> NextState`, hỗ trợ `dispatch(event)`, tự động nạp ma trận từ dict/JSON/dataclass, và tái sử dụng nhất quán cho toàn bộ các màn hình trong ứng dụng (Backtest, Dev Board, Data Management).
 
 ---

@@ -22,7 +22,7 @@
 | 4 | ~~Sắp có **3 backtest engine** với bất biến ngược nhau~~ → **đã đóng**: `BOT-023` bị huỷ, còn 2 engine | ✅ | [`BOT-023`](../cancelled/BOT-023_dynamic_backtest_engine.md) (đã huỷ 2026-08-18) |
 | 5 | Agent tự động tối ưu **concurrency** vào vùng chưa có thread guard | 🟠 | [`BOT-068`](../completed/BOT-068_ui_thread_affinity_guard.md) (đã nâng ưu tiên) |
 | 6 | Một test **đỏ vĩnh viễn** chưa từng pass | 🟠 | [`BOT-082`](../completed/BOT-082_fix_permanently_failing_interactive_shell_test.md) |
-| 7 | Tài liệu-như-lời-hứa **trôi khỏi code** | 🟡 | [`BOT-074`](../backlog/BOT-074_execution_trigger_rule_inverted_lock.md) (ca cụ thể) + §7 (nguyên tắc) |
+| 7 | Tài liệu-như-lời-hứa **trôi khỏi code** | 🟡 | [`BOT-074`](../completed/BOT-074_execution_trigger_rule_inverted_lock.md) (ca cụ thể) + §7 (nguyên tắc) |
 
 ---
 
@@ -179,7 +179,7 @@ Add tests for InteractiveShell / IExchangeClient / WMA / SignalGeneratedEvent...
 
 Trong khi đó:
 
-- [`BOT-038`](../backlog/BOT-038_intermittent_segfault_full_ui_integration_suite.md) —
+- [`BOT-038`](../completed/BOT-038_intermittent_segfault_full_ui_integration_suite.md) —
   **segfault ngẫu nhiên đã biết** ở integration UI suite; đã điều tra 1 vòng rồi dừng.
 - [`BOT-068`](../completed/BOT-068_ui_thread_affinity_guard.md) — **chưa làm**. Chính
   ROADMAP ghi: *"Engine hiện có **0** guard thread nào"*.
@@ -227,7 +227,7 @@ tiếp **5 lần** — đúng cơ chế mà một regression thật sẽ lọt q
 
 ### Bằng chứng
 
-[`OrderExecutionMenu.qml`](../../src/presentation/ui/components/OrderExecutionMenu.qml)
+`OrderExecutionMenu.qml`
 có comment mô tả rõ ý định *"the other 3 ... are shown-but-**disabled**"*, còn `ListModel`
 làm **ngược lại hoàn toàn** — và không ai phát hiện suốt từ `BOT-022` tới nay.
 

@@ -3,7 +3,7 @@
 ## 1. Bối cảnh & vấn đề thật
 
 Phát hiện 2026-08-23, cùng đợt audit chéo với
-[BOT-118](BOT-118_broken_state_tokens_import_in_test.md).
+[BOT-118](../completed/BOT-118_broken_state_tokens_import_in_test.md).
 
 `src/main.py` đăng ký 6 extension/module, và thứ tự đúng đang được giữ **chỉ
 bằng thứ tự dòng code**, có chỗ ghi hẳn thành comment:

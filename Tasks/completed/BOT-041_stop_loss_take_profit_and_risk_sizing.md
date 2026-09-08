@@ -2,7 +2,7 @@
 
 **Trạng thái:** Hoàn thành (19/08) — bước 0 của [Epic BOT-109](../backlog/BOT-109_golden_strategy_ema_trend_confirm_pullback_epic.md).
 
-> Thuộc [Epic BOT-040](BOT-040_backtest_screen_full_feature_epic.md), Phase 0.
+> Thuộc [Epic BOT-040](../backlog/BOT-040_backtest_screen_full_feature_epic.md), Phase 0.
 > **Task 1/3** nhóm "PaperExchange nâng cao" (đã chia nhỏ theo yêu cầu user):
 > `BOT-041` (file này) → [`BOT-049`](../backlog/BOT-049_leverage_and_liquidation.md) →
 > [`BOT-050`](BOT-050_short_selling_support.md).

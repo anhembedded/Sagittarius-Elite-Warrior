@@ -35,7 +35,7 @@ Qt signal/slot nối trực tiếp (như `DevBoardPanel`), slot chạy đồng b
 nên đọc phải giá trị `controlsEnabled` **cũ** — chậm một nhịp.
 
 **Đây là bug thật trong Engine**, không phải trong Elite — sửa tại nguồn
-([`Sagittarius_Engine` commit `9ba0041`](../../../../../Sagittarius_Engine/sagittarius_engine/extensions/pyside_mvc/runtime/base_view_model.py),
+(`Sagittarius_Engine` commit `9ba0041`,
 merge `main` tại `8aae646`): tính và ghi `_controls_enabled` **trước** khi emit bất kỳ signal
 nào. Kèm 7 test mới ở Engine, 2 trong đó cố tình đọc `controlsEnabled` **từ bên trong** listener
 của `uiModeChanged` để khoá chặt chính xác race này. Gate Engine: `890 → 897 passed`.

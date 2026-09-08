@@ -49,7 +49,7 @@ Native **không hề có ABI vẽ background region** — presenter ghi thẳng:
 background-region ABI at all"*. Nên mỗi khi strategy sinh trend zone:
 
 1. `set_script_regions()` raise `NativeUnsupportedFeatureError`
-   ([`native_backtest_chart_host_adapter.py:211`](../../../src/presentation/ui/screens/backtest/logic/native_backtest_chart_host_adapter.py)).
+   (`native_backtest_chart_host_adapter.py:211`).
 2. App **phá native host, dựng lại Python host giữa chừng** (`_apply_after_native_fallback`).
 3. Replay lại spans lên host mới (đây chính là nội dung `BUG-038` vừa fix).
 

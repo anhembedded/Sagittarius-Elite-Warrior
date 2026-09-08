@@ -1,7 +1,7 @@
 # Nhiệm vụ: BOT-095B — Màn hình Backtest FSM & Quản lý Trạng thái Stale Data (Dirty Tracking)
 
 > Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
-> Phụ thuộc: [`BOT-095A`](BOT-095A_declarative_fsm_engine_foundation.md) (Hạ tầng `DeclarativeStateMachine`).
+> Phụ thuộc: [`BOT-095A`](../completed/BOT-095A_declarative_fsm_engine_foundation.md) (Hạ tầng `DeclarativeStateMachine`).
 > **Trọng tâm**: Áp dụng `DeclarativeStateMachine` vào màn hình Backtest thông qua Ma trận Sự kiện Khai báo tập trung trong `backtest_fsm_matrix.py`, kết hợp cơ chế phát hiện tham số thay đổi (`Dirty Tracking`) để loại bỏ hoàn toàn lỗi hiển thị kết quả cũ không khớp với cấu hình Toolbar.
 
 ---

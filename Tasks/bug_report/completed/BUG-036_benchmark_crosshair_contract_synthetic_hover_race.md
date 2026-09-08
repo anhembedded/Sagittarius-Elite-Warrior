@@ -64,7 +64,7 @@ expected_crosshair_candle_index=final_start + int(_VISIBLE_CANDLES * 0.9),
 ```
 
 `NativeChartItem::setCrosshairPosition()`
-([`native/chart_renderer/native_chart_item.cpp:1034`](../../../native/chart_renderer/native_chart_item.cpp))
+(`native/chart_renderer/native_chart_item.cpp:1034`)
 tính và ghi `crosshairCandleIndex_` **đồng bộ, ngay trong thân hàm**, trước
 khi return — không có cross-thread hop nào. Ánh xạ là hàm thuần tuý của
 `(x, width(), viewportStart_, viewportEnd_)`.
@@ -72,7 +72,7 @@ khi return — không có cross-thread hop nào. Ánh xạ là hàm thuần tuý
 ### Người ghi thứ hai — Qt tự sinh
 
 `NativeChartItem` bật `setAcceptHoverEvents(true)`
-([`native_chart_item.cpp:484`](../../../native/chart_renderer/native_chart_item.cpp))
+(`native_chart_item.cpp:484`)
 và có:
 
 ```cpp

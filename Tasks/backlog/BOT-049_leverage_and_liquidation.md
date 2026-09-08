@@ -2,7 +2,7 @@
 
 > Thuộc [Epic BOT-040](BOT-040_backtest_screen_full_feature_epic.md), Phase 0.
 > **Task 2/3** nhóm "PaperExchange nâng cao":
-> [`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md) → `BOT-049`
+> [`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md) → `BOT-049`
 > (file này) → [`BOT-050`](../completed/BOT-050_short_selling_support.md).
 > Phụ thuộc `BOT-041`.
 
@@ -47,6 +47,6 @@ sẽ lạc quan sai lệch một cách nguy hiểm.
 
 ## 4. Phụ thuộc
 
-- [`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md) — cơ chế kiểm
+- [`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md) — cơ chế kiểm
   tra chạm giá mỗi bar + sizing.
 - [`BOT-045`](../completed/BOT-045_trade_journal_detail_and_metadata.md) — `exit_reason`.

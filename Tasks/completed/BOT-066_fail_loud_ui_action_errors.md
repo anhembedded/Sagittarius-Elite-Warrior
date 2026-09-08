@@ -10,7 +10,7 @@
 
 ## 1. Mục tiêu
 
-`safe_ui_action` ([`sagittarius_engine/extensions/pyside_mvc/thread_bridge.py`](../../../sagittarius_engine/extensions/pyside_mvc/thread_bridge.py))
+`safe_ui_action` (`sagittarius_engine/extensions/pyside_mvc/thread_bridge.py`)
 hiện bắt `Exception`, `print()` ra stdout, thử emit `ui_log_signal` bằng duck-typing,
 rồi `return None`. Comment trong chính file thừa nhận: *"for now we just swallow to
 prevent crash"*.
@@ -50,7 +50,7 @@ với event thì chỉ cần subscribe.
 
 ### 2.3. Ném lại khi dev mode bật
 Rẽ nhánh theo `DEV_MODE_CONFIG_KEY` (`"dev.mode"`, đã có sẵn ở
-[`base_view.py:9`](../../../sagittarius_engine/extensions/pyside_mvc/base_view.py#L9),
+`base_view.py:9`,
 `BasePresenter` đã đọc nó cho dev-click-logging — **không phát minh cờ mới**).
 
 Bật → `raise` lại sau khi đã log/emit. Tắt → giữ nguyên hành vi nuốt như hôm nay.

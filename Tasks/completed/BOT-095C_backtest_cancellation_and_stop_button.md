@@ -1,6 +1,6 @@
 # Nhiệm vụ: BOT-095C — Nút Hủy / Dừng Backtest & Thanh Tiến độ Tính toán Realtime (`CancellationToken` & Progress ETA)
 
-> Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
+> Thuộc Epic [`BOT-095`](../backlog/BOT-095_backtest_signals_fsm_lifecycle_epic.md).
 > Phụ thuộc: `BOT-095B` ✅ và [`BOT-095H`](BOT-095H_backtest_action_ownership_and_stale_callback_fencing.md).
 > **Trọng tâm**: Tích hợp cơ chế hủy an toàn (`CancellationToken`) cùng thanh tiến độ tính toán nến thời gian thực (% và thời gian ước tính còn lại ETA) vào chuỗi xử lý Static Backtest, kết hợp nút Hủy (Danger Red) trên giao diện người dùng.
 

@@ -48,7 +48,7 @@ Khi người dùng khởi động Live Stream trên Dev Board (ví dụ cặp `0
 
 ## 2. Nguyên nhân gốc rễ (Root Cause)
 
-1. Trong [`stream_lifecycle_controller.py`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/dashboard/stream_lifecycle_controller.py#L462):
+1. Trong [`stream_lifecycle_controller.py`](../../../src/presentation/ui/screens/dashboard/stream_lifecycle_controller.py):
    - Hàm `_run_sync_and_start` nhận `token: CancellationToken`.
    - Nhưng hàm `_sync_market_data` hoàn toàn **không truyền `cancellation_requested=token.is_cancelled`** vào `SyncMarketDataCommand`.
    - Vì thế khi người dùng tắt stream hoặc tắt app, `token.cancel()` được gọi nhưng `SyncMarketDataCommandHandler` và `PythonBinanceClient` không hề nhận được tín hiệu hủy, tiếp tục lặp vô hạn tải dữ liệu qua network.
@@ -64,17 +64,17 @@ Khi người dùng khởi động Live Stream trên Dev Board (ví dụ cặp `0
    - Trong `_run_sync_and_start`: truyền `cancellation_requested=token.is_cancelled`.
 2. **Triệu hồi shutdown trên StreamLifecycleController:**
    - Bổ sung `StreamLifecycleController.shutdown()` hủy token và giải phóng slot hành động.
-   - Gọi `self._stream_controller.shutdown()` bên trong [`DashboardPresenter.shutdown()`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/dashboard/dashboard_presenter.py#L734).
+   - Gọi `self._stream_controller.shutdown()` bên trong [`DashboardPresenter.shutdown()`](../../../src/presentation/ui/screens/dashboard/dashboard_presenter.py).
 3. **Đóng session mạng khi Engine tắt:**
-   - Thêm phương thức `close()` trên [`PythonBinanceClient`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/infrastructure/binance/client.py) để đóng `requests.Session`.
-   - Gọi `exchange_client.close()` trong [`BinanceBotModule.shutdown()`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/binance_bot_module.py#L315).
+   - Thêm phương thức `close()` trên [`PythonBinanceClient`](../../../src/infrastructure/binance/client.py) để đóng `requests.Session`.
+   - Gọi `exchange_client.close()` trong [`BinanceBotModule.shutdown()`](../../../src/binance_bot_module.py).
 
 ---
 
 ## 4. Kiểm thử hồi quy (Regression Test)
 
 Đã viết test kiểm tra tự động tại:
-[`tests/unit/presentation/ui/screens/dashboard/test_stream_lifecycle_cancellation.py`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/tests/unit/presentation/ui/screens/dashboard/test_stream_lifecycle_cancellation.py)
+[`tests/unit/presentation/ui/screens/dashboard/test_stream_lifecycle_cancellation.py`](../../../tests/unit/presentation/ui/screens/dashboard/test_stream_lifecycle_cancellation.py)
 - `test_stream_lifecycle_controller_passes_cancellation_to_sync_command`: PASSED ✅
 - `test_stream_lifecycle_controller_shutdown_cancels_token_and_actions`: PASSED ✅
 - `test_python_binance_client_close_closes_session`: PASSED ✅

@@ -31,7 +31,7 @@
 > ```
 >
 > Trong khi đó:
-> - [`BOT-038`](../backlog/BOT-038_intermittent_segfault_full_ui_integration_suite.md) — **segfault
+> - [`BOT-038`](BOT-038_intermittent_segfault_full_ui_integration_suite.md) — **segfault
 >   ngẫu nhiên đã biết** ở integration UI suite, đã điều tra 1 vòng rồi dừng.
 > - [`BUG-001`](../bug_report/completed/BUG-001.md) — app từng **treo** vì chạm UI từ luồng nền.
 > - Task này ghi rõ: *"Engine hiện có **0** guard thread nào"*.

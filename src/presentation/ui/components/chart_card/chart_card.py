@@ -40,6 +40,18 @@ _MINIMUM_CANDLES_FOR_SPACING = 2
 #: reach a blank chart.
 _VIEW_EDGE_MARGIN_BARS = 30
 
+#: `BUG-034` — the price band must occupy at least this share of the Y axis.
+#:
+#: Below it, candles are squashed into a sliver and read as "the chart is
+#: empty", which is exactly what that report described: a real session logged
+#: `price [7.6760, 8.1730]` inside `y-range [-71.3690, 46.1465]` — a 0,5-unit
+#: band inside a 117,5-unit axis, 0,4%.
+#:
+#: 20% is deliberately far from both sides: a healthy auto-ranged view puts
+#: the band at ~90% of the axis, and even a deliberately zoomed-out view keeps
+#: it well above a fifth. Nothing legitimate lands between.
+_PRICE_BAND_MIN_VIEW_FRACTION = 0.2
+
 #: Used only when the loaded history is too short to infer bar spacing.
 _FALLBACK_BAR_SECONDS = 60.0
 
@@ -261,6 +273,20 @@ class ChartCard(Card):
         # one-time wire-up here covers every indicator added through
         # IndicatorManager automatically, current and future.
         self.plot_layout.main_plot.vb.sigXRangeChanged.connect(self._on_x_range_changed)
+
+        # `BUG-034` diagnostic. Deliberately on `sigRangeChanged`, not at the
+        # end of `render_historical_data()`: pyqtgraph does not recompute
+        # auto-range when an item is added, it marks the view dirty and
+        # settles it on the next paint. So the Y range read straight after
+        # loading candles is the range BEFORE any indicator the same load
+        # adds — which is why four headless investigations of this report all
+        # measured a healthy range and found nothing (see the report's §6/§8).
+        # This signal fires when the range actually settles, on the platform
+        # where it settles.
+        self.plot_layout.main_plot.vb.sigRangeChanged.connect(
+            self._report_squashed_price_band
+        )
+        self._price_band_anomaly_reported = False
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -545,6 +571,86 @@ class ChartCard(Card):
             xMax=last_timestamp + margin,
             maxXRange=self._max_visible_seconds,
         )
+
+    def _report_squashed_price_band(self) -> None:
+        """Names the item that stole the Y axis, the first time it happens.
+
+        @details `BUG-034` cost four investigations because the evidence
+        stopped at "y-range is wrong". The axis is shared: every item on the
+        main plot contributes to auto-range, so a single series that is not
+        on the price scale (an oscillator on a script whose `overlay` is
+        True, a level line, a stale curve from a previous symbol) stretches
+        the axis and flattens the candles. Which item did it is a fact
+        pyqtgraph already knows — `dataBounds(1)` per item — and nothing was
+        writing it down.
+
+        One line per anomaly, not per range change (`logging-rule.md` §4):
+        pan and zoom fire this signal continuously. The flag resets when the
+        view recovers, so a second, different occurrence is still reported.
+        """
+        if not self._raw_history:
+            return
+        view_box = self.plot_layout.main_plot.vb
+        (_, (min_y, max_y)) = view_box.viewRange()
+        view_height = max_y - min_y
+        price_bounds = self.candlestick.dataBounds(1)
+        if view_height <= 0 or price_bounds is None or price_bounds[0] is None:
+            return
+        price_height = price_bounds[1] - price_bounds[0]
+        # Only once auto-range has actually settled ON the price band. Before
+        # it settles the view still holds pyqtgraph's default `[0, 1]`, which
+        # the candles sit entirely outside of — a transient every normal load
+        # passes through, and reporting it would make this line noise on
+        # startup instead of a signal. The reported defect is the opposite
+        # shape: the band is *inside* the view (auto-range did see it) and
+        # still occupies almost none of it.
+        settled_on_price = min_y <= price_bounds[0] and price_bounds[1] <= max_y
+        if not settled_on_price:
+            return
+        if price_height / view_height >= _PRICE_BAND_MIN_VIEW_FRACTION:
+            self._price_band_anomaly_reported = False
+            return
+        if self._price_band_anomaly_reported:
+            return
+        self._price_band_anomaly_reported = True
+        logger.warning(
+            "[chart-range] ChartCard(%s): price band [%.4f, %.4f] fills only "
+            "%.2f%% of y-range [%.4f, %.4f] — candles are unreadable. "
+            "Y bounds each item on the main plot claims: %s",
+            self.symbol,
+            price_bounds[0],
+            price_bounds[1],
+            100.0 * price_height / view_height,
+            min_y,
+            max_y,
+            self._main_plot_y_bounds(),
+        )
+
+    def _main_plot_y_bounds(self) -> str:
+        """Every main-plot item and the Y bounds it reports to auto-range.
+
+        Items with no `dataBounds` (markers) or a `None` Y bound (trend-zone
+        shading) are listed too, showing `None` — the report's §8.2/§8.3 had
+        to read pyqtgraph's source to establish they take no part; a reader
+        of this line does not.
+        """
+        described = []
+        for item in self.plot_layout.main_plot.vb.addedItems:
+            name = self.indicators.name_of(item) or type(item).__name__
+            get_bounds = getattr(item, "dataBounds", None)
+            if get_bounds is None:
+                described.append(f"{name}=no-dataBounds")
+                continue
+            try:
+                bounds = get_bounds(1)
+            except Exception as exc:  # noqa: BLE001 - diagnostic must not raise
+                described.append(f"{name}=<{type(exc).__name__}>")
+                continue
+            if bounds is None or bounds[0] is None:
+                described.append(f"{name}=None")
+            else:
+                described.append(f"{name}=[{bounds[0]:.4f}, {bounds[1]:.4f}]")
+        return " ".join(described)
 
     def _bar_seconds(self) -> float:
         """Spacing between candles, inferred from the loaded history."""

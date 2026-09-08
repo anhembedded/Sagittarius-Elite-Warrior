@@ -200,7 +200,7 @@ Khác biệt **chỉ được phép nằm ở**: (1) vòng lặp replay, (2) th�
 > nay (`_on_chart_data_ready_for_action` → `_on_chart_data_ready`).
 
 - [x] Mở khoá lựa chọn tick trong
-      [`OrderExecutionModal.qml`](../../src/presentation/ui/components/OrderExecutionModal.qml)
+      `OrderExecutionModal.qml`
       (tên file thật — `OrderExecutionMenu.qml` ở trên là tham chiếu cũ sai tên)
       và **nối dây thật** xuống `BackTestViewModel` → command. Đây là phần
       [`BOT-074`](../completed/BOT-074_execution_trigger_rule_inverted_lock.md) cố ý **không** làm

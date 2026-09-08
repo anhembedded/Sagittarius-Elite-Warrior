@@ -2,7 +2,7 @@
 
 > Trạng thái: ✅ Hoàn thành 2026-08-17
 
-> Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
+> Thuộc Epic [`BOT-095`](../backlog/BOT-095_backtest_signals_fsm_lifecycle_epic.md).
 > Phụ thuộc: `BOT-095B` ✅, [`BOT-095H`](BOT-095H_backtest_action_ownership_and_stale_callback_fencing.md), sau `BOT-095C`.
 > **Trọng tâm**: Xử lý vòng đời chuyển đổi Timeframe, tự động kiểm tra độ bao phủ nến (Date Range Gap Check) trong SQLite, nạp nến xem trước (Preview) lên biểu đồ, và xây dựng cơ chế **1-Click Auto-Sync & Run** (tự động đồng bộ với Progress Bar kế thừa từ Data Management rồi chạy tiếp Backtest chỉ với 1 click).
 

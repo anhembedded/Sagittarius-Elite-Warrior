@@ -1,6 +1,6 @@
 # Nhiệm vụ: BOT-095F — Toggle Chỉ báo Tham chiếu Động trên Biểu đồ sau Backtest
 
-> Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
+> Thuộc Epic [`BOT-095`](../backlog/BOT-095_backtest_signals_fsm_lifecycle_epic.md).
 > Phụ thuộc: `BOT-095H`.
 > **Trọng tâm**: Cho phép người dùng bật / tắt các chỉ báo kỹ thuật tham chiếu (`IndicatorPickerModal` như RSI, MACD, EMA Ribbon) và tự động vẽ / ẩn trực tiếp trên biểu đồ `ChartCanvas` sau khi Backtest đã hoàn thành mà **không bắt người dùng phải chạy lại toàn bộ thuật toán Backtest**.
 

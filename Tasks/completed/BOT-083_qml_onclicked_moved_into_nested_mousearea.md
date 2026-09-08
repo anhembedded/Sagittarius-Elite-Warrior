@@ -24,7 +24,7 @@ FAILED test_dashboard_view.py::test_dashboard_view_header_title
 
 ### 2.1. `btnRunBacktest` / `rowTradeLog_*` — đúng cạm bẫy đã ghi từ `BOT-057`
 
-[`BackTestTopPanel.qml`](../../src/presentation/ui/screens/backtest/BackTestTopPanel.qml),
+`BackTestTopPanel.qml`,
 nút Run sau refactor:
 
 ```qml
@@ -38,7 +38,7 @@ Button {
 }
 ```
 
-Tương tự [`BackTestTradeLogs.qml`](../../src/presentation/ui/screens/backtest/BackTestTradeLogs.qml),
+Tương tự `BackTestTradeLogs.qml`,
 `rowTradeLog_*`:
 
 ```qml
@@ -68,7 +68,7 @@ lồng bên trong** thay vì vào chính `Button`. Hệ quả:
 
 ### 2.2. `lblHeaderTitle` — đổi nội dung, không phải lỗi cấu trúc
 
-[`DevBoardPanel.qml`](../../src/presentation/ui/screens/dashboard/DevBoardPanel.qml),
+`DevBoardPanel.qml`,
 text đổi từ `"Developer Board (Live Testbed)"` thành `"Dev Board"`. Test
 `test_dashboard_view_header_title` pin đúng chuỗi cũ (chủ đích từ `BOT-014`, phân biệt Dev
 Board với dashboard người dùng cuối).

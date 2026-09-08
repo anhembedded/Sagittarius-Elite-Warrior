@@ -34,7 +34,7 @@ Số dòng trong bảng gốc của task đo **trước** `007E`/`007F`; bảng 
   dòng, mọi thứ di chuyển được đã chuyển đi hết (`_StatusRowWidget` → `_status_row.py`, spec
   cột → `_status_columns.py`).
 
-**Chẻ một lớp cỡ đó là chủ đề của [`EPIC-003`](../EPIC-003_presenter_and_god_file_decomposition/),
+**Chẻ một lớp cỡ đó là chủ đề của `EPIC-003`,
 không phải của task này.** Ghi lại làm ứng viên cho epic đó, không cố nhét vào đây.
 
 Đo lại toàn cây UI sau khi xong: còn **15 file** trên ngưỡng, phần lớn là presenter/view-model

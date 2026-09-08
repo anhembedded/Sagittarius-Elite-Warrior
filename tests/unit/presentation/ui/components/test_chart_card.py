@@ -1616,3 +1616,93 @@ def test_candlestick_live_update_after_historical_reload_does_not_duplicate(qapp
     card.append_closed_candle(1120.0, 13.0, 15.0, 12.0, 14.0)
     assert len(card._raw_history) == 3
     assert len(card.candlestick.history_data) == 3
+
+
+# --------------------------------------------------------------------- #
+# BUG-034 — the squashed-price-band diagnostic
+#
+# The report cost four investigations that all ended at "y-range is wrong,
+# cannot reproduce headless". Both halves of that dead end are pinned here:
+# WHY headless missed it, and WHAT the log must say when it happens.
+# --------------------------------------------------------------------- #
+
+
+def _price_candles(count: int, price: float = 8.0) -> list:
+    """`count` flat-ish candles around `price` — the shape of the real
+    `0GTRY` session in the report (price ~7,7..8,2)."""
+    return [
+        (1_700_000_000.0 + i * 60.0, price, price * 1.001, price * 0.999, price)
+        for i in range(count)
+    ]
+
+
+def test_auto_range_does_not_settle_until_the_view_is_asked_to_update(qapp):
+    """Why four headless repros of `BUG-034` found nothing.
+
+    pyqtgraph does not recompute auto-range when an item is added — it marks
+    the view dirty and settles on the next paint. Offscreen there is no
+    paint, so reading `viewRange()` straight after `render_historical_data()`
+    returns the range from BEFORE the indicator was added, and the chart
+    looks healthy. This test states that as a fact about the environment, so
+    the next person writing a chart-range repro does not draw the same wrong
+    conclusion from a passing probe.
+    """
+    card = ChartCard("0GTRY")
+    data = _price_candles(2000)
+    card.render_historical_data(data)
+    card.indicators.add_overlay("rsi_14", "#ff0000")
+    card.indicators.update_data("rsi_14", [c[0] for c in data], [50.0] * len(data))
+
+    (_, (before_min, before_max)) = card.plot_layout.main_plot.vb.viewRange()
+    card.plot_layout.main_plot.vb.updateAutoRange()
+    (_, (after_min, after_max)) = card.plot_layout.main_plot.vb.viewRange()
+
+    assert (before_min, before_max) != (after_min, after_max), (
+        "if adding an item DID settle the range immediately, the headless "
+        "blind spot this test documents is gone and BUG-034's §6/§8 "
+        "conclusions can be re-read at face value"
+    )
+
+
+def test_a_non_price_series_on_the_main_plot_squashes_the_candles(qapp, caplog):
+    """`BUG-034`'s symptom, reproduced, and the log that names the cause.
+
+    The Y axis is shared: one series that is not on the price scale — an
+    oscillator on a script whose `overlay` is True, a level line, a stale
+    curve — stretches auto-range and flattens the candles into a sliver.
+    That is the reported "candles are not displayed while OHLC reads ~2400".
+
+    The assertion is on the diagnostic naming the culprit, not merely on the
+    range being wrong: "y-range is wrong" is what the report already had for
+    four rounds and could not act on.
+    """
+    card = ChartCard("0GTRY")
+    data = _price_candles(2000)
+    card.render_historical_data(data)
+    card.indicators.add_overlay("rsi_14", "#ff0000")
+    card.indicators.update_data(
+        "rsi_14", [c[0] for c in data], [10.0 + (i % 80) for i in range(len(data))]
+    )
+
+    with caplog.at_level("WARNING", logger="App.ChartCard"):
+        card.plot_layout.main_plot.vb.updateAutoRange()
+
+    warnings = [
+        r.getMessage() for r in caplog.records if "[chart-range]" in r.getMessage()
+    ]
+    assert warnings, "the squashed price band must be reported, not silently drawn"
+    message = warnings[0]
+    assert "rsi_14=[" in message, f"the offending series must be named: {message}"
+    assert "0GTRY" in message
+
+
+def test_a_healthy_chart_reports_nothing(qapp, caplog):
+    """The diagnostic must stay silent on every normal load, or it is noise
+    that gets filtered out and stops being read (`logging-rule.md` §4)."""
+    card = ChartCard("0GTRY")
+
+    with caplog.at_level("WARNING", logger="App.ChartCard"):
+        card.render_historical_data(_price_candles(2000))
+        card.plot_layout.main_plot.vb.updateAutoRange()
+
+    assert not [r for r in caplog.records if "[chart-range]" in r.getMessage()]

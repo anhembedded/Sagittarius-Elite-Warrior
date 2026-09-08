@@ -1,15 +1,19 @@
 # BUG-034 — Dev Board Live Chart: giá nến không hiển thị, trục Y bị auto-range sai thang đo
 
 **Reported date:** 2026-08-23
-**Severity:** ⚪ **Đóng — không tái hiện được từ môi trường hiện có** (trước: Chưa đánh giá)
-**Status:** ⚪ **Đóng 2026-09-08 (user quyết định).** 4 lượt điều tra (2026-08-23, 08-26, 08-30,
-08-31), root cause vẫn chưa xác nhận được. Đã loại trừ 7 giả thuyết (indicator overlay sai thang,
+**Severity:** 🟠 **P2**
+**Status:** 🔴 **MỞ LẠI 2026-09-08** — đóng buổi sáng rồi mở lại ngay trong ngày: user yêu cầu
+"thêm log vào những nơi cần thiết xem có tái hiện được không", và **tái hiện được**. §10 là lượt
+điều tra 5: tìm ra **vì sao 4 lượt trước không tái hiện được** (một điểm mù của môi trường
+headless, không phải bug khó), và dựng lại được **đúng hình dạng triệu chứng** trong test tự động.
+4 lượt trước (2026-08-23, 08-26, 08-30, 08-31). Đã loại trừ 7 giả thuyết (indicator overlay sai thang,
 `DevIndicatorScript` vẽ RSI/MACD lên plot giá, subplot rò dữ liệu, kline map sai thang,
 `autorange=[False, 1.0]` là bug, trend-zone shading, marker Buy/Sell/Overbought) — 3 giả thuyết
 cuối loại trừ bằng đối chiếu source `pyqtgraph` thật, không suy đoán.
 
-**⚠️ Đọc §9 trước khi coi đây là "không có lỗi".** Bug này **có bằng chứng sống** (§7), khác hẳn
-một báo cáo không tái hiện được lần nào.
+**⚠️ §9 (quyết định đóng) đã bị §10 thay thế.** Giữ lại §9 nguyên văn vì nó ghi đúng trạng thái
+hiểu biết tại thời điểm đó — và vì nó là ví dụ tốt cho chuyện "đóng vì không tái hiện được" có thể
+sai chỉ sau một lượt điều tra nữa.
 
 ---
 
@@ -300,3 +304,85 @@ Mở **hồ sơ mới**, tham chiếu ngược file này; đừng sửa lại fi
 nghi vấn đã thu hẹp còn các `PlotDataItem` thang giá thật, trong đó `"Widening band"` =
 `close + session_range` là biểu thức duy nhất có phép cộng và là chỗ `NaN`/`inf` có thể lọt vào) —
 đừng làm lại 7 giả thuyết đã loại trừ.
+
+
+---
+
+## 10. Lượt điều tra 5 (2026-09-08) — **tái hiện được**, và tìm ra vì sao 4 lượt trước không
+
+**Trạng thái: MỞ LẠI.** §9 đóng hồ sơ này sáng cùng ngày với lý do "không tái hiện được từ môi
+trường hiện có". Lý do đó **sai** — không phải vì thiếu môi trường, mà vì cả 4 lượt trước đo sai
+thời điểm.
+
+### 10.1. Điểm mù: pyqtgraph **không** tính lại auto-range lúc thêm item
+
+`ViewBox` chỉ **đánh dấu view bẩn** khi có item mới, rồi tính lại ở lần **paint** kế tiếp. Trên
+`offscreen` không có paint nào xảy ra, nên `viewRange()` đọc ngay sau `render_historical_data()`
+trả về dải **trước khi** indicator được thêm — tức là dải *khoẻ mạnh*.
+
+Đó chính xác là điều §4 và §6 đã đo và kết luận "Y bám đúng ~2425 xuyên suốt". Phép đo đúng; kết
+luận rút ra từ nó thì không. Ép một lượt tính lại (`vb.updateAutoRange()`, đúng thứ paint thật sẽ
+làm) là thấy ngay:
+
+```
+--- sau render_historical_data (2000 nến, giá ~8)
+      y-range [7.1448, 8.0552]                       ← khoẻ, và 4 lượt trước dừng ở đây
+--- sau khi thêm 1 overlay thang dao động (10..90) lên main plot
+      y-range [7.1448, 8.0552]                       ← VẪN khoẻ: chưa paint, chưa tính lại
+--- sau vb.updateAutoRange()  (thứ paint thật sẽ chạy)
+      y-range [2.5061, 95.1570]                      ← nến ~8 bị nén còn 0,9% trục
+```
+
+**Đây là hình dạng triệu chứng đã báo**: giá đúng, trục Y sai thang, nến biến mất.
+
+### 10.2. Cơ chế
+
+Trục Y của main plot **dùng chung** cho mọi item trên nó. Một series **không theo thang giá** nằm
+trên main plot sẽ kéo auto-range ra và ép nến thành một vạch. Ứng viên: một script có
+`overlay = True` mà vẽ đường dao động (`overlay` là cờ **theo script**, không theo từng đường —
+xem `IndicatorScriptRunner`), một đường `level()`, hoặc một curve còn sót từ symbol trước.
+
+**Chưa chứng minh được** đây là thứ đã xảy ra trong phiên `0GTRY` ở §7: 3 script Dev Board đang
+ship (`dev_showcase`/`rsi_14`/`macd_full`) đều đã kiểm ở §4 và không vẽ đường sai thang lên main
+plot. Nên §10 chứng minh **cơ chế**, không chứng minh **thủ phạm cụ thể** của §7.
+
+### 10.3. Đã thêm: log tự chỉ đích danh thủ phạm
+
+`ChartCard._report_squashed_price_band()` gắn vào `vb.sigRangeChanged` — **không** đặt cuối
+`render_historical_data()`, đúng vì lý do §10.1: phải nghe lúc dải *thật sự chốt*, không phải lúc
+nạp xong.
+
+Bắn **1 dòng WARNING duy nhất cho mỗi lần bất thường** (`logging-rule.md` §4 — pan/zoom bắn signal
+này liên tục), và chỉ khi dải giá **nằm trong** view mà chiếm dưới `_PRICE_BAND_MIN_VIEW_FRACTION`
+(20%) — điều kiện "nằm trong" loại đúng cái transient `[0, 1]` mà mọi lần nạp bình thường đều đi
+qua. Nội dung: **Y bounds của từng item trên main plot, kèm tên đăng ký của nó**:
+
+```
+[chart-range] ChartCard(0GTRY): price band [7.1917, 8.0083] fills only 0.88% of
+y-range [2.5061, 95.1570] — candles are unreadable. Y bounds each item on the main
+plot claims: FastCandlestickItem=[7.1917, 8.0083] PlotDataItem=None rsi_14=[10.0000, 90.0000]
+```
+
+`rsi_14=[10.0000, 90.0000]` là câu trả lời mà 4 lượt trước không có. `IndicatorManager.name_of()`
+là phần thêm để có được cái tên đó — "một `PlotDataItem` khai [10, 90]" bắt người đọc đi tìm, còn
+"`rsi_14` khai [10, 90]" thì không.
+
+### 10.4. Test giữ lại
+
+`tests/unit/presentation/ui/components/test_chart_card.py`, 3 test:
+
+| Test | Ghim cái gì |
+| :--- | :--- |
+| `test_auto_range_does_not_settle_until_the_view_is_asked_to_update` | Chính điểm mù §10.1, viết thành một sự thật về môi trường — để người sau viết repro chart-range không rút lại đúng kết luận sai đó từ một probe xanh |
+| `test_a_non_price_series_on_the_main_plot_squashes_the_candles` | Triệu chứng + log **nêu đích danh** series gây ra (assert vào tên, không phải vào "dải sai" — "dải sai" là thứ hồ sơ đã có suốt 4 lượt mà không hành động được) |
+| `test_a_healthy_chart_reports_nothing` | Lần nạp bình thường phải im lặng, nếu không log này thành nhiễu rồi bị lọc bỏ |
+
+Mutation-verify đã làm thật: đặt `_PRICE_BAND_MIN_VIEW_FRACTION = 0.0` → test squash đỏ đúng lý
+do → revert.
+
+### 10.5. Việc còn lại
+
+§5 bước 1–2 **vẫn còn nguyên giá trị**, nhưng giờ rẻ hơn hẳn: một lần tái hiện sống chỉ cần
+`grep '\[chart-range\]' logs/debug-*.log` là có tên item thủ phạm, không cần ảnh chụp kèm subplot
+để đoán nữa. Nếu dòng đó **không** xuất hiện trong khi nến vẫn biến mất, thì cơ chế §10.2 bị loại
+và nghi vấn quay về §8.4.

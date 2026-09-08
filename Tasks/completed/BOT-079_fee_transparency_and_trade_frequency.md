@@ -30,7 +30,7 @@ App hiện **không cung cấp bất kỳ dữ kiện nào** để người đ�
 - `Trade.fees_paid` — **đã có sẵn** từ `BOT-021`, ghi đúng phí vào + phí ra mỗi lệnh.
 - [`BacktestMetrics`](../../src/domain/backtesting/backtest_metrics.py) có 13 field
   nhưng **không có field nào về phí**.
-- [`performance_metrics_view.py`](../../src/presentation/ui/screens/backtest/logic/performance_metrics_view.py)
+- [`performance_metrics_view.py`](../../src/presentation/ui/qml/MetricsDetailPanel/performance_metrics_view.py)
   — 4 stat card chính + 8 chỉ số mở rộng, **không có phí**.
 
 Nên đây gần như thuần *tổng hợp + hiển thị*, không phải tính toán mới.

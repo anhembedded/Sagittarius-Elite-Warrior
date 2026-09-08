@@ -7,7 +7,7 @@
 ## 1. Đã verify: KHÔNG chạy trên UI thread — nhưng vẫn làm UI đơ
 
 Đọc kỹ [`backtest_presenter.py`](../../src/presentation/ui/screens/backtest/backtest_presenter.py)
-và [`thread_manager.py`](../../../sagittarius_engine/infrastructure/thread_manager.py)
+và `thread_manager.py`
 trước khi ghi task này, vì giả thuyết "chạy trên UI thread" trong report có
 thể chỉ đúng về triệu chứng (UI đơ) chứ không đúng về nguyên nhân:
 
@@ -23,7 +23,7 @@ thể chỉ đúng về triệu chứng (UI đơ) chứ không đúng về nguy�
   thread.
 
 **Nguyên nhân thật (đã verify):** `_simulate()` trong
-[`run_realtime_backtest/handler.py`](../../src/application/use_cases/backtest/run_realtime_backtest/handler.py)
+`run_realtime_backtest/handler.py`
 là một vòng `for` Python thuần, CPU-bound, không có điểm nhường CPU nào, chạy
 tới hàng trăm nghìn lần lặp (ví dụ 7 ngày ở độ phân giải 1 giây = 604,800
 tick). Mỗi tick gọi `engine.on_forming_bar_tick()`/`engine.on_tick()`

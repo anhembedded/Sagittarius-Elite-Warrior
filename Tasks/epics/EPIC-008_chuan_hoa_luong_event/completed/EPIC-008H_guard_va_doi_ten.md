@@ -96,7 +96,7 @@ một guard hay false-positive sẽ bị người ta tắt đi, và khi đó nó
 báo sai **ngay lần chạy đầu tiên**, trên chính code đúng.
 
 Thứ thay thế nó là quy tắc đặt chỗ ở
-[`architecture-rule.md` §6](../../../.agents/rules/architecture-rule.md) — dựa trên *ai sở hữu
+[`architecture-rule.md` §6](../../../../.agents/rules/architecture-rule.md) — dựa trên *ai sở hữu
 sự thật*, không dựa trên *signal có bắc cầu hay không*. Guard 3 ở trên đo được đúng phần quan
 trọng của luật đó (không 2 màn cùng nghe một event).
 

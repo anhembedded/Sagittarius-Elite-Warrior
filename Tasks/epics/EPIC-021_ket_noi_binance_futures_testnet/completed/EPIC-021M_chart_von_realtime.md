@@ -11,7 +11,7 @@
 
 Backtest **đã có** đường vốn: `BacktestResult.equity_curve: list[tuple[datetime, float]]`, cùng
 `ChartDisplayMode.EQUITY` và hai hàm dựng sẵn `equity_curve_to_candles()` /
-`equity_curve_to_line_data()` ([`chart_canvas_view.py`](../../../src/presentation/ui/screens/backtest/logic/chart_canvas_view.py)).
+`equity_curve_to_line_data()` ([`chart_canvas_view.py`](../../../../src/presentation/ui/screens/backtest/logic/chart_canvas_view.py)).
 
 **Live thì không có gì cả.** Đo bằng `grep`, không suy đoán:
 
@@ -22,7 +22,7 @@ Backtest **đã có** đường vốn: `BacktestResult.equity_curve: list[tuple[
 | Số dư trong `ACCOUNT_UPDATE` | Sàn **có gửi**, nhưng parser đang **vứt đi** |
 
 Dòng vứt đi đó nằm ở
-[`user_data_event_parser.py:96`](../../../src/infrastructure/binance/user_data_event_parser.py):
+[`user_data_event_parser.py:96`](../../../../src/infrastructure/binance/user_data_event_parser.py):
 
 ```python
 return [position["s"] for position in payload.get("a", {}).get("P", [])]

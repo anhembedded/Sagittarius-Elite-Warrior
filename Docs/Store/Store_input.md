@@ -126,12 +126,12 @@ StoreAdapter --> StateFile : Ghi đĩa JSON (per-slice merge)
 
 | Thành phần | Đường dẫn file & Dòng code | Trách nhiệm |
 | :--- | :--- | :--- |
-| **Khai báo 21 trường input Backtest** | [`src/presentation/ui/screens/backtest/backtest_state_fields.py:L155-L217`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/backtest/backtest_state_fields.py#L155-L217) | Định nghĩa bảng `BACKTEST_STATE_FIELDS` (capital, symbol, timeframe, strategy, commission, leverage, time range, timezone...) kèm hàm validate cho từng trường. |
-| **Capture & Restore Backtest** | [`src/presentation/ui/screens/backtest/state_persistence.py:L22-L65`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/backtest/state_persistence.py#L22-L65) | `capture()`: đọc từ ViewModel ra dict. <br>`restore()`: validate từng field rồi gán ngược lại ViewModel. |
-| **Auto-wiring bắt thay đổi Input** | [`src/presentation/ui/screens/backtest/signal_wiring.py:L169-L192`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/backtest/signal_wiring.py#L169-L192) | `connect_state_tracking()`: lặp qua các field và kết nối `<prop>Changed` của ViewModel vào `presenter._mark_state_dirty`. |
-| **Dashboard Inputs (Dev Board)** | [`src/presentation/ui/screens/dashboard/dashboard_presenter.py:L614-L645`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/dashboard/dashboard_presenter.py#L614-L645) | Lưu `symbol`, `interval`, `lookback_days`, `scripts_enabled`, `scripts_touched`. |
-| **Database Inputs** | [`src/presentation/ui/screens/data_management/data_management_presenter.py:L453-L485`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/screens/data_management/data_management_presenter.py#L453-L485) | Lưu `selectedSymbol`, `selectedInterval`. |
-| **Symbol Preferences** | [`src/presentation/ui/components/symbol_picker/preferences.py:L153-L162`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/components/symbol_picker/preferences.py#L153-L162) | Lưu danh sách mã yêu thích (favorites) và gần đây (recents). |
+| **Khai báo 21 trường input Backtest** | [`src/presentation/ui/screens/backtest/backtest_state_fields.py:L155-L217`](../../src/presentation/ui/screens/backtest/backtest_state_fields.py) | Định nghĩa bảng `BACKTEST_STATE_FIELDS` (capital, symbol, timeframe, strategy, commission, leverage, time range, timezone...) kèm hàm validate cho từng trường. |
+| **Capture & Restore Backtest** | [`src/presentation/ui/screens/backtest/state_persistence.py:L22-L65`](../../src/presentation/ui/screens/backtest/state_persistence.py) | `capture()`: đọc từ ViewModel ra dict. <br>`restore()`: validate từng field rồi gán ngược lại ViewModel. |
+| **Auto-wiring bắt thay đổi Input** | [`src/presentation/ui/screens/backtest/signal_wiring.py:L169-L192`](../../src/presentation/ui/screens/backtest/signal_wiring.py) | `connect_state_tracking()`: lặp qua các field và kết nối `<prop>Changed` của ViewModel vào `presenter._mark_state_dirty`. |
+| **Dashboard Inputs (Dev Board)** | [`src/presentation/ui/screens/dashboard/dashboard_presenter.py:L614-L645`](../../src/presentation/ui/screens/dashboard/dashboard_presenter.py) | Lưu `symbol`, `interval`, `lookback_days`, `scripts_enabled`, `scripts_touched`. |
+| **Database Inputs** | [`src/presentation/ui/screens/data_management/data_management_presenter.py:L453-L485`](../../src/presentation/ui/screens/data_management/data_management_presenter.py) | Lưu `selectedSymbol`, `selectedInterval`. |
+| **Symbol Preferences** | [`src/presentation/ui/components/symbol_picker/preferences.py:L153-L162`](../../src/presentation/ui/components/symbol_picker/preferences.py) | Lưu danh sách mã yêu thích (favorites) và gần đây (recents). |
 
 ### 3.3 Sơ đồ tuần tự: Vòng đời lưu và khôi phục Input (PlantUML)
 
@@ -200,10 +200,10 @@ VM --> View: Giao diện hiển thị lại số vốn "50000"
 
 | Hành vi | Đường dẫn file & Dòng code | Đoạn code thực tế |
 | :--- | :--- | :--- |
-| **Ghi nhận chuyển màn hình** | [`src/presentation/ui/main_window.py:L296-L305`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/main_window.py#L296-L305) | `switch_screen()` gán `self._current_route = route_name` và gọi `self._mark_dirty()`. |
-| **Đóng gói lưu route xuống đĩa** | [`src/presentation/ui/main_window.py:L234-L245`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/main_window.py#L234-L245) | `capture_state()` lưu key `_ROUTE_KEY: self._current_route`. |
-| **Khôi phục ghi đè route** | [`src/presentation/ui/main_window.py:L258-L261`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/main_window.py#L258-L261) | `restore_state()` đọc `_ROUTE_KEY` và gán lại `self._current_route = route`. |
-| **Tự động kích hoạt chuyển màn lúc boot** | [`src/presentation/ui/main_window.py:L202-L204`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/main_window.py#L202-L204) | Gọi `restore_into(self)` rồi thực thi `self.switch_screen(self._current_route)`. |
+| **Ghi nhận chuyển màn hình** | [`src/presentation/ui/main_window.py:L296-L305`](../../src/presentation/ui/main_window.py) | `switch_screen()` gán `self._current_route = route_name` và gọi `self._mark_dirty()`. |
+| **Đóng gói lưu route xuống đĩa** | [`src/presentation/ui/main_window.py:L234-L245`](../../src/presentation/ui/main_window.py) | `capture_state()` lưu key `_ROUTE_KEY: self._current_route`. |
+| **Khôi phục ghi đè route** | [`src/presentation/ui/main_window.py:L258-L261`](../../src/presentation/ui/main_window.py) | `restore_state()` đọc `_ROUTE_KEY` và gán lại `self._current_route = route`. |
+| **Tự động kích hoạt chuyển màn lúc boot** | [`src/presentation/ui/main_window.py:L202-L204`](../../src/presentation/ui/main_window.py) | Gọi `restore_into(self)` rồi thực thi `self.switch_screen(self._current_route)`. |
 
 ### 4.4 Sơ đồ tuần tự: Luồng gây lỗi tự động nhảy màn hình (PlantUML)
 
@@ -264,7 +264,7 @@ Window --> User: Hiển thị màn hình Backtest!
 
 Để đưa ứng dụng về đúng tôn chỉ **"Chỉ lưu Input, không can thiệp điều hướng màn hình"**, giải pháp rất đơn giản và gọn gàng:
 
-### Thay đổi trong [`src/presentation/ui/main_window.py`](file:///c:/Users/hoang/Documents/Gemini/Sagittarius-Elite-Warrior/src/presentation/ui/main_window.py):
+### Thay đổi trong [`src/presentation/ui/main_window.py`](../../src/presentation/ui/main_window.py):
 
 1. **Trong `capture_state()` (L234-L245)**:
    Loại bỏ `_ROUTE_KEY` khỏi dict trả về:

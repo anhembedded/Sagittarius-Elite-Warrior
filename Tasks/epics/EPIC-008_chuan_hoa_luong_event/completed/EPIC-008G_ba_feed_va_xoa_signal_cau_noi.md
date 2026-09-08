@@ -6,7 +6,7 @@
 > sang worker thread. Xem khối "⛔ DỪNG" cuối file để biết số liệu và bằng chứng.
 >
 > Thay bằng **quy tắc đặt chỗ**, đã ghi thành luật ở
-> [`architecture-rule.md` §6](../../../.agents/rules/architecture-rule.md) và **nhắc lại ngay
+> [`architecture-rule.md` §6](../../../../.agents/rules/architecture-rule.md) và **nhắc lại ngay
 > trong code** ở khối khai báo signal của cả 3 presenter:
 >
 > - Sự thật **riêng của một màn** → Qt signal nội bộ (thread-hop là tính năng, không phải nợ).

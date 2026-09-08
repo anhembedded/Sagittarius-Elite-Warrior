@@ -9,7 +9,7 @@
 > **Hai việc còn nợ, ghi ở đây để không ai tưởng epic đã sạch (rà soát 2026-08-25):**
 >
 > 1. ~~`EPIC-006F` chưa có file task~~ — **đã tạo 2026-08-25**:
->    [`incomplete/EPIC-006F_thao_do_kit_qml.md`](incomplete/EPIC-006F_thao_do_kit_qml.md).
+>    [`incomplete/EPIC-006F_thao_do_kit_qml.md`](completed/EPIC-006F_thao_do_kit_qml.md).
 >    Nó cũng khép lại một mâu thuẫn có sẵn trong chính README này: dòng `006F` ở bảng §3 bảo
 >    "tháo dỡ kit QML", còn §5 bảo không được xoá thứ sample app cần. Đo thật cho thấy sample
 >    app `import Sagittarius.UI 1.0` ⇒ **§5 thắng, kit không tháo được trong epic này**. `006F`

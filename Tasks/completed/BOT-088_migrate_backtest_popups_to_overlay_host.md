@@ -8,17 +8,17 @@
 ## 1. Danh sách popup phải chuyển — đã liệt kê đủ, không phải "vài cái"
 
 Tất cả đều khai báo trong
-[`BackTestTopPanel.qml`](../../src/presentation/ui/screens/backtest/BackTestTopPanel.qml),
+`BackTestTopPanel.qml`,
 tức nằm trong `QQuickWidget` cao **190px**:
 
 | Popup | Chiều cao thật | Vừa 190px? |
 | :--- | :---: | :---: |
 | `extendedMetricsPopup` (11 card, 2 cột) | **606px** | ❌ chỉ 31% |
 | `limitationsPopup` (9 dòng text wrap) | ~410px | ❌ |
-| [`BotParamsDialog`](../../src/presentation/ui/components/BotParamsDialog.qml) | form động theo strategy | ❌ khi nhiều param |
+| `BotParamsDialog` | form động theo strategy | ❌ khi nhiều param |
 | `capitalPopup` | nhỏ | ⚠️ đo lại |
-| [`IndicatorPickerMenu`](../../src/presentation/ui/components/IndicatorPickerMenu.qml) | theo số script | ⚠️ đo lại |
-| [`OrderExecutionMenu`](../../src/presentation/ui/components/OrderExecutionMenu.qml) | 4 mục | ⚠️ đo lại |
+| `IndicatorPickerMenu` | theo số script | ⚠️ đo lại |
+| `OrderExecutionMenu` | 4 mục | ⚠️ đo lại |
 
 - [ ] **Đo từng cái trước khi sửa** (dùng cơ chế test `BOT-087` §3.3 vừa mở ra), đừng
       đoán. 3 cái đánh ⚠️ có thể đang vừa — nếu vừa thì vẫn nên chuyển cho nhất quán,

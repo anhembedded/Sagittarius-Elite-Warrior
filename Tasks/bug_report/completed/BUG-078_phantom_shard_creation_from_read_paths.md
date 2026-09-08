@@ -144,7 +144,7 @@ gọi nữa sau fix (b) ở trên, nên `Mock()` tự trả về một `Mock()` 
 `get_database_status_for_intervals`, `scan_started.set()` không bao giờ
 chạy, và probe tự raise `RuntimeError("Database scan did not start")` sau
 timeout 3s. **Đây chính xác là bẫy #1 của
-[`ONBOARDING.md`](../../.agents/ONBOARDING.md) §8** dạng khác: không phải
+[`ONBOARDING.md`](../../../.agents/ONBOARDING.md) §8** dạng khác: không phải
 tính sai kỳ vọng test, mà là quên cập nhật một test double khi đổi tên
 method trên port. Sửa: đổi mock sang `get_database_status_for_intervals`,
 trả về `dict[str, DatabaseStatusSnapshot]` đúng shape mới. Chạy lại solo

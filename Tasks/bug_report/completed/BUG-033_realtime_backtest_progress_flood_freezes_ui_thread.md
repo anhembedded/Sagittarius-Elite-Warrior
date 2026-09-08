@@ -41,12 +41,12 @@ real, not a guess at where the code "probably" is stuck.
 
 **The chain, traced from the real files, not assumed:**
 
-1. [`run_realtime_backtest/handler.py:302-307`](../../../src/application/use_cases/backtest/run_realtime_backtest/handler.py) throttles `command.progress_callback` by **tick index**, not wall-clock time: `index == 1 or index % 256 == 0 or index == total_ticks`. For this run's `ticks=2592000`, that is **exactly 10,125** callback invocations over the run (`2592000 / 256`).
+1. `run_realtime_backtest/handler.py:302-307` throttles `command.progress_callback` by **tick index**, not wall-clock time: `index == 1 or index % 256 == 0 or index == total_ticks`. For this run's `ticks=2592000`, that is **exactly 10,125** callback invocations over the run (`2592000 / 256`).
 2. Each invocation is the closure at [`backtest_presenter.py:2263-2268`](../../../src/presentation/ui/screens/backtest/backtest_presenter.py), which does `self._backtestProgressSignal.emit(...)` — a cross-thread Qt signal from the background worker thread (`_run_backtest` runs via `IThreadManager`, confirmed by its own docstring: "Background method — submitted to IThreadManager... Signals only") to the main GUI thread.
 3. The main-thread slot, [`_on_backtest_progress_for_action` (line 1126-1157)](../../../src/presentation/ui/screens/backtest/backtest_presenter.py), calls `self._view_model.set_backtest_progress(percent, text)`.
 4. [`backtest_view_model.py:909-913`](../../../src/presentation/ui/screens/backtest/backtest_view_model.py) `set_backtest_progress` writes two `Property` values and emits `backtestProgressChanged` — triggering every QML binding on `backtestProgressPercent`/`backtestProgressText` to re-evaluate.
-5. `BackTestTopPanel.qml`'s `progressBanner` binds an `AppProgressBar` to those properties. [`AppProgressBar.qml:98-100`](../../../src/presentation/ui/components/AppProgressBar.qml) has `Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }` on the fill bar — **every single progress update retriggers a new animation** on the main/GUI thread, not just a cheap value assignment.
-6. [`UIWatchdog`](../../../../Sagittarius_Engine/sagittarius_engine/extensions/pyside_mvc/safety/ui_watchdog.py) fires only when its 1-second `QTimer` heartbeat (also on the main thread) hasn't ticked in over 5 seconds — confirming the main thread's event loop was **continuously busy**, not merely slow to respond to a specific input.
+5. `BackTestTopPanel.qml`'s `progressBanner` binds an `AppProgressBar` to those properties. `AppProgressBar.qml:98-100` has `Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }` on the fill bar — **every single progress update retriggers a new animation** on the main/GUI thread, not just a cheap value assignment.
+6. `UIWatchdog` fires only when its 1-second `QTimer` heartbeat (also on the main thread) hasn't ticked in over 5 seconds — confirming the main thread's event loop was **continuously busy**, not merely slow to respond to a specific input.
 
 **Timestamp cross-reference from the log itself (real evidence, not inference from code alone):**
 the tick loop's own `handler_simulation_complete` trace fires at `23:07:27,036`; the freeze
@@ -81,7 +81,7 @@ small, injectable-clock class that gates `progress_callback` by **wall-clock tim
 on the first and last index so a progress bar never looks stuck at 0% or fails to reach 100%.
 Applied to both handlers that duplicated the same index-based pattern:
 
-- [`run_realtime_backtest/handler.py`](../../../src/application/use_cases/backtest/run_realtime_backtest/handler.py) —
+- `run_realtime_backtest/handler.py` —
   one `ProgressThrottle` instance per run (single tick loop).
 - [`run_static_backtest/handler.py`](../../../src/application/use_cases/backtest/run_static_backtest/handler.py) —
   one `ProgressThrottle` instance per `_simulate()` call, i.e. per phase (in-sample,
@@ -104,7 +104,7 @@ run after this fix, do not assume this same mechanism without re-checking.
 
 ## Regression test
 
-[`tests/unit/application/use_cases/test_run_realtime_backtest.py::test_progress_callback_rate_is_bounded_regardless_of_tick_count`](../../../tests/unit/application/use_cases/test_run_realtime_backtest.py) —
+`tests/unit/application/use_cases/test_run_realtime_backtest.py::test_progress_callback_rate_is_bounded_regardless_of_tick_count` —
 runs 20,000 ticks through the real (unmocked) handler with a real `progress_callback` collecting
 every call, asserting the call count stays under 20 and the first/last calls always report
 `(1, 20_000)`/`(20_000, 20_000)`. Confirmed **FAIL before the fix**: `assert 80 < 20` (matches

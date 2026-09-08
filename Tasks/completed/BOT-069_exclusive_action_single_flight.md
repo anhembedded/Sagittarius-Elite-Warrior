@@ -213,7 +213,7 @@ CŨ, từ trước khi PR Bolt "Batch concurrent fetches" đổi `GetHistoricalK
 cập nhật theo). **Không sửa trong task này** — ngoài phạm vi `ExclusiveAction`, thuộc về nợ kỹ
 thuật khác. Trong lúc điều tra, một lần chạy khối lớn nhiều file `tests/integration/presentation/ui/`
 gộp chung bị crash native (không phải assertion, không có Python traceback) — đúng đặc điểm đã
-biết của [`BOT-038`](../backlog/BOT-038_intermittent_segfault_full_ui_integration_suite.md)
+biết của [`BOT-038`](BOT-038_intermittent_segfault_full_ui_integration_suite.md)
 ("không deterministic theo test hay theo outcome", chỉ xảy ra khi chạy gộp nhiều file); chạy lại
 từng file riêng lẻ (như bảng trên) không crash lần nào — đúng cách né đã biết, **không tự ý điều
 tra thêm BOT-038** theo đúng ghi chú "không tự ý tiếp tục điều tra nếu chưa được yêu cầu lại"

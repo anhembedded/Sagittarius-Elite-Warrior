@@ -377,8 +377,8 @@ Prompt vòng 3 cho AI thiết kế, gom 4 control + 5 trạng thái + 6 chỗ s�
 [`design/PROMPT_vong3_control_va_trang_thai_thieu.md`](../design/PROMPT_vong3_control_va_trang_thai_thieu.md).
 
 Cả hai **đã mở hồ sơ riêng**, không lẫn vào task dựng màn:
-[`BUG-084`](../../../bug_report/incomplete/BUG-084_live_sizing_hardcode_chan_moi_lenh.md) (sizing)
-và [`BUG-085`](../../../bug_report/incomplete/BUG-085_live_tick_khong_loc_theo_interval.md)
+[`BUG-084`](../../../bug_report/completed/BUG-084_live_sizing_hardcode_chan_moi_lenh.md) (sizing)
+và [`BUG-085`](../../../bug_report/completed/BUG-085_live_tick_khong_loc_theo_interval.md)
 (không lọc interval).
 
 ### 3.4 Review mock vòng 3 (2026-09-02) — 3/4 mục đạt, 1 mục chưa gửi
@@ -520,7 +520,7 @@ an toàn hơn, không kém. Xác nhận không hồi quy: 104/104 test Dashboard
 
 ### 6.3 Lỗ hổng phát hiện khi build, không sửa trong lượt này
 
-[`BUG-086`](../../../bug_report/incomplete/BUG-086_position_changed_event_khong_ban_khi_dong_vi_the.md)
+[`BUG-086`](../../../bug_report/completed/BUG-086_position_changed_event_khong_ban_khi_dong_vi_the.md)
 — `_handle_account_update()` không publish `PositionChangedEvent` khi vị thế đóng về 0, chỉ log.
 Bảng "Vị thế đang mở" có thể hiển thị một vị thế đã đóng thật cho tới lần `EnableTradingCommand`
 kế tiếp đối soát lại.

@@ -121,6 +121,20 @@ class IndicatorManager:
             self._group_members[group].add(name)
             self._curve_group[name] = group
 
+    def name_of(self, item: object) -> str | None:
+        """The registered indicator name for a plot item, or `None`.
+
+        @details `BUG-034`'s diagnostic needs to say *which* series stretched
+        the Y axis. pyqtgraph knows the item, this class knows what the user
+        called it, and only the two together are actionable: "a PlotDataItem
+        claims [10, 90]" sends the next reader hunting, "rsi_14 claims
+        [10, 90]" does not.
+        """
+        for name, curve in self._curves.items():
+            if curve is item:
+                return name
+        return None
+
     def _register(self, name: str, curve: pg.PlotDataItem, plot: pg.PlotItem) -> None:
         self._curves[name] = curve
         self._plots[name] = plot

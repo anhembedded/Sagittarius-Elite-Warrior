@@ -43,9 +43,9 @@ Overlay.overlay     : 1378x190      ← KHÔNG phải 1400x900
 Mọi `Popup` QML mặc định coi `Overlay.overlay` là toàn cửa sổ. Ở màn Backtest nó chỉ bằng
 đúng widget con 190px. **6 popup** đều khai báo trong `BackTestTopPanel.qml` (tức nằm
 trong 190px đó): `extendedMetricsPopup`, `limitationsPopup`, `capitalPopup`,
-[`BotParamsDialog`](../../src/presentation/ui/components/BotParamsDialog.qml),
-[`IndicatorPickerMenu`](../../src/presentation/ui/components/IndicatorPickerMenu.qml),
-[`OrderExecutionMenu`](../../src/presentation/ui/components/OrderExecutionMenu.qml).
+`BotParamsDialog`,
+`IndicatorPickerMenu`,
+`OrderExecutionMenu`.
 
 Chiều cao thật của `extendedMetricsPopup`: 11 card ÷ 2 cột = 6 hàng × 80px + spacing +
 padding = **606px trong 190px → chỉ 31% hiển thị**. Khớp chính xác ảnh chụp (thấy header
@@ -109,10 +109,10 @@ hay không.
 
 | Task | Track | Tên | Phụ thuộc |
 | :--- | :---: | :--- | :--- |
-| [`BOT-087`](BOT-087_overlay_host_engine.md) | A | `OverlayHost` — hạ tầng overlay full-window ở `pyside_mvc` | — |
-| [`BOT-088`](BOT-088_migrate_backtest_popups_to_overlay_host.md) | A | Chuyển 6 popup màn Backtest sang overlay host | `BOT-087` |
-| [`BOT-089`](BOT-089_content_driven_panel_sizing.md) | B | Panel co giãn theo nội dung — bỏ `setFixedHeight`/magic number | — |
-| [`BOT-090`](BOT-090_trade_logs_visible_rows.md) | B | Trade Logs hiển thị đủ dòng (rows-per-page theo chiều cao thật) | `BOT-089` |
+| [`BOT-087`](../completed/BOT-087_overlay_host_engine.md) | A | `OverlayHost` — hạ tầng overlay full-window ở `pyside_mvc` | — |
+| [`BOT-088`](../completed/BOT-088_migrate_backtest_popups_to_overlay_host.md) | A | Chuyển 6 popup màn Backtest sang overlay host | `BOT-087` |
+| [`BOT-089`](../completed/BOT-089_content_driven_panel_sizing.md) | B | Panel co giãn theo nội dung — bỏ `setFixedHeight`/magic number | — |
+| [`BOT-090`](../completed/BOT-090_trade_logs_visible_rows.md) | B | Trade Logs hiển thị đủ dòng (rows-per-page theo chiều cao thật) | `BOT-089` |
 
 **Thứ tự đề xuất**: `BOT-089` → `BOT-090` (Track B, rẻ hơn, không đụng engine, thấy kết
 quả ngay) **song song** `BOT-087` → `BOT-088` (Track A, đụng engine, tốn hơn). Nếu phải

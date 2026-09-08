@@ -4,7 +4,7 @@
 **Độ phức tạp:** 🔴 **L (Thinking Agent)**  
 **Trạng thái:** 🔴 **Backlog**  
 **Ưu tiên:** ⚡ **P4 — Tinh chỉnh & Tối ưu hóa Tham số (Optimization & Automation)**  
-**Liên quan:** [`BOT-044`](../completed/BOT-044_strategy_parameter_schema_declaration.md), [`BOT-047`](../completed/BOT-047_backtest_strategy_params_dialog.md), [`BOT-021`](../completed/BOT-021_static_backtest_engine.md)
+**Liên quan:** `BOT-044`, `BOT-047`, `BOT-021`
 
 ---
 

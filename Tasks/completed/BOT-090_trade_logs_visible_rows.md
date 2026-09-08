@@ -1,6 +1,6 @@
 # Nhiệm vụ: Trade Logs hiển thị được dòng — hiện đang trống hoàn toàn
 
-> Thuộc Epic [`BOT-086`](BOT-086_ui_layout_and_overlay_architecture_epic.md), **Track B**,
+> Thuộc Epic [`BOT-086`](../backlog/BOT-086_ui_layout_and_overlay_architecture_epic.md), **Track B**,
 > task 2/2. Phụ thuộc [`BOT-089`](BOT-089_content_driven_panel_sizing.md).
 > Nguồn: 📄 [`BUG-004`](../bug_report/completed/BUG-004.md).
 
@@ -13,7 +13,7 @@
 Tính từ code:
 
 - [`trade_log_pagination.py`](../../src/presentation/ui/screens/backtest/logic/trade_log_pagination.py): `PAGE_SIZE = 20`
-- [`BackTestTradeLogs.qml`](../../src/presentation/ui/screens/backtest/BackTestTradeLogs.qml): mỗi dòng `implicitHeight: 44`
+- `BackTestTradeLogs.qml`: mỗi dòng `implicitHeight: 44`
 - → riêng phần rows cần **20 × 44 = 880px**, chưa kể header + tab lọc + phân trang
 - [`backtest_view.py`](../../src/presentation/ui/screens/backtest/backtest_view.py): `main_splitter.setSizes([600, 200])` → pane này được **200px**
 

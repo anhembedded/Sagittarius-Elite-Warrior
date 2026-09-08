@@ -1,6 +1,6 @@
 # Nhiệm vụ: Kiểm định out-of-sample / walk-forward — chống overfitting
 
-> Thuộc Epic [`BOT-078`](BOT-078_backtest_trustworthiness_epic.md). Nguồn: 📄
+> Thuộc Epic [`BOT-078`](../backlog/BOT-078_backtest_trustworthiness_epic.md). Nguồn: 📄
 > [Rà soát định hướng App](../reports/app_direction_audit.md) §2.
 >
 > **Task lớn nhất epic, và quan trọng nhất về lâu dài.** Còn **câu hỏi mở cần user chốt**
@@ -36,7 +36,7 @@ cách nào** phân biệt:
 
 Cả hai trông **giống hệt nhau** trên màn hình Backtest hiện tại.
 
-⚠️ **So sánh mức độ ưu tiên với [`BOT-073`](BOT-073_realtime_tick_backtest_epic.md)**:
+⚠️ **So sánh mức độ ưu tiên với [`BOT-073`](../backlog/BOT-073_realtime_tick_backtest_epic.md)**:
 `BOT-073` (Realtime backtest) làm kết quả *chân thực hơn về cơ chế*. Nhưng nếu tham số đã
 overfit thì kết quả chân thực đó **vẫn vô nghĩa** — chỉ là một con số sai một cách chính
 xác hơn. Task này nên xong **trước khi** ai dùng `BOT-047` để tinh chỉnh nghiêm túc.

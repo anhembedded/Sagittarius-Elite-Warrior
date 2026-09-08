@@ -1,7 +1,7 @@
 # EPIC-001B — Chạy song song TradingView vs app, đối chiếu trade-by-trade
 
 **Thuộc:** [EPIC-001](../README.md)
-**Phụ thuộc:** [EPIC-001A](EPIC-001A_align_broker_simulator_config_for_comparison.md)
+**Phụ thuộc:** [EPIC-001A](../completed/EPIC-001A_align_broker_simulator_config_for_comparison.md)
 **Trạng thái:** 🔴 Chưa làm.
 
 ## Mục tiêu

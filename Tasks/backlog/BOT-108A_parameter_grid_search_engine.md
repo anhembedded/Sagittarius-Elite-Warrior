@@ -4,7 +4,7 @@
 **Thuộc Epic:** [`BOT-108`](BOT-108_strategy_parameter_optimization_epic.md)  
 **Độ phức tạp:** 🔴 **L (Thinking Agent)**  
 **Trạng thái:** 🔴 **Backlog**  
-**Dependencies:** [`BOT-021`](../completed/BOT-021_static_backtest_engine.md), [`BOT-044`](../completed/BOT-044_strategy_parameter_schema_declaration.md), [`BOT-095C`](../completed/BOT-095C_backtest_cancellation_and_stop_button.md)
+**Dependencies:** `BOT-021`, `BOT-044`, [`BOT-095C`](../completed/BOT-095C_backtest_cancellation_and_stop_button.md)
 
 ---
 

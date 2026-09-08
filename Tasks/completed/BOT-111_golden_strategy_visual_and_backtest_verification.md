@@ -3,7 +3,7 @@
 **Mã Task:** `BOT-111`  
 **Độ phức tạp:** 🟡 **M (Standard Agent)**  
 **Trạng thái:** ✅ **Hoàn thành (2026-08-20)**  
-**Thuộc Epic:** [`BOT-109`](BOT-109_golden_strategy_ema_trend_confirm_pullback_epic.md) (Chuẩn Tham Chiếu Vàng)  
+**Thuộc Epic:** [`BOT-109`](../backlog/BOT-109_golden_strategy_ema_trend_confirm_pullback_epic.md) (Chuẩn Tham Chiếu Vàng)  
 **Phụ thuộc:** [`BOT-110`](../completed/BOT-110_ema_trend_confirm_pullback_strategy.md) ✅
 
 ---

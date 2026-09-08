@@ -114,7 +114,7 @@ nhóm, thứ tự liệt kê là thứ tự làm khuyến nghị.
 | Task | Mô tả ngắn |
 | :--- | :--- |
 | [`BOT-045`](../completed/BOT-045_trade_journal_detail_and_metadata.md) | **Trade Journal Detail** — lý do vào/thoát + metadata theo chiến lược. Làm **trước** `BOT-041` để SL/TP có sẵn chỗ ghi `exit_reason`. |
-| [`BOT-041`](BOT-041_stop_loss_take_profit_and_risk_sizing.md) | SL/TP tự đóng vị thế + position sizing theo % rủi ro (2 cái không tách rời: sizing cần biết SL). |
+| [`BOT-041`](../completed/BOT-041_stop_loss_take_profit_and_risk_sizing.md) | SL/TP tự đóng vị thế + position sizing theo % rủi ro (2 cái không tách rời: sizing cần biết SL). |
 | [`BOT-049`](BOT-049_leverage_and_liquidation.md) | Đòn bẩy + **thanh lý**. Rủi ro sai số cao nhất Epic — bắt buộc đối chiếu nguồn ngoài. |
 | [`BOT-050`](../completed/BOT-050_short_selling_support.md) | Short-selling. Task duy nhất **đổi hành vi đã có test pin**. |
 
@@ -141,7 +141,7 @@ nhóm, thứ tự liệt kê là thứ tự làm khuyến nghị.
 | ✅ [`BOT-055`](../completed/BOT-055_backtest_performance_metrics_panel.md) | Performance Metrics Panel (4 stat card + mở rộng). |
 | ✅ [`BOT-056`](../completed/BOT-056_backtest_chart_canvas.md) | Chart Canvas — 3 chế độ (OHLC / Equity / Song song) + overlays. |
 | [`BOT-057`](../completed/BOT-057_backtest_trade_logs_table.md) | Trade Logs Table + dòng mở rộng chi tiết. |
-| [`BOT-024`](BOT-024_backtest_screen_dynamic_ui.md) | Phase 2 — kế thừa toàn bộ UI trên + replay controls, sau khi [`BOT-076`](../completed/BOT-076_realtime_backtest_engine.md) xong (`BOT-023` đã huỷ). |
+| [`BOT-024`](../cancelled/BOT-024_backtest_screen_dynamic_ui.md) | Phase 2 — kế thừa toàn bộ UI trên + replay controls, sau khi [`BOT-076`](../completed/BOT-076_realtime_backtest_engine.md) xong (`BOT-023` đã huỷ). |
 
 ### Ngoài nhóm
 

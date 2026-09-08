@@ -76,6 +76,6 @@ phải literal trùng lặp, guard không (và không nên) bắt trường hợ
 
 ## `EPIC-005E` đóng lại
 
-Cả 3 sub-task (`E1`/`E2`/`E3`) đều xong. Xem [`EPIC-005E_data_management.md`](../EPIC-005E_data_management.md)
+Cả 3 sub-task (`E1`/`E2`/`E3`) đều xong. Xem [`EPIC-005E_data_management.md`](EPIC-005E_data_management.md)
 để tổng kết. Chi phí thực tế (theo mục 1.5 của `E`'s yêu cầu): 3 kit component ở `E1`, 0 ở
 `E2`/`E3` — thấp hơn ước lượng ban đầu, khớp với kết luận đã ghi ở ADR `EPIC-005A`.
