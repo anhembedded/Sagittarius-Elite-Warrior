@@ -234,6 +234,50 @@ def test_the_broker_numbers_reach_the_config_unchanged() -> None:
     assert (broker.long_leverage, broker.short_leverage) == (5.0, 7.0)
 
 
+def test_the_365_day_preset_in_tick_mode_is_refused_not_dispatched() -> None:
+    """`BUG-107` — the actual reported hang: picking the standard "365 ngày
+    qua" preset while in Realtime/tick mode used to sail straight through
+    to a `GetBacktestRangeCoverageQuery` at the tick interval with no
+    progress bar and no cancellation. `is_unbounded_range` alone never
+    caught it (`start_time` is a real datetime, not `None`) — this proves
+    the fix reaches all the way from the toolbar preset to a refusal, not
+    just the isolated rule in `test_pre_backtest_assertions.py`."""
+    outcome = _build(
+        FakeInputs(
+            time_range=FakeTimeRange(preset=TimeRangePreset.LAST_365_DAYS.value)
+        ),
+        execution_mode=BacktestExecutionMode.HISTORICAL_TICK,
+    )
+
+    assert outcome.config is None
+    assert "7 ngày" in outcome.error_message
+
+
+def test_the_7_day_preset_in_tick_mode_still_runs() -> None:
+    """Pins the boundary the fix must not overshoot — BOT-075's own
+    validated feasible window stays usable."""
+    outcome = _build(
+        FakeInputs(time_range=FakeTimeRange(preset=TimeRangePreset.LAST_7_DAYS.value)),
+        execution_mode=BacktestExecutionMode.HISTORICAL_TICK,
+    )
+
+    assert outcome.is_valid
+
+
+def test_the_365_day_preset_outside_tick_mode_still_runs() -> None:
+    """`BAR_CLOSE` mode never hits the tick-interval coverage query, so the
+    same wide preset stays fine there — same scoping `BUG-073` pinned for
+    the unbounded case."""
+    outcome = _build(
+        FakeInputs(
+            time_range=FakeTimeRange(preset=TimeRangePreset.LAST_365_DAYS.value)
+        ),
+        execution_mode=BacktestExecutionMode.BAR_CLOSE,
+    )
+
+    assert outcome.is_valid
+
+
 # --------------------------------------------------------------------- #
 # The lenient snapshot
 # --------------------------------------------------------------------- #

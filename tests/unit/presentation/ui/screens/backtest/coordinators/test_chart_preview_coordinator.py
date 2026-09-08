@@ -8,6 +8,7 @@ different question from what the chart draws.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.coordinators import (
@@ -30,6 +31,7 @@ def _build(
     active_preview_id=1,
     busy=False,
     start_time=None,
+    end_time=None,
     execution_mode=BacktestExecutionMode.BAR_CLOSE,
     dispatcher=None,
 ):
@@ -48,7 +50,7 @@ def _build(
         format_coverage_message=lambda _c: "thiếu dữ liệu",
         get_current_config=lambda: SimpleNamespace(
             start_time=start_time,
-            end_time=None,
+            end_time=end_time,
             timeframe=SimpleNamespace(value="1m"),
             execution_mode=execution_mode,
         ),
@@ -148,6 +150,52 @@ def test_an_unbounded_range_in_bar_close_mode_still_previews() -> None:
     ctx = _build(
         card=FakeChartCard(),
         start_time=None,
+        execution_mode=BacktestExecutionMode.BAR_CLOSE,
+    )
+
+    ctx.c.request_preview()
+
+    assert len(ctx.calls.previews) == 1
+
+
+def test_no_preview_is_requested_for_a_bounded_but_too_wide_range_in_tick_mode() -> (
+    None
+):
+    """`BUG-107` — a *bounded* range (e.g. the "365 ngày qua" preset) hits
+    the exact same coverage-query hazard the unbounded-range test above
+    guards, just via `start_time` being a real datetime rather than
+    `None`. The previous guard only checked for `None` and let this
+    straight through."""
+    ctx = _build(
+        card=FakeChartCard(),
+        start_time=datetime(2025, 9, 2, tzinfo=UTC),
+        end_time=datetime(2026, 9, 1, tzinfo=UTC),
+        execution_mode=BacktestExecutionMode.HISTORICAL_TICK,
+    )
+
+    ctx.c.request_preview()
+
+    assert ctx.calls.previews == []
+
+
+def test_a_bounded_range_within_the_limit_in_tick_mode_still_previews() -> None:
+    ctx = _build(
+        card=FakeChartCard(),
+        start_time=datetime(2026, 8, 25, tzinfo=UTC),
+        end_time=datetime(2026, 9, 1, tzinfo=UTC),
+        execution_mode=BacktestExecutionMode.HISTORICAL_TICK,
+    )
+
+    ctx.c.request_preview()
+
+    assert len(ctx.calls.previews) == 1
+
+
+def test_a_too_wide_range_outside_tick_mode_still_previews() -> None:
+    ctx = _build(
+        card=FakeChartCard(),
+        start_time=datetime(2025, 9, 2, tzinfo=UTC),
+        end_time=datetime(2026, 9, 1, tzinfo=UTC),
         execution_mode=BacktestExecutionMode.BAR_CLOSE,
     )
 

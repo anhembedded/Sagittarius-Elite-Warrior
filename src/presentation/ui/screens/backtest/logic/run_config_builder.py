@@ -199,6 +199,30 @@ def build_run_config(
     watermark instead of racing the wall clock. Defaults to `datetime.now(UTC)`.
     """
     preset = TimeRangePreset(view_model.time_range.preset)
+
+    # `BUG-107` — resolved BEFORE the assertions below, not after: a preset
+    # like "365 ngày qua" is just as wide as a hand-typed custom range for
+    # `TickModeRequiresBoundedRangeRule`'s purposes, and it needs the real
+    # (start_time, end_time) pair to check that, not the raw preset/text
+    # `is_unbounded_range`/`is_custom_range` alone could see. A malformed
+    # custom date here still resolves to `None` (via `parse_custom_datetime`)
+    # rather than raising — `CustomDateRangeRule` below is what actually
+    # rejects that shape, this block only needs a value or `None`.
+    custom_start: datetime | None = None
+    custom_end: datetime | None = None
+    if preset is TimeRangePreset.CUSTOM:
+        custom_start = parse_custom_datetime(view_model.time_range.customStartText)
+        custom_end = parse_custom_datetime(view_model.time_range.customEndText)
+
+    range_now = now or datetime.now(UTC)
+    if preset is not TimeRangePreset.CUSTOM:
+        range_now = published_candle_cutoff(
+            range_now, TimeFrame(view_model.selectedTimeframe)
+        )
+    start_time, end_time = resolve_time_range(
+        preset, range_now, custom_start, custom_end
+    )
+
     assertions = PreBacktestAssertionPipeline.default().validate(
         PreBacktestInput(
             capital_text=view_model.initialCapitalText,
@@ -207,6 +231,8 @@ def build_run_config(
             custom_end_text=view_model.time_range.customEndText,
             is_unbounded_range=preset is TimeRangePreset.ALL_HISTORY,
             is_tick_mode=execution_mode is BacktestExecutionMode.HISTORICAL_TICK,
+            start_time=start_time,
+            end_time=end_time,
         )
     )
     if assertions:
@@ -233,21 +259,6 @@ def build_run_config(
             error_message=NO_STRATEGY_MESSAGE,
             traces=(DevTrace("run_config_invalid", {"reason": "missing_strategy"}),),
         )
-
-    custom_start: datetime | None = None
-    custom_end: datetime | None = None
-    if preset is TimeRangePreset.CUSTOM:
-        custom_start = parse_custom_datetime(view_model.time_range.customStartText)
-        custom_end = parse_custom_datetime(view_model.time_range.customEndText)
-
-    range_now = now or datetime.now(UTC)
-    if preset is not TimeRangePreset.CUSTOM:
-        range_now = published_candle_cutoff(
-            range_now, TimeFrame(view_model.selectedTimeframe)
-        )
-    start_time, end_time = resolve_time_range(
-        preset, range_now, custom_start, custom_end
-    )
 
     config = BacktestRunConfig(
         strategy_key=view_model.strategy_params.selectedStrategyKey,

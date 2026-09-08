@@ -1,5 +1,7 @@
 """Business-facing local validation for the Backtest toolbar (BOT-095E)."""
 
+from datetime import UTC, datetime, timedelta
+
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.pre_backtest_assertions import (
     BacktestInputField,
     PreBacktestAssertionPipeline,
@@ -75,4 +77,66 @@ def test_empty_custom_end_remains_an_unbounded_range_not_a_false_validation_erro
             custom_end_text="",
         )
         == ()
+    )
+
+
+# --------------------------------------------------------------------- #
+# `BUG-107` — Realtime/tick mode + a *bounded* but very wide range (the
+# "365 ngày qua" preset, or any custom range picked that wide) reaches
+# `GetBacktestRangeCoverageQuery` at the tick interval with no progress bar
+# and no cancellation (`BUG-073`'s own root cause, never fixed at the SQL
+# layer) — a real session hung for minutes with nothing on screen. The old
+# `is_unbounded_range`-only check never caught this: start_time is real,
+# not None. `_validate()`'s baseline never sets `is_tick_mode`, so every
+# test above this point is unaffected by the new check.
+# --------------------------------------------------------------------- #
+
+_TICK_MODE_LIMIT_DAYS = 7
+
+
+def test_tick_mode_with_an_unbounded_range_is_still_rejected():
+    """Locks the pre-existing `BUG-073` behavior — untested until now."""
+    issues = _validate(is_tick_mode=True, is_unbounded_range=True)
+
+    assert len(issues) == 1
+    assert issues[0].field is BacktestInputField.TIME_RANGE_PRESET
+
+
+def test_tick_mode_with_a_range_at_the_limit_is_accepted():
+    end = datetime(2026, 9, 8, tzinfo=UTC)
+    start = end - timedelta(days=_TICK_MODE_LIMIT_DAYS)
+
+    assert _validate(is_tick_mode=True, start_time=start, end_time=end) == ()
+
+
+def test_tick_mode_with_a_bounded_range_wider_than_the_limit_is_rejected():
+    """The actual reported hang: a *bounded* 365-day range (e.g. the "365
+    ngày qua" preset) in tick mode — not `is_unbounded_range`, a real
+    `start_time`/`end_time` pair that is simply too wide."""
+    end = datetime(2026, 9, 1, 23, 59, tzinfo=UTC)
+    start = end - timedelta(days=364)
+
+    issues = _validate(is_tick_mode=True, start_time=start, end_time=end)
+
+    assert len(issues) == 1
+    assert issues[0].field is BacktestInputField.TIME_RANGE_PRESET
+    assert str(_TICK_MODE_LIMIT_DAYS) in issues[0].message
+
+
+def test_a_wide_range_outside_tick_mode_is_not_rejected():
+    """Pins the guard to tick mode only — `BAR_CLOSE` mode at a coarse
+    timeframe stays cheap even over a wide range (same scoping `BUG-073`'s
+    own fix pinned for the unbounded case)."""
+    end = datetime(2026, 9, 1, tzinfo=UTC)
+    start = end - timedelta(days=364)
+
+    assert _validate(is_tick_mode=False, start_time=start, end_time=end) == ()
+
+
+def test_tick_mode_with_only_a_start_time_resolved_is_not_yet_rejected():
+    """A transient toolbar state mid-resolution (`end_time` not settled
+    yet) must not false-reject — same reasoning `is_unbounded_range`
+    already applied to a still-resolving state."""
+    assert (
+        _validate(is_tick_mode=True, start_time=datetime(2020, 1, 1, tzinfo=UTC)) == ()
     )
