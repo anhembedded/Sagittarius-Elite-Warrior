@@ -25,6 +25,14 @@ def test_dashboard_view_hybrid_layout_hosts_chart_scroll_area_and_dev_board_pane
     user can resize either side. The panel builds lazily, at
     set_view_model() time (it needs a real ViewModel to construct against),
     not eagerly in __init__ the way the old QQuickWidget did.
+
+    `EPIC-023A` put the Vị thế/Lệnh chờ khớp tables above the chart column
+    inside a new `view._workspace` wrapper widget — since that wrapper is a
+    plain `QWidget`, not a `QScrollArea` itself, `PageShell.set_workspace()`
+    now auto-wraps it (`page_shell.py`'s `_scrollable()`), so `view.
+    scroll_area` is no longer a direct splitter pane; it is nested one level
+    deeper, still doing its own independent scrolling for the dynamic chart
+    list.
     """
     view = DashboardView()
 
@@ -39,13 +47,21 @@ def test_dashboard_view_hybrid_layout_hosts_chart_scroll_area_and_dev_board_pane
     assert len(splitters) == 1
     splitter = splitters[0]
     panes = [splitter.widget(i) for i in range(splitter.count())]
-    # `view.scroll_area` is already its own `QScrollArea` (built by this
-    # view itself, well before `PageShell.set_workspace()` existed) so it
-    # lands in the splitter unwrapped; `view._panel` is a raw `DevBoardPanel`
-    # and gets `PageShell`'s own scroll-wrap treatment (`page_shell.py`'s
-    # `set_workspace()` — every rail/main pane not already a `QScrollArea`
-    # is wrapped so its natural content height is never squeezed).
-    assert view.scroll_area in panes
+    # `view._workspace` is a plain `QWidget` (tables_row + view.scroll_area),
+    # so `PageShell` auto-wraps it in its own `PreferredHeightScrollArea`;
+    # `view._panel` is a raw `DevBoardPanel` and gets the same treatment
+    # (`page_shell.py`'s `set_workspace()` — every rail/main pane not
+    # already a `QScrollArea` is wrapped so its natural content height is
+    # never squeezed).
+    wrapped_workspace_panes = [
+        pane
+        for pane in panes
+        if isinstance(pane, QScrollArea) and pane.widget() is view._workspace
+    ]
+    assert len(wrapped_workspace_panes) == 1
+    # `view.scroll_area` keeps doing its own scrolling for the chart list,
+    # unaffected by the new outer wrapper — still findable as a descendant.
+    assert view.scroll_area in view.findChildren(QScrollArea)
     wrapped_panel_panes = [
         pane
         for pane in panes
@@ -115,3 +131,52 @@ def test_dashboard_view_model_symbol_and_dates_are_settable(qapp):
     assert view_model.symbol == "BTCUSDT"
     assert view_model.startDate == "2024-01-01 00:00"
     assert view_model.endDate == "2024-01-02 00:00"
+
+
+# ---------------------------------------------------------------------------
+# `EPIC-023A` — Vị thế/Lệnh chờ khớp tables, account-wide, placed in the
+# workspace (not `DevBoardPanel`'s rail — a rail column is too narrow for a
+# many-column table, `BOT-128`'s own finding).
+# ---------------------------------------------------------------------------
+
+
+def test_dashboard_view_builds_positions_and_open_orders_panels(qapp):
+    from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_orders_panel import (
+        OpenOrdersPanel,
+    )
+    from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_panel import (
+        PositionsPanel,
+    )
+
+    view = DashboardView()
+
+    assert isinstance(view._positions_panel, PositionsPanel)
+    assert isinstance(view._open_orders_panel, OpenOrdersPanel)
+    # Both live inside `view._workspace`, above the chart-card scroll area —
+    # not inside `DevBoardPanel`'s rail.
+    assert view._positions_panel in view._workspace.findChildren(PositionsPanel)
+    assert view._open_orders_panel in view._workspace.findChildren(OpenOrdersPanel)
+
+
+def test_dashboard_view_set_positions_forwards_to_the_panel(qapp, monkeypatch):
+    from unittest.mock import MagicMock
+
+    view = DashboardView()
+    spy = MagicMock()
+    monkeypatch.setattr(view._positions_panel, "set_rows", spy)
+
+    view.set_positions(["row"])
+
+    spy.assert_called_once_with(["row"])
+
+
+def test_dashboard_view_set_open_orders_forwards_to_the_panel(qapp, monkeypatch):
+    from unittest.mock import MagicMock
+
+    view = DashboardView()
+    spy = MagicMock()
+    monkeypatch.setattr(view._open_orders_panel, "set_rows", spy)
+
+    view.set_open_orders(["row"])
+
+    spy.assert_called_once_with(["row"])

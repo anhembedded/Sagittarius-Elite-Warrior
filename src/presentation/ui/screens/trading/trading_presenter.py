@@ -44,9 +44,6 @@ from Sagittarius_Elite_Warrior.src.domain.events.position_changed_event import (
 from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
     PositionClosedEvent,
 )
-from Sagittarius_Elite_Warrior.src.domain.trading.live_position import LivePosition
-from Sagittarius_Elite_Warrior.src.domain.trading.order import Order
-from Sagittarius_Elite_Warrior.src.domain.trading.order_status import OrderStatus
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     SUPPORTED_LIVE_INTERVALS,
 )
@@ -60,6 +57,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
     default_symbol_options,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_feed import EquityFeed
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.live_order_book_coordinator import (
+    LiveOrderBookCoordinator,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.market_tick_feed import (
     MarketTickFeed,
 )
@@ -68,12 +68,6 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.order_fill_marker impo
     order_filled_marker,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.signal_feed import SignalFeed
-from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_order_row import (
-    build_open_order_row,
-)
-from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
-    build_position_row,
-)
 from sagittarius_engine.extensions.pyside_mvc import BasePresenter, safe_ui_action
 from sagittarius_engine.interfaces.i_thread_manager import IThreadManager
 from sagittarius_engine.runtime.tasks.cancellation_token import CancellationToken
@@ -164,18 +158,6 @@ _EMERGENCY_STOP_ACTION = "emergency_stop"
 #: markers (`EPIC-021K` §2.3) — one key, replaced wholesale on every fill
 #: for the currently displayed symbol.
 _FILL_MARKERS_KEY = "live_fills"
-
-#: Terminal `OrderStatus` values — an order in one of these no longer
-#: belongs in the Open Orders table (mirrors `order_status.py`'s own
-#: terminal set).
-_TERMINAL_ORDER_STATUSES = frozenset(
-    {
-        OrderStatus.FILLED,
-        OrderStatus.CANCELED,
-        OrderStatus.REJECTED,
-        OrderStatus.EXPIRED,
-    }
-)
 
 
 class TradingPresenter(BasePresenter):
@@ -275,8 +257,12 @@ class TradingPresenter(BasePresenter):
         self._emergency_stop_tracker: ActionOwnershipTracker[str, None, None] = (
             ActionOwnershipTracker()
         )
-        self._positions: dict[str, LivePosition] = {}
-        self._open_orders: dict[str, Order] = {}
+        #: `EPIC-023A` follow-up — pulled out of this Presenter once Dev
+        #: Board needed the identical Positions/Open Orders bookkeeping
+        #: (`live_order_book_coordinator.py`'s own docstring has the story).
+        self._order_book = LiveOrderBookCoordinator(
+            view=self.view, emit_log=self._append_log
+        )
         #: `EPIC-021K` §2.3 — accumulated live-fill markers, kept per symbol
         #: (not just the active one) so switching back to a symbol later
         #: this session recovers what was already drawn on it, the same
@@ -668,22 +654,17 @@ class TradingPresenter(BasePresenter):
             # A refusal is the only path that ever returns a non-empty
             # `reconciled_positions` (see `EnableTradingCommandHandler`) —
             # a successful enable therefore always starts with none open.
-            self._positions = {}
-            self._open_orders = {
-                order.client_order_id: order for order in result.reconciled_open_orders
-            }
+            self._order_book.replace_all(
+                positions=[], open_orders=result.reconciled_open_orders
+            )
         else:
             self._view_model.set_status(
                 _BLOCK_REASON_MESSAGES[result.block_reason], True
             )
-            self._positions = {
-                position.symbol: position for position in result.reconciled_positions
-            }
-            self._open_orders = {
-                order.client_order_id: order for order in result.reconciled_open_orders
-            }
-        self._render_positions()
-        self._render_open_orders()
+            self._order_book.replace_all(
+                positions=result.reconciled_positions,
+                open_orders=result.reconciled_open_orders,
+            )
         self._refresh_session_stats()
 
     @Slot(tuple)
@@ -857,14 +838,9 @@ class TradingPresenter(BasePresenter):
                 "Chạy `exchange-status` để kiểm tra trực tiếp."
             )
             return
-        self._positions = {
-            position.symbol: position for position in result.final_positions
-        }
-        self._open_orders = {
-            order.client_order_id: order for order in result.final_open_orders
-        }
-        self._render_positions()
-        self._render_open_orders()
+        self._order_book.replace_all(
+            positions=result.final_positions, open_orders=result.final_open_orders
+        )
 
     def _log_emergency_stop_result(self, result: EmergencyStopResult) -> None:
         self._append_log("DỪNG KHẨN CẤP")
@@ -880,52 +856,28 @@ class TradingPresenter(BasePresenter):
             self._append_log(f"  {index}. {label} ... {mark} {step.detail}")
 
     # ================================================================== #
-    # Positions/Open Orders tables — seeded above, kept live here.
+    # Positions/Open Orders tables — bookkeeping delegated to
+    # `LiveOrderBookCoordinator` (`EPIC-023A` follow-up); what stays here is
+    # what is genuinely screen-specific (session stats, the fill marker).
     # ================================================================== #
 
     def _on_order_filled(self, event: OrderFilledEvent) -> None:
-        order = event.order
-        if order.status in _TERMINAL_ORDER_STATUSES:
-            self._open_orders.pop(order.client_order_id, None)
-        else:
-            self._open_orders[order.client_order_id] = order
-        self._render_open_orders()
+        self._order_book.on_order_filled(event.order)
         self._refresh_session_stats()
         self._record_fill_marker(event)
 
     def _on_position_changed(self, event: PositionChangedEvent) -> None:
-        self._positions[event.position.symbol] = event.position
-        self._render_positions()
+        self._order_book.on_position_changed(event.position)
 
     def _on_position_closed(self, event: PositionClosedEvent) -> None:
-        """`BUG-086` — removes a position the exchange reports as flat.
-        `dict.pop(..., None)` rather than indexing: this event fires for
-        every symbol going flat, including one this table never held (no
-        prior `PositionChangedEvent` for it this session)."""
-        self._positions.pop(event.symbol, None)
-        self._render_positions()
+        """`BUG-086` — removes a position the exchange reports as flat."""
+        self._order_book.on_position_closed(event.symbol)
 
     def _on_order_blocked(self, event: LiveOrderBlockedEvent) -> None:
         """`BUG-084` — the one place a blocked signal-driven order becomes
         visible on the Trading screen itself, not just in a log file an
-        operator isn't watching. `level="info"` on purpose: a blocked
-        order is a one-time-meaningful event (`EPIC-021G` §2.5's own
-        criterion for INFO), not an application error — `LogListModel`
-        only defines `info`/`error`/`success` icons, and `error` here
-        would misrepresent a safety gate doing its job as a malfunction."""
-        self._view_model.log_model.append(
-            f"Lệnh live bị chặn ({event.symbol}): {event.reason}", level="info"
-        )
-
-    def _render_positions(self) -> None:
-        self.view.set_positions(
-            [build_position_row(position) for position in self._positions.values()]
-        )
-
-    def _render_open_orders(self) -> None:
-        self.view.set_open_orders(
-            [build_open_order_row(order) for order in self._open_orders.values()]
-        )
+        operator isn't watching."""
+        self._order_book.on_order_blocked(event.symbol, event.reason)
 
     def _refresh_session_stats(self) -> None:
         self._view_model.set_session_stats(

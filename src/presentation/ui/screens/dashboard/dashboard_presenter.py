@@ -9,11 +9,20 @@ from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registr
     IndicatorScriptRegistry,
 )
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
+from Sagittarius_Elite_Warrior.src.domain.events.live_order_blocked_event import (
+    LiveOrderBlockedEvent,
+)
 from Sagittarius_Elite_Warrior.src.domain.events.market_tick_event import (
     MarketTickEvent,
 )
 from Sagittarius_Elite_Warrior.src.domain.events.order_filled_event import (
     OrderFilledEvent,
+)
+from Sagittarius_Elite_Warrior.src.domain.events.position_changed_event import (
+    PositionChangedEvent,
+)
+from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
+    PositionClosedEvent,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
@@ -25,6 +34,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.health_check_coordinator import (
     HealthCheckCoordinator,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.live_order_book_coordinator import (
+    LiveOrderBookCoordinator,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.market_tick_feed import (
     MarketTickFeed,
@@ -452,6 +464,16 @@ class DashboardPresenter(BasePresenter):
         # open chart card gets its own marker series drawn live).
         self._fill_markers_by_symbol: dict[str, list] = {}
 
+        # `EPIC-023A` — Vị thế/Lệnh chờ khớp, account-wide state read via
+        # `OrderFeed`. Empty until the next successful `EnableTradingCommand`
+        # reconciles them (bấm ở Dev Board hoặc Trading đều được — cả hai
+        # đọc/ghi cùng một `TradingSessionState`) — same starting shape
+        # `TradingPresenter`'s own `LiveOrderBookCoordinator` has, not a gap
+        # introduced here.
+        self._order_book = LiveOrderBookCoordinator(
+            view=self.view, emit_log=self._append_log
+        )
+
         # BOT-035 — one collaborator per Dev Board screen, same lifetime
         # pattern as AutoStartController: constructed once here, torn down
         # implicitly with the presenter (parented to self).
@@ -849,13 +871,18 @@ class DashboardPresenter(BasePresenter):
         # thứ ba (BOT-123).
         self._sync_feed = SyncProgressFeed(self.event_bus, parent=self)
         self._sync_feed.progressUpdated.connect(self._on_sync_progress)
-        # `EPIC-021K` §2.3/§3 — live order fills as chart markers. Dev Board
-        # never displayed order/position data before this; `OrderFeed`
-        # already exists for `TradingPresenter` (`EPIC-021H`), so this is a
-        # second consumer of the same one-place-subscribes Feed, not a new
+        # `EPIC-021K` §2.3/§3 — live order fills as chart markers; `EPIC-023A`
+        # widens this same Feed instance to also keep the Vị thế/Lệnh chờ
+        # khớp tables live (`positionChanged`/`positionClosed`/`orderBlocked`
+        # — previously only `orderFilled` was read here). `OrderFeed` already
+        # exists for `TradingPresenter` (`EPIC-021H`), so this is a second
+        # consumer of the same one-place-subscribes Feed, not a new
         # subscription shape.
         self._order_feed = OrderFeed(self.event_bus, parent=self)
         self._order_feed.orderFilled.connect(self._on_order_filled)
+        self._order_feed.positionChanged.connect(self._on_position_changed)
+        self._order_feed.positionClosed.connect(self._on_position_closed)
+        self._order_feed.orderBlocked.connect(self._on_order_blocked)
 
     def _trigger_initial_health_check(self) -> None:
         self._health_check_coordinator.request_initial_check()
@@ -870,12 +897,21 @@ class DashboardPresenter(BasePresenter):
     def _on_order_filled(self, event: OrderFilledEvent) -> None:
         """`OrderFeed.orderFilled` handler — already on the main thread.
 
-        @details Only draws a marker when a chart card for that symbol is
-        currently open (`active_charts`); a fill on a symbol Dev Board isn't
-        showing has nowhere to draw and is silently dropped, same as
-        `TradingPresenter._record_fill_marker`'s `symbol == self._active_symbol`
-        guard for its single chart.
+        @details Two independent effects:
+        1. Lệnh chờ khớp table bookkeeping — delegated to
+           `LiveOrderBookCoordinator` (`EPIC-023A` follow-up: this used to
+           be a byte-for-byte copy of `TradingPresenter`'s own dict/render
+           logic, pulled out once duplicated a second time — same class of
+           defect `health_check_coordinator.py`'s own docstring names).
+        2. Draws a chart marker, only when a chart card for that symbol is
+           currently open (`active_charts`); a fill on a symbol Dev Board
+           isn't showing has nowhere to draw and is silently dropped, same
+           as `TradingPresenter._record_fill_marker`'s
+           `symbol == self._active_symbol` guard for its single chart. This
+           half stays here — it is genuinely screen-specific, unlike #1.
         """
+        self._order_book.on_order_filled(event.order)
+
         symbol = event.order.symbol
         card = self.active_charts.get(symbol)
         if card is None:
@@ -883,6 +919,20 @@ class DashboardPresenter(BasePresenter):
         markers = self._fill_markers_by_symbol.setdefault(symbol, [])
         markers.append(order_filled_marker(event))
         card.set_script_markers(_FILL_MARKERS_KEY, markers)
+
+    def _on_position_changed(self, event: PositionChangedEvent) -> None:
+        """`OrderFeed.positionChanged` handler — already on the main thread."""
+        self._order_book.on_position_changed(event.position)
+
+    def _on_position_closed(self, event: PositionClosedEvent) -> None:
+        """`OrderFeed.positionClosed` handler — already on the main thread.
+        `BUG-086`."""
+        self._order_book.on_position_closed(event.symbol)
+
+    def _on_order_blocked(self, event: LiveOrderBlockedEvent) -> None:
+        """`OrderFeed.orderBlocked` handler — already on the main thread.
+        `BUG-084`."""
+        self._order_book.on_order_blocked(event.symbol, event.reason)
 
     # ================================================================== #
     # FSM Hooks

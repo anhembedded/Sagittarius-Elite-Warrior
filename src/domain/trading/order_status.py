@@ -84,3 +84,16 @@ def is_valid_transition(current: OrderStatus, target: OrderStatus) -> bool:
     concern, not a "transition" this function should bless.
     """
     return target in _VALID_TRANSITIONS[current]
+
+
+def is_terminal(status: OrderStatus) -> bool:
+    """@brief Whether `status` no longer belongs in an Open Orders table.
+
+    @details `EPIC-023A` — promoted out of `TradingPresenter`'s own
+    `_TERMINAL_ORDER_STATUSES` frozenset (a byte-for-byte copy of the four
+    empty-target rows below) once Dev Board needed the identical check:
+    one definition of "terminal" here, derived from `_VALID_TRANSITIONS`
+    itself rather than kept as a second hand-written list that could drift
+    out of sync with it.
+    """
+    return not _VALID_TRANSITIONS[status]

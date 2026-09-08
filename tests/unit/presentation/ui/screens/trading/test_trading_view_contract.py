@@ -36,9 +36,19 @@ _SCREEN_DIR = (
 #: for a View member the way a Presenter/Coordinator does (`preview.py`
 #: constructs a bare `TradingView()` for a developer harness; `module.py`
 #: only imports the class).
+#:
+#: `live_order_book_coordinator.py` lives in `presentation/ui/common/`, not
+#: in this screen's own `coordinators/` — it is genuinely shared with
+#: `DashboardPresenter` (`EPIC-023A` follow-up), the same reason
+#: `PositionsPanel`/`OpenOrdersPanel` moved to `qml/` instead of staying
+#: Trading-private. It still fills exactly the role this list already
+#: grants every `coordinators/*.py` file: something `TradingPresenter`
+#: constructs and hands `self.view` to, reaching for `ITradingView`
+#: members on this screen's behalf.
 _PRESENTER_SIDE = (
     _SCREEN_DIR / "trading_presenter.py",
     *sorted((_SCREEN_DIR / "coordinators").glob("*.py")),
+    _SCREEN_DIR.parents[1] / "common" / "live_order_book_coordinator.py",
 )
 
 #: Names that hold a View on the Presenter side.

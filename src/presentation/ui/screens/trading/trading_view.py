@@ -40,12 +40,16 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_order_row import (
     OpenOrderRow,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_orders_panel import (
+    OpenOrdersPanel,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_panel import (
+    PositionsPanel,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
     PositionRow,
 )
 from sagittarius_engine.extensions.pyside_mvc import BaseView
-
-from .trading_widgets import OpenOrdersPanel, PositionsPanel
 
 if TYPE_CHECKING:
     from .trading_view_model import TradingViewModel

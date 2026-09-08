@@ -186,7 +186,8 @@ def test_a_confirmed_final_state_replaces_the_stale_positions_and_open_orders(
     step 1, so nothing else would ever correct them. A confirmed final
     read must overwrite whatever was there before, even down to empty
     (the fully-successful case: everything closed)."""
-    presenter._positions = {"ETHUSDT": _position("ETHUSDT")}  # stale, pre-stop state
+    # stale, pre-stop state
+    presenter._order_book.on_position_changed(_position("ETHUSDT"))
     mock_dispatcher.dispatch.return_value = _result(
         final_positions=(), final_open_orders=(), final_state_confirmed=True
     )
@@ -195,8 +196,6 @@ def test_a_confirmed_final_state_replaces_the_stale_positions_and_open_orders(
 
     presenter._run_emergency_stop(action_id)
 
-    assert presenter._positions == {}
-    assert presenter._open_orders == {}
     presenter.view.set_positions.assert_called_with([])
     presenter.view.set_open_orders.assert_called_with([])
 
@@ -209,15 +208,18 @@ def test_an_unconfirmed_final_state_leaves_stale_tables_but_warns(
     could not actually verify; showing the pre-stop data unchanged is
     honest about what is and isn't known, as long as it's paired with a
     visible warning (never silent staleness)."""
-    stale_positions = {"ETHUSDT": _position("ETHUSDT")}
-    presenter._positions = dict(stale_positions)
+    stale_position = _position("ETHUSDT")
+    presenter._order_book.on_position_changed(stale_position)
+    presenter.view.set_positions.reset_mock()
     mock_dispatcher.dispatch.return_value = _result(final_state_confirmed=False)
     presenter._view_model.emergencyStopRequested.emit()
     action_id = presenter._emergency_stop_tracker.active_action.action_id
 
     presenter._run_emergency_stop(action_id)
 
-    assert presenter._positions == stale_positions
+    # Never re-rendered — the early return in `_apply_emergency_stop_final_state`
+    # leaves whatever was there before untouched, exactly what "stale" means.
+    presenter.view.set_positions.assert_not_called()
     assert any(
         "Không thể xác nhận trạng thái" in entry.message
         for entry in presenter._view_model.log_model.entries
