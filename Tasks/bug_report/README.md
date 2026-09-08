@@ -30,11 +30,10 @@ từng file lên đọc. Bảng này là câu trả lời cho câu hỏi đó.
   test vĩnh viễn, ghi hồ sơ.
 - Bug **không** được tính vào các con số task ở `ROADMAP.md`.
 
-> **Cập nhật 2026-09-08.** `BUG-068` đóng dạng *không tái hiện được từ môi trường hiện có* (tiền lệ:
-> `BUG-058`/`BUG-060`) — không phải "đã sửa", không dòng code nào đổi. `BUG-034` đóng cùng lúc rồi
-> **mở lại ngay trong ngày**: lượt điều tra thứ 5 tái hiện được cơ chế sau khi phát hiện 4 lượt trước
-> đo `viewRange()` trước khi pyqtgraph kịp chốt auto-range. Bài học đáng giữ: một hồ sơ "không tái
-> hiện được" đôi khi chỉ cách bằng chứng đúng một lượt đo cho đúng thời điểm.
+> **Cập nhật 2026-09-08: Bug Board về 0 bug đang mở.** `BUG-068` đóng dạng *không tái hiện được từ
+> môi trường hiện có* (tiền lệ `BUG-058`/`BUG-060`) — không dòng code nào đổi. `BUG-034` đóng cùng
+> lúc theo dạng đó rồi **mở lại và sửa thật** ngay trong ngày. Con số `0` nghĩa là *không còn hồ sơ
+> nào đang điều tra*, không phải *app hết lỗi*.
 >
 > Cập nhật: 2026-09-01. Hai đợt số trùng nhau cùng ngày, xử lý riêng:
 > `BUG-078` (phantom shard) và `BUG-079` (trend-zone, đổi 2 lần từ `BUG-077`
@@ -48,22 +47,23 @@ từng file lên đọc. Bảng này là câu trả lời cho câu hỏi đó.
 
 | Trạng thái | Số lượng |
 | :--- | :--- |
-| 🔴 **Đang mở** | 1 |
-| ✅ **Đã sửa / đã đóng** | 104 |
+| 🔴 **Đang mở** | 0 |
+| ✅ **Đã sửa / đã đóng** | 105 |
 | 📈 **Tổng** | **105** |
 
 ---
 
 ## 🔴 Đang mở (Open)
 
-| ID | Tiêu đề | Mức độ | Ngày báo | Ghi chú |
-| :--- | :--- | :---: | :---: | :--- |
-| **[BUG-034](incomplete/BUG-034_dev_board_live_chart_wrong_axis_scale.md)** | Dev Board Live Chart: nến không hiển thị, trục Y auto-range sai thang đo | 🟠 **P2** | 2026-08-23 | **Mở lại 2026-09-08 — đã tái hiện được.** Đóng buổi sáng dạng "không tái hiện được", mở lại chiều cùng ngày: lượt điều tra 5 tìm ra vì sao 4 lượt trước trượt — pyqtgraph **không** tính lại auto-range lúc thêm item, nó chỉ đánh dấu view bẩn và chốt ở lần paint kế tiếp; `offscreen` không paint, nên `viewRange()` đọc ngay sau khi nạp luôn trả về dải *trước khi* indicator được thêm. Ép `vb.updateAutoRange()` là ra ngay đúng hình dạng triệu chứng (nến ~8 bị nén còn 0,9% trục). Cơ chế: trục Y dùng chung, một series không theo thang giá trên main plot kéo auto-range ra. Đã thêm log `[chart-range]` nêu **đích danh** item thủ phạm kèm Y bounds, + 3 test giữ lại. **Chưa** chứng minh được đó là thủ phạm của phiên `0GTRY` ở §7 — xem §10.5. |
+**Không có bug nào đang mở** (2026-09-08).
 
-> `BUG-068` đóng cùng ngày dạng **không tái hiện được từ môi trường hiện có** (không phải đã sửa) —
-> xem mục Đã sửa. `BUG-034` đóng cùng lúc nhưng **mở lại ngay trong ngày** khi lượt điều tra thứ 5
-> tái hiện được cơ chế; đó là lý do đáng nhớ nhất của cặp này: "không tái hiện được" có thể chỉ
-> cách "tái hiện được" đúng một lượt đo cho đúng thời điểm.
+> Hai hồ sơ cuối đóng cùng ngày theo hai đường khác hẳn nhau, và cặp đó đáng nhớ:
+> `BUG-068` đóng dạng **không tái hiện được từ môi trường hiện có** (cảnh báo Qt chỉ tồn tại trên
+> nền tảng có cửa sổ thật — không sửa dòng code nào). `BUG-034` đóng cùng lúc *cũng* dạng đó, rồi
+> **mở lại và sửa thật** ngay trong ngày: lượt điều tra thứ 5 phát hiện 4 lượt trước đo
+> `viewRange()` trước khi pyqtgraph kịp chốt auto-range. Bài học: "không tái hiện được" đôi khi chỉ
+> cách bằng chứng đúng một lượt đo cho đúng thời điểm — nên đóng dạng đó là **tạm dừng**, không
+> phải kết luận.
 
 ---
 
@@ -71,6 +71,7 @@ từng file lên đọc. Bảng này là câu trả lời cho câu hỏi đó.
 
 | ID | Tiêu đề | Mức độ | Ngày báo | Sửa ở |
 | :--- | :--- | :---: | :---: | :--- |
+| **[BUG-034](completed/BUG-034_dev_board_live_chart_wrong_axis_scale.md)** | Dev Board Live Chart: nến không hiển thị, trục Y auto-range sai thang đo | 🟠 P2 | 2026-08-23 | **Root cause:** trục Y của main plot dùng chung, và `IndicatorManager.add_overlay()` là **lớp overlay duy nhất** còn tham gia auto-range Y — trend-zone shading và marker vốn đã không (§8.2/§8.3). Một đường không theo thang giá kéo trục ra, nén nến thành vạch. **Sửa:** `addItem(curve, ignoreBounds=True)` — trên main plot, **giá** định nghĩa trục giá; `add_subplot()` không đổi. Giá phải trả (chấp nhận có chủ đích): overlay chạy ngoài dải nến bị cắt ở mép thay vì nới trục — với overlay app đang ship (EMA/WMA/`close + session_range`) khác biệt bằng 0. **Đường đi tới root cause đáng ghi:** 4 lượt đầu kết luận "không tái hiện được" vì pyqtgraph **không** tính lại auto-range lúc thêm item — nó chốt ở lần paint kế tiếp, mà `offscreen` không có paint, nên `viewRange()` đọc ngay sau khi nạp luôn trả về dải *trước khi* item được thêm. Đóng sáng 08-09 dạng không-tái-hiện-được, mở lại và sửa xong chiều cùng ngày. 4 test giữ lại, 2 mutation-verify. Log `[chart-range]` nêu đích danh item kéo trục **ở lại** dù đã sửa (§11.5). |
 | **[BUG-068](completed/BUG-068_cross_thread_qbasictimer_start_in_gap_inspection.md)** | QBasicTimer::start: Timers cannot be started from another thread trong quá trình kiểm tra Database Gaps | ⚪ Đóng — không tái hiện được từ môi trường hiện có (trước: 🟠 **P2**) | 2026-08-30 | **Đóng 2026-09-08 (user quyết định):** dừng điều tra, không sửa dòng code nào — đây là cảnh báo, không phải crash, và §3 đã tái hiện sống thật trên `offscreen` cho 0 cảnh báo; nghi là lớp lỗi chỉ tồn tại trên nền tảng có cửa sổ thật mà tầng test của repo về nguyên tắc không nhìn thấy được. Xem §5 của hồ sơ. Khi chạy `GetDatabaseGapsQuery` trên worker thread của `ThreadManager`, xuất hiện 4 cảnh báo Qt timer vi phạm thread affinity. Biến thể của lớp lỗi `BUG-031`. **Cập nhật 2026-08-31:** tái hiện sống thật (app boot thật, DB seed gap thật) trên `offscreen` cho 0 cảnh báo — đã loại trừ query handler, `Dispatcher.dispatch()`, `SignalLogHandler`, và toàn bộ đường `ui_gap_inspector_signal` → `GapInspectorDialog`. Nghi thuộc lớp lỗi chỉ tồn tại trên nền tảng có cửa sổ thật (threaded render loop của Qt Quick, `offscreen` luôn rơi về basic loop) — cần tái hiện trên Windows thật để đi tiếp. |
 | **[BUG-106](completed/BUG-106_start_live_syncs_the_whole_picked_date_range_instead_of_the_delta.md)** | Dev Board "Start Live" đồng bộ lại toàn bộ Data Range đã chọn từ Binance thay vì chỉ phần chênh lệch | 🟡 P2 | 2026-09-03 | User báo trực tiếp: bấm Start Live, thanh tiến độ đứng nhiều phút "Đang đồng bộ ETHUSDT 1s (246,000/604,800 nến)" — khớp đúng 7 ngày × 86400s (`DEFAULT_LOOKBACK_DAYS=7` × interval `1s` mặc định tài khoản), chart chỉ hiện 1 nến méo trong lúc đó. Root cause: `_run_sync_and_start()` truyền thẳng `start_time`/`end_time` của ô Data Range (vốn chỉ dùng để giới hạn hiển thị) vào `SyncMarketDataCommand` — bước đồng bộ **mạng thật**, bỏ qua hẳn nhánh `_determine_start_time()` đã có sẵn để chỉ đồng bộ chênh lệch từ nến local mới nhất. Sửa: gọi sync với `start_time=None, end_time=None` luôn — `_run_load_history()` (đọc DB local vẽ chart) giữ nguyên dùng đúng range user chọn. 2 regression test mới xác nhận đỏ đúng lý do trước khi sửa; 107/107 test liên quan xanh sau. Đánh số **106** (không phải 105) — `BUG-105` đã bị lấy trước lúc merge bởi PR khác (candle/volume zoom scale mismatch). |
 | **[BUG-105](completed/BUG-105_candle_volume_zoom_scale_mismatch_at_extreme_zoom.md)** | Zoom vào rất sâu: trục Y nến đứng hình trong khi volume vẫn co giãn, lệch tỉ lệ giữa 2 khu vực chart | 🟡 P3 | 2026-09-03 | `FastCandlestickItem.dataBounds(ax=1, orthoRange=...)` tìm cửa sổ nến hiển thị qua `visible_slice_indices()` **thiếu padding** mà path vẽ thật (`_visible_history_slice()`) luôn áp — ở mức zoom đủ sâu, `orthoRange` lọt vào khoảng trống giữa 2 nến, lookup không padding trả rỗng nên rơi vào fallback biên độ toàn bộ lịch sử và đứng hình vĩnh viễn từ đó, trong khi `VolumeItem` đã padding sẵn nên vẫn co giãn đúng. Thêm đúng dòng `padding = candle_width * _VISIBLE_PADDING_WIDTHS` còn thiếu; đồng thời gộp hằng số padding của 2 renderer vào một `DEFAULT_VISIBLE_PADDING_WIDTHS` chung trong `viewport_windowing.py` (theo yêu cầu user) thay vì mỗi file tự khai literal riêng dễ lệch nhau. 2 test mới, xác nhận đỏ đúng lý do bằng mutation trước khi sửa. Đánh số **105** (không phải 104) — `BUG-104` đã bị lấy trước lúc merge bởi PR khác (boot auto-navigate). |

@@ -11,7 +11,7 @@ after), verified.
 
 ## 1. Symptom
 
-Found while investigating [`BUG-034`](../incomplete/BUG-034_dev_board_live_chart_wrong_axis_scale.md) (Dev Board
+Found while investigating [`BUG-034`](BUG-034_dev_board_live_chart_wrong_axis_scale.md) (Dev Board
 Live Chart: candles missing, Y axis reads `-50..100`). A faithful headless reproduction of the Dev
 Board's real flow — real `ChartCard`, real `IndicatorScriptRunner`, real `dev_showcase` +
 `rsi_14` + `macd_full` scripts, 2000 synthetic ETH-priced candles fed through the actual

@@ -8,6 +8,9 @@ from PySide6.QtWidgets import QApplication
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card import (
     ChartCard,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.chart_card import (
+    _PRICE_BAND_MIN_VIEW_FRACTION,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.marker_layer import (
     TriangleMarkerItem,
 )
@@ -1636,22 +1639,40 @@ def _price_candles(count: int, price: float = 8.0) -> list:
     ]
 
 
+def _add_off_scale_item(card, data, low=10.0, high=90.0):
+    """A curve on the main plot that DOES drive auto-range.
+
+    `IndicatorManager.add_overlay()` deliberately no longer produces one
+    (`BUG-034`'s fix passes `ignoreBounds=True`), so these tests build the
+    hazard by hand: they are about what happens if any future code path adds
+    a bounds-driving item to the price plot, which is the failure mode the
+    diagnostic exists to catch.
+    """
+    curve = pg.PlotDataItem(pen=pg.mkPen(color="#ff0000"))
+    card.plot_layout.main_plot.addItem(curve)
+    span = high - low
+    curve.setData(
+        [c[0] for c in data],
+        [low + (i % 100) * span / 100.0 for i in range(len(data))],
+    )
+    return curve
+
+
 def test_auto_range_does_not_settle_until_the_view_is_asked_to_update(qapp):
     """Why four headless repros of `BUG-034` found nothing.
 
     pyqtgraph does not recompute auto-range when an item is added — it marks
     the view dirty and settles on the next paint. Offscreen there is no
-    paint, so reading `viewRange()` straight after `render_historical_data()`
-    returns the range from BEFORE the indicator was added, and the chart
-    looks healthy. This test states that as a fact about the environment, so
-    the next person writing a chart-range repro does not draw the same wrong
-    conclusion from a passing probe.
+    paint, so reading `viewRange()` straight after adding one returns the
+    range from BEFORE it existed, and the chart looks healthy. This test
+    states that as a fact about the environment, so the next person writing
+    a chart-range repro does not draw the same wrong conclusion from a
+    passing probe.
     """
     card = ChartCard("0GTRY")
     data = _price_candles(2000)
     card.render_historical_data(data)
-    card.indicators.add_overlay("rsi_14", "#ff0000")
-    card.indicators.update_data("rsi_14", [c[0] for c in data], [50.0] * len(data))
+    _add_off_scale_item(card, data)
 
     (_, (before_min, before_max)) = card.plot_layout.main_plot.vb.viewRange()
     card.plot_layout.main_plot.vb.updateAutoRange()
@@ -1664,25 +1685,18 @@ def test_auto_range_does_not_settle_until_the_view_is_asked_to_update(qapp):
     )
 
 
-def test_a_non_price_series_on_the_main_plot_squashes_the_candles(qapp, caplog):
-    """`BUG-034`'s symptom, reproduced, and the log that names the cause.
+def test_a_bounds_driving_item_on_the_price_plot_is_reported_by_name(qapp, caplog):
+    """The diagnostic that survives the fix.
 
-    The Y axis is shared: one series that is not on the price scale — an
-    oscillator on a script whose `overlay` is True, a level line, a stale
-    curve — stretches auto-range and flattens the candles into a sliver.
-    That is the reported "candles are not displayed while OHLC reads ~2400".
-
-    The assertion is on the diagnostic naming the culprit, not merely on the
-    range being wrong: "y-range is wrong" is what the report already had for
-    four rounds and could not act on.
+    `add_overlay()` can no longer stretch the axis, but the axis is still
+    shared: anything else added to the main plot without `ignoreBounds` can.
+    When that happens the log must name the item and its Y bounds — "y-range
+    is wrong" is what the report had for four rounds and could not act on.
     """
     card = ChartCard("0GTRY")
     data = _price_candles(2000)
     card.render_historical_data(data)
-    card.indicators.add_overlay("rsi_14", "#ff0000")
-    card.indicators.update_data(
-        "rsi_14", [c[0] for c in data], [10.0 + (i % 80) for i in range(len(data))]
-    )
+    _add_off_scale_item(card, data)
 
     with caplog.at_level("WARNING", logger="App.ChartCard"):
         card.plot_layout.main_plot.vb.updateAutoRange()
@@ -1691,9 +1705,8 @@ def test_a_non_price_series_on_the_main_plot_squashes_the_candles(qapp, caplog):
         r.getMessage() for r in caplog.records if "[chart-range]" in r.getMessage()
     ]
     assert warnings, "the squashed price band must be reported, not silently drawn"
-    message = warnings[0]
-    assert "rsi_14=[" in message, f"the offending series must be named: {message}"
-    assert "0GTRY" in message
+    assert "PlotDataItem=[10.0000, 89." in warnings[0], warnings[0]
+    assert "0GTRY" in warnings[0]
 
 
 def test_a_healthy_chart_reports_nothing(qapp, caplog):
@@ -1706,3 +1719,35 @@ def test_a_healthy_chart_reports_nothing(qapp, caplog):
         card.plot_layout.main_plot.vb.updateAutoRange()
 
     assert not [r for r in caplog.records if "[chart-range]" in r.getMessage()]
+
+
+def test_an_off_scale_overlay_cannot_evict_the_candles(qapp):
+    """`BUG-034`'s fix: the price defines the price axis.
+
+    Two of the three overlay layers on the main plot already take no part in
+    Y auto-range — trend-zone shading (`LinearRegionItem.dataBounds` returns
+    `None` for Y) and markers (`TriangleMarkerItem` has no `dataBounds` at
+    all). Indicator curves were the sole exception, and that inconsistency
+    is the defect: one series on the wrong scale stretched the shared axis
+    until the candles were a sliver.
+
+    Asserted as "the candles stay readable", not "the range equals X": the
+    user-visible promise is that a chart of candles shows its candles.
+    """
+    card = ChartCard("0GTRY")
+    data = _price_candles(2000, price=8.0)
+    card.render_historical_data(data)
+    card.indicators.add_overlay("rsi_14", "#ff0000")
+    card.indicators.update_data(
+        "rsi_14", [c[0] for c in data], [10.0 + (i % 80) for i in range(len(data))]
+    )
+
+    card.plot_layout.main_plot.vb.updateAutoRange()
+
+    (_, (min_y, max_y)) = card.plot_layout.main_plot.vb.viewRange()
+    low, high = card.candlestick.dataBounds(1)
+    assert min_y <= low and high <= max_y, (
+        f"candles [{low}, {high}] fell outside the view [{min_y}, {max_y}] — "
+        "the oscillator took the axis with it"
+    )
+    assert (high - low) / (max_y - min_y) >= _PRICE_BAND_MIN_VIEW_FRACTION

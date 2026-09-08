@@ -2,7 +2,8 @@
 
 **Reported date:** 2026-08-23
 **Severity:** 🟠 **P2**
-**Status:** 🔴 **MỞ LẠI 2026-09-08** — đóng buổi sáng rồi mở lại ngay trong ngày: user yêu cầu
+**Status:** ✅ **ĐÃ SỬA 2026-09-08** — xem §11. Mở lại rồi sửa xong trong cùng ngày.
+**Status trước đó:** 🔴 **MỞ LẠI 2026-09-08** — đóng buổi sáng rồi mở lại ngay trong ngày: user yêu cầu
 "thêm log vào những nơi cần thiết xem có tái hiện được không", và **tái hiện được**. §10 là lượt
 điều tra 5: tìm ra **vì sao 4 lượt trước không tái hiện được** (một điểm mù của môi trường
 headless, không phải bug khó), và dựng lại được **đúng hình dạng triệu chứng** trong test tự động.
@@ -386,3 +387,62 @@ do → revert.
 `grep '\[chart-range\]' logs/debug-*.log` là có tên item thủ phạm, không cần ảnh chụp kèm subplot
 để đoán nữa. Nếu dòng đó **không** xuất hiện trong khi nến vẫn biến mất, thì cơ chế §10.2 bị loại
 và nghi vấn quay về §8.4.
+
+
+---
+
+## 11. Sửa (2026-09-08) — trên main plot, **giá** định nghĩa trục giá
+
+### 11.1. Root cause
+
+Trục Y của main plot **dùng chung** cho mọi item trên nó, và
+`IndicatorManager.add_overlay()` thêm curve theo cách **có tham gia** tính auto-range. Nên một
+đường không theo thang giá nằm trên main plot sẽ kéo trục ra và ép nến thành một vạch —
+đúng `price [7.6760, 8.1730]` bên trong `y-range [-71.3690, 46.1465]` ở §7.
+
+**Đây là sự thiếu nhất quán, không phải luật mới.** Hai trong ba lớp overlay của chính plot này
+**vốn đã** không tham gia auto-range Y — và §8.2/§8.3 đã phải đọc source pyqtgraph để chứng minh
+điều đó:
+
+| Lớp overlay | Tham gia auto-range Y? | Vì sao |
+| :--- | :---: | :--- |
+| Trend-zone shading (`RegionLayer`) | ❌ Không | `LinearRegionItem.dataBounds(1)` trả `None` (§8.2) |
+| Marker Buy/Sell (`MarkerLayer`) | ❌ Không | `TriangleMarkerItem` không có `dataBounds` (§8.3) |
+| **Đường indicator (`add_overlay`)** | ✅ **Có** | ← ngoại lệ duy nhất, và là bug |
+
+### 11.2. Sửa
+
+`add_overlay()` giờ dựng `PlotDataItem` rồi `main_plot.addItem(curve, ignoreBounds=True)` thay vì
+`main_plot.plot(...)`. Một dòng thật sự đổi hành vi; phần còn lại của diff là comment giải thích
+vì sao.
+
+`add_subplot()` **không đổi**: đường trong subplot *phải* định nghĩa trục của subplot đó.
+
+### 11.3. Cái giá, chấp nhận có chủ đích
+
+Overlay chạy ra ngoài dải nến sẽ **bị cắt ở mép** thay vì nới trục ra. Một indicator vẽ hụt một
+phần là trạng thái **nhìn thấy được và tự giải thích**; nến bị nén tới mức vô hình thì không — và
+nó đã tốn 4 lượt điều tra. Với các overlay app đang ship (EMA/WMA/`close + session_range`, đều
+thang giá) khác biệt bằng 0.
+
+### 11.4. Test
+
+| Test | Ghim cái gì | Mutation-verify |
+| :--- | :--- | :--- |
+| `test_an_off_scale_overlay_cannot_evict_the_candles` | **Bản sửa**: nến phải nằm trong view và chiếm ≥ 20% trục, kể cả khi có overlay 10..90 | Bỏ `ignoreBounds=True` → đỏ |
+| `test_a_bounds_driving_item_on_the_price_plot_is_reported_by_name` | Log `[chart-range]` **vẫn** nêu đích danh item nếu một đường code nào khác sau này thêm item không `ignoreBounds` | Đặt ngưỡng = 0.0 → đỏ |
+| `test_auto_range_does_not_settle_until_the_view_is_asked_to_update` | Điểm mù môi trường ở §10.1, để người sau không lặp lại kết luận sai | — |
+| `test_a_healthy_chart_reports_nothing` | Lần nạp bình thường phải im lặng | — |
+
+Bản sửa làm **hai test viết ở §10 hết hiệu lực** (chúng dựa vào chính khiếm khuyết: dùng
+`add_overlay()` để tạo item kéo trục). Đã viết lại để tạo item kéo trục **bằng tay**, nên chúng
+vẫn gác đúng thứ cần gác — chứ không sửa assert cho vừa với code mới.
+
+### 11.5. Điều KHÔNG khẳng định
+
+Chưa chứng minh được đây là thứ đã xảy ra trong phiên `0GTRY` ở §7: 3 script Dev Board đang ship
+đều chỉ vẽ đường thang giá lên main plot (§4). Bản sửa này bịt **cơ chế** — mọi đường overlay,
+của app hay của người dùng viết sau này, không còn cướp được trục.
+
+**Nếu triệu chứng vẫn quay lại:** log `[chart-range]` (§10.3) sẽ nêu tên item còn kéo trục, và
+nghi vấn quay về §8.4. Đó là lý do log đó **ở lại** dù bug đã sửa.

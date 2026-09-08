@@ -86,10 +86,32 @@ class IndicatorManager:
         parameter so a strategy can request a different one per line, e.g.
         a thinner entry-EMA than trend-EMA — every pre-existing caller that
         doesn't pass it keeps today's line weight unchanged)."""
-        curve = self._plot_layout.main_plot.plot(
+        curve = pg.PlotDataItem(
             pen=pg.mkPen(color=color, width=width),
             antialias=_SMOOTH_LINE_ANTIALIAS,
         )
+        # `BUG-034` — `ignoreBounds=True`: the PRICE defines the price axis.
+        #
+        # The main plot's Y axis is shared by everything on it, so a single
+        # overlay that is not on the price scale — an oscillator on a script
+        # whose `overlay` flag is True (the flag is per script, not per line),
+        # a level line, a stale curve — stretched auto-range until the candles
+        # were a sliver and the chart read as empty. That is the reported
+        # defect: a real session logged `price [7.6760, 8.1730]` inside
+        # `y-range [-71.3690, 46.1465]`.
+        #
+        # This is a correction to an inconsistency, not a new rule: the other
+        # two overlay layers on this plot already take no part in Y
+        # auto-range — trend-zone shading (`LinearRegionItem.dataBounds`
+        # returns `None` for Y) and markers (`TriangleMarkerItem` has no
+        # `dataBounds`). Indicator curves were the only exception.
+        #
+        # Cost, accepted deliberately: an overlay that runs outside the candle
+        # range is clipped at the edge instead of widening the axis. An
+        # indicator drawn partly off-screen is a visible, self-explaining
+        # state; candles squashed to invisibility is not, and cost this
+        # report four investigations.
+        self._plot_layout.main_plot.addItem(curve, ignoreBounds=True)
         self._register(name, curve, self._plot_layout.main_plot)
 
     def add_subplot(
