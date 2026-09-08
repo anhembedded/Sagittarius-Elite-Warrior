@@ -1,11 +1,14 @@
-from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card import (
     ChartCard,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.timeframe_pin_preferences import (
     TimeframePinPreferences,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.kit import PageShell
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
+    PageShell,
+    PreferredHeightScrollArea,
+)
 from sagittarius_engine.extensions.pyside_mvc import BaseView
 
 from .dev_board_panel import DevBoardPanel
@@ -52,7 +55,7 @@ class DashboardView(BaseView):
         self._shell.set_header(_TITLE, _SUBTITLE)
 
         # Main workspace content: QScrollArea for dynamic ChartCards.
-        self.scroll_area = QScrollArea()
+        self.scroll_area = PreferredHeightScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
         self.charts_container = QWidget()

@@ -31,6 +31,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     Panel,
     PickerItem,
     PickerOverlay,
+    PreferredHeightScrollArea,
     RangePreset,
     RowAction,
     SectionLabel,
@@ -114,6 +115,7 @@ class ShowcaseWindow(QWidget):  # base-exempt: the gallery shell, not a surface
             self._banners,
             self._overlays,
             self._page_shell,
+            self._preferred_height_scroll,
         ):
             build(column)
         column.addStretch(1)
@@ -252,6 +254,26 @@ class ShowcaseWindow(QWidget):  # base-exempt: the gallery shell, not a surface
         shell.set_workspace(Panel(), rail=Panel())
         shell.set_console(LogPanel("Console"))
         self._add(column, "Page shell", shell)
+
+    def _preferred_height_scroll(self, column: QVBoxLayout) -> None:
+        """Shown deliberately too short for its content (`BOT-126`).
+
+        The point of this widget is a behaviour, not a look: a plain
+        `QScrollArea` given this same column would compress the cards until
+        they overlapped rather than offer a scroll bar. Sized under its content
+        here so the gallery shows the scroll bar it exists to produce.
+        """
+        area = PreferredHeightScrollArea()
+        area.setMinimumSize(260, 140)
+        area.setMaximumHeight(140)
+        content = QWidget()
+        stack = QVBoxLayout(content)
+        for index in range(4):
+            card = Card(f"Card {index + 1}")
+            card.body_layout.addWidget(SectionLabel("Keeps its height"))
+            stack.addWidget(card)
+        area.setWidget(content)
+        self._add(column, "Preferred-height scroll area", area)
 
 
 def showcased_types() -> set[str]:
