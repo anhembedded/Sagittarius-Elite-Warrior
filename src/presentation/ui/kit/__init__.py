@@ -53,6 +53,7 @@ from .overlays import (
     RangePreset,
 )
 from .page_shell import PageShell
+from .preferred_height_scroll_area import PreferredHeightScrollArea
 from .style import (
     StyleRole,
     Tone,
@@ -95,6 +96,7 @@ __all__ = [
     "Panel",
     "PickerItem",
     "PickerOverlay",
+    "PreferredHeightScrollArea",
     "RangePreset",
     "RowAction",
     "SectionLabel",
