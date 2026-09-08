@@ -1,9 +1,9 @@
 # EPIC-002D — Lộ trình siết `--strict` dần theo module
 
 **Thuộc Epic:** [`EPIC-002`](../README.md)
-**Trạng thái:** 🟡 Đang làm — `src/domain/`, `src/application/`, `src/infrastructure/` (mỗi bên trừ
-1-4 file nợ thật đã biết) đã bật `--strict` thật (2026-09-08, xem §5/§6/§7). Vẫn là backlog dài
-hạn theo đúng §3 — không có mốc "xong hẳn", mở rộng dần theo module.
+**Trạng thái:** ✅ Hoàn thành (2026-09-08) — user quyết định đóng lại ở đây, xem §8. 3/4 layer
+`src/` đã bật `--strict` thật: `domain/`, `application/`, `infrastructure/` (mỗi bên trừ 1-4 file
+nợ thật đã biết, xem §5/§6/§7). `presentation/` **cố ý chưa làm** — không phải bỏ sót, xem §8.
 **Phụ thuộc:** [`EPIC-002B`](../completed/EPIC-002B_wire_mypy_into_ci_local.md).
 
 ---
@@ -244,3 +244,38 @@ của PySide6 đã ghi ở §2.3 (mypy đọc `@Property` descriptor thành ki�
 thay vì kiểu runtime thật nó trả về), cần quyết định stub/plugin trước khi đo được gì có ý
 nghĩa — không phải một-vài-annotation như 3 module trên, mà là một quyết định công cụ riêng.
 `scripts/` cũng còn nguyên nợ cũ (không thuộc phạm vi rollout theo module `src/`).
+
+## 8. Đóng task — 2026-09-08
+
+User xem lại 3 lượt (§5/§6/§7), xác nhận đủ ("it seen good now, no more need to check"), quyết
+định đóng task ở đây thay vì tiếp tục.
+
+**Không phải "đã siết `--strict` toàn bộ codebase"** — ghi lại đúng cho người đọc sau này khỏi
+hiểu lầm:
+
+- **Đã bật thật, đã verify:** `src/domain/`, `src/application/`, `src/infrastructure/` — 3/4
+  layer của `src/`. Mỗi module đo trước khi sửa (không suy đoán), sửa thật không suppress, xác
+  nhận bằng sanity-probe (tiêm lỗi thật, xem `mypy` bắt được, mới tin cấu hình có tác dụng) và
+  full test suite xanh cả 3 lượt.
+- **Cố ý chưa làm — `src/presentation/`:** khác hẳn 3 module trên về BẢN CHẤT công việc, không
+  phải mức độ khó. 3 module trên là "đo → sửa vài annotation thật → xong". `presentation/` bị một
+  false positive HỆ THỐNG của PySide6 `@Property` che khuất mọi lỗi thật bên dưới nó — việc đầu
+  tiên ở đó không phải sửa code, mà là **chọn hướng công cụ** (viết stub cho `@Property`, hay tìm
+  plugin mypy có sẵn, hay chấp nhận loại trừ vĩnh viễn) — đúng loại quyết định kiến trúc/công cụ
+  mà §3 của chính task này đã nói "để ngỏ, bàn lại khi có đủ dữ liệu". Không đụng tới trong lượt
+  này.
+- **`scripts/`:** không thuộc phạm vi rollout theo layer `src/` — nợ cũ ở đó (nếu còn) vẫn nằm
+  nguyên trong `exclude` chính, không liên quan tới việc đóng task này.
+
+**Vì sao đóng được dù §3 tự nói "không có mốc xong hẳn":** §3 nói đúng về mặt kiến trúc — không
+có ngưỡng "--strict toàn bộ src/" nào được cam kết trước. Nhưng bản thân TASK (khác với MỤC TIÊU
+dài hạn nó phục vụ) là có thể đóng: 3 lượt tăng đã chứng minh được cơ chế (per-module override,
+cách đo, cách verify, bẫy `strict = true` không scope), và mở rộng thêm — bắt đầu bằng
+`presentation/` — là một quyết định khác hẳn về bản chất (công cụ, không phải annotation), xứng
+đáng một task riêng nếu/khi user muốn làm, không phải tiếp tục kéo dài task này vô thời hạn.
+
+**Nếu ai đó muốn làm tiếp `presentation/` sau này:** bắt đầu từ §2.3 — đọc `EPIC-002A`'s report
+để thấy đúng kích thước false positive (24 file / 133 lỗi tại thời điểm đo baseline), rồi quyết
+định: (a) viết mypy plugin nội bộ dạy `@Property` trả đúng kiểu runtime, (b) tìm/tận dụng plugin
+cộng đồng có sẵn cho PySide6/PyQt nếu có, hoặc (c) chấp nhận loại trừ vĩnh viễn và ghi lý do rõ
+ràng thay vì để nguyên comment "chưa quyết" như hiện tại.
