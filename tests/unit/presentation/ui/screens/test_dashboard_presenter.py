@@ -136,6 +136,20 @@ def strategy_session(strategy_registry):
 
 
 @pytest.fixture
+def session_state():
+    """`EPIC-023D` — a real `TradingSessionState`, same reasoning
+    `test_trading_presenter_toggle.py`'s own fixture documents: plain
+    mutable state with no I/O, and `_refresh_session_stats()` calls
+    `len(session_state.known_open_symbols)`, which a bare `MagicMock`
+    cannot satisfy."""
+    from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+        TradingSessionState,
+    )
+
+    return TradingSessionState()
+
+
+@pytest.fixture
 def mock_container(
     mock_thread_mgr,
     mock_dispatcher,
@@ -143,6 +157,7 @@ def mock_container(
     equity_recorder,
     strategy_registry,
     strategy_session,
+    session_state,
 ):
     container = MagicMock()
 
@@ -157,6 +172,9 @@ def mock_container(
     )
     from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
         StrategyRegistry,
+    )
+    from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+        TradingSessionState,
     )
     from Sagittarius_Elite_Warrior.src.domain.indicator_scripts import (
         EmaCrossScript,
@@ -187,6 +205,8 @@ def mock_container(
             return script_registry
         if interface == EquityCurveRecorder:
             return equity_recorder
+        if interface == TradingSessionState:
+            return session_state
         return MagicMock()
 
     container.resolve.side_effect = resolve_side_effect
@@ -271,6 +291,9 @@ def test_boot_wires_the_container_registered_store_into_the_view(
     from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
         StrategyRegistry,
     )
+    from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+        TradingSessionState,
+    )
     from sagittarius_engine.interfaces.i_config import IConfig
     from sagittarius_engine.interfaces.i_dispatcher import IDispatcher
     from sagittarius_engine.interfaces.i_thread_manager import IThreadManager
@@ -296,6 +319,8 @@ def test_boot_wires_the_container_registered_store_into_the_view(
             return shared_store
         if interface == EquityCurveRecorder:
             return EquityCurveRecorder()
+        if interface == TradingSessionState:
+            return TradingSessionState()
         return Mock()
 
     container.resolve.side_effect = resolve_side_effect
@@ -1921,6 +1946,269 @@ def test_armed_config_changed_updates_the_summary(presenter, strategy_session):
 
     assert presenter._view_model.armedSummary != ""
     assert presenter._view_model.strategyBusy is False
+
+
+# ---------------------------------------------------------------------------
+# `EPIC-023D` — Enable/Disable trading toggle + Emergency Stop, same
+# behaviour `TradingPresenter`'s own toggle/Emergency Stop have — see
+# `test_trading_presenter_toggle.py`/`test_trading_presenter_emergency_stop.py`
+# for the mirror-image tests.
+# ---------------------------------------------------------------------------
+
+
+def test_construction_reflects_the_session_state(presenter):
+    assert presenter._view_model.enabled is False
+
+
+def test_construction_when_already_enabled_reflects_that_too(
+    view, mock_container, session_state, mock_thread_mgr
+):
+    """If Trading enabled it first, opening Dev Board must show "đang
+    BẬT", never a default "TẮT" that contradicts the account's real
+    state — the account-wide sharing `EPIC-023`'s README §2 documents."""
+    session_state.enable({"BTCUSDT"})
+
+    presenter = DashboardPresenter(view, mock_container)
+
+    assert presenter._view_model.enabled is True
+
+
+def test_toggle_when_disabled_submits_enable(presenter, mock_thread_mgr):
+    presenter._view_model.toggleRequested.emit()
+
+    mock_thread_mgr.submit.assert_called_once()
+    submitted_callable = mock_thread_mgr.submit.call_args[0][0]
+    assert submitted_callable == presenter._run_enable
+    assert presenter._view_model.toggleBusy is True
+
+
+def test_toggle_when_enabled_submits_disable(
+    view, mock_container, session_state, mock_thread_mgr
+):
+    session_state.enable(set())
+    presenter = DashboardPresenter(view, mock_container)
+    mock_thread_mgr.submit.reset_mock()
+
+    presenter._view_model.toggleRequested.emit()
+
+    mock_thread_mgr.submit.assert_called_once()
+    submitted_callable = mock_thread_mgr.submit.call_args[0][0]
+    assert submitted_callable == presenter._run_disable
+
+
+def test_toggle_is_blocked_while_emergency_stop_is_pending(presenter, mock_thread_mgr):
+    """`BUG-089`'s precedent, Dev Board's own copy — a toggle click must
+    never race an Emergency Stop already in flight."""
+    from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
+        ActionOutcome,
+    )
+
+    presenter._emergency_stop_tracker.begin_action("emergency_stop", None, None)
+
+    presenter._view_model.toggleRequested.emit()
+
+    mock_thread_mgr.submit.assert_not_called()
+    assert presenter._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING
+
+
+def test_successful_enable_turns_the_toggle_on_and_seeds_open_orders(
+    presenter, mock_dispatcher, view, monkeypatch
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.enable_trading import (
+        EnableTradingCommand,
+        EnableTradingResult,
+    )
+    from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_order_row import (
+        build_open_order_row,
+    )
+
+    order = _fill_event("BTCUSDT").order
+    mock_dispatcher.dispatch.return_value = EnableTradingResult(
+        enabled=True,
+        block_reason=None,
+        reconciled_positions=(),
+        reconciled_open_orders=(order,),
+    )
+    open_orders_spy = MagicMock()
+    positions_spy = MagicMock()
+    monkeypatch.setattr(view, "set_open_orders", open_orders_spy)
+    monkeypatch.setattr(view, "set_positions", positions_spy)
+    presenter._view_model.toggleRequested.emit()
+    action_id = presenter._toggle_tracker.active_action.action_id
+
+    presenter._run_enable(action_id)
+
+    mock_dispatcher.dispatch.assert_called_once_with(
+        EnableTradingCommand, EnableTradingCommand()
+    )
+    assert presenter._view_model.enabled is True
+    assert presenter._view_model.toggleBusy is False
+    open_orders_spy.assert_called_once_with([build_open_order_row(order)])
+    positions_spy.assert_called_once_with([])
+
+
+def test_refused_enable_shows_the_block_reason_and_seeds_positions(
+    presenter, mock_dispatcher, view, monkeypatch
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.enable_trading import (
+        EnableTradingBlockReason,
+        EnableTradingResult,
+    )
+    from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
+        build_position_row,
+    )
+
+    position = _position()
+    mock_dispatcher.dispatch.return_value = EnableTradingResult(
+        enabled=False,
+        block_reason=EnableTradingBlockReason.UNEXPECTED_POSITIONS,
+        reconciled_positions=(position,),
+        reconciled_open_orders=(),
+    )
+    positions_spy = MagicMock()
+    monkeypatch.setattr(view, "set_positions", positions_spy)
+    presenter._view_model.toggleRequested.emit()
+    action_id = presenter._toggle_tracker.active_action.action_id
+
+    presenter._run_enable(action_id)
+
+    assert presenter._view_model.enabled is False
+    log_entries = presenter._view_model.log_model.entries
+    assert any("vị thế mở ngoài dự kiến" in entry.message for entry in log_entries)
+    positions_spy.assert_called_once_with([build_position_row(position)])
+
+
+def test_an_enable_exception_from_the_dispatcher_is_reported_not_raised(
+    presenter, mock_dispatcher
+):
+    mock_dispatcher.dispatch.side_effect = RuntimeError("boom")
+    presenter._view_model.toggleRequested.emit()
+    action_id = presenter._toggle_tracker.active_action.action_id
+
+    presenter._run_enable(action_id)  # must not raise
+
+    log_entries = presenter._view_model.log_model.entries
+    assert any("boom" in entry.message for entry in log_entries)
+
+
+def test_successful_disable_turns_the_toggle_off(
+    view, mock_container, session_state, mock_dispatcher
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
+        DisableTradingCommand,
+    )
+
+    session_state.enable(set())
+    presenter = DashboardPresenter(view, mock_container)
+    presenter._view_model.toggleRequested.emit()
+    action_id = presenter._toggle_tracker.active_action.action_id
+
+    presenter._run_disable(action_id)
+
+    mock_dispatcher.dispatch.assert_called_once_with(
+        DisableTradingCommand, DisableTradingCommand()
+    )
+    assert presenter._view_model.enabled is False
+    assert presenter._view_model.toggleBusy is False
+
+
+def _emergency_stop_result(
+    *, fully_succeeded: bool, final_state_confirmed: bool = True
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.emergency_stop import (
+        EmergencyStopResult,
+        EmergencyStopStepResult,
+    )
+
+    ok = EmergencyStopStepResult(succeeded=True, detail="OK")
+    return EmergencyStopResult(
+        trading_disabled=ok,
+        orders_cancelled=ok,
+        positions_closed=(
+            ok if fully_succeeded else EmergencyStopStepResult(False, "APIError")
+        ),
+        final_positions=(),
+        final_open_orders=(),
+        final_state_confirmed=final_state_confirmed,
+    )
+
+
+def test_emergency_stop_success_reconciles_the_tables_and_logs(
+    presenter, mock_dispatcher, view, monkeypatch
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.emergency_stop import (
+        EmergencyStopCommand,
+    )
+
+    mock_dispatcher.dispatch.return_value = _emergency_stop_result(fully_succeeded=True)
+    open_orders_spy = MagicMock()
+    positions_spy = MagicMock()
+    monkeypatch.setattr(view, "set_open_orders", open_orders_spy)
+    monkeypatch.setattr(view, "set_positions", positions_spy)
+
+    presenter._on_emergency_stop_requested()
+    action_id = presenter._emergency_stop_tracker.active_action.action_id
+    presenter._run_emergency_stop(action_id)
+
+    mock_dispatcher.dispatch.assert_called_once_with(
+        EmergencyStopCommand, EmergencyStopCommand()
+    )
+    assert presenter._view_model.enabled is False
+    assert presenter._view_model.toggleBusy is False
+    positions_spy.assert_called_once_with([])
+    open_orders_spy.assert_called_once_with([])
+    log_entries = presenter._view_model.log_model.entries
+    assert any("DỪNG KHẨN CẤP" in entry.message for entry in log_entries)
+
+
+def test_emergency_stop_partial_failure_is_reported(presenter, mock_dispatcher):
+    mock_dispatcher.dispatch.return_value = _emergency_stop_result(
+        fully_succeeded=False
+    )
+
+    presenter._on_emergency_stop_requested()
+    action_id = presenter._emergency_stop_tracker.active_action.action_id
+    presenter._run_emergency_stop(action_id)
+
+    log_entries = presenter._view_model.log_model.entries
+    assert any("THẤT BẠI MỘT PHẦN" in entry.message for entry in log_entries)
+
+
+def test_emergency_stop_with_unconfirmed_final_state_does_not_touch_the_tables(
+    presenter, mock_dispatcher, view, monkeypatch
+):
+    """`BUG-093`'s precedent, Dev Board's own copy — a failed reconciliation
+    read must never be treated as "confirmed flat"."""
+    mock_dispatcher.dispatch.return_value = _emergency_stop_result(
+        fully_succeeded=True, final_state_confirmed=False
+    )
+    open_orders_spy = MagicMock()
+    positions_spy = MagicMock()
+    monkeypatch.setattr(view, "set_open_orders", open_orders_spy)
+    monkeypatch.setattr(view, "set_positions", positions_spy)
+
+    presenter._on_emergency_stop_requested()
+    action_id = presenter._emergency_stop_tracker.active_action.action_id
+    presenter._run_emergency_stop(action_id)
+
+    open_orders_spy.assert_not_called()
+    positions_spy.assert_not_called()
+    log_entries = presenter._view_model.log_model.entries
+    assert any("[WARNING]" in entry.message for entry in log_entries)
+
+
+def test_order_filled_refreshes_the_session_stats_card(presenter, session_state):
+    session_state.enable(set())
+    session_state.orders_sent_this_session = 0
+
+    presenter._on_order_filled(_fill_event("BTCUSDT"))
+
+    assert presenter._view_model.ordersSentThisSession == (
+        session_state.orders_sent_this_session
+    )
+    assert presenter._view_model.openSymbolsCount == len(
+        session_state.known_open_symbols
+    )
 
 
 # ---------------------------------------------------------------------------
