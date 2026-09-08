@@ -53,7 +53,7 @@ process vẫn treo, không trả về shell.
 Nói cách khác: đây **không phải** shutdown treo giữa chừng — shutdown *thành công*, chỉ có
 interpreter không chịu exit sau đó.
 
-Phiên này là **cùng một phiên** với [`BUG-058`](BUG-058_ui_freeze_during_historical_tick_backtest.md):
+Phiên này là **cùng một phiên** với [`BUG-058`](BUG-108_ui_freeze_during_historical_tick_backtest.md):
 boot `08:15:18`, chạy Historical Tick Backtest (2.592.000 tick) xong lúc `08:24:29`, ngồi
 im ~73 phút, rồi đóng app lúc `09:37:25`.
 

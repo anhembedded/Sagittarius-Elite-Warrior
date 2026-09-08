@@ -49,7 +49,7 @@ backtest_view_model.py:29   -> screens.dashboard.indicator_script_list_model
 ```
 
 Đúng 3 dòng còn lại — cả 3 đều nằm trong `_ALLOWED` của guard, có lý do và link
-`Tasks/backlog/BOT-120_backtest_depends_on_dashboard_for_non_ui_logic.md` (task mới, mở trong
+`Tasks/backlog/BOT-130_backtest_depends_on_dashboard_for_non_ui_logic.md` (task mới, mở trong
 chính commit này). 0 import **widget**.
 
 ### Guard chạy thật, chứng minh bằng cách phá nó
