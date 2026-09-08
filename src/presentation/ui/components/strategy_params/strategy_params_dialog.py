@@ -1,23 +1,34 @@
-"""`EPIC-022D` — the Trading screen's "Thông số Chiến lược" dialog.
+"""`EPIC-022D` — the "Thông số Chiến lược" dialog, shared by every screen
+with a live strategy card (`EPIC-023C`: Trading and Dev Board both arm the
+same `ArmStrategyCommand`-backed strategy, so both need the identical
+parameter editor).
 
 @details One tab, not the Backtest dialog's four. Backtest's extra tabs
 carry broker properties (commission, slippage, the simulated fill model)
-and a placeholder style tab; on the Trading screen orders fill on the real
-exchange, so there is no fill model to configure, and sizing/leverage — the
-two things a live trader does set — live on the strategy card itself where
-they are visible without opening a dialog. Showing empty or inapplicable
-tabs here would be `domain-truth-rule.md`'s "do not present an unsupported
-capability as available", one dialog down.
+and a placeholder style tab; the screens this dialog serves send orders to
+the real exchange, so there is no fill model to configure, and
+sizing/leverage — the two things a live trader does set — live on the
+strategy card itself where they are visible without opening a dialog.
+Showing empty or inapplicable tabs here would be `domain-truth-rule.md`'s
+"do not present an unsupported capability as available", one dialog down.
 
 The fields themselves are `BotParamFieldWidget`, the same widget the
 Backtest dialog renders, from the same schema built by the same
 `build_bot_params_schema()` — so a strategy's parameters look and validate
 identically wherever they are edited.
+
+`EPIC-023C` moved this out of `screens/trading/` and replaced the
+`TradingViewModel` type hint with `BotParamsSink` below: every screen's
+ViewModel that carries the `EPIC-022D` strategy-card Qt Property/Signal
+block (duplicated per-screen — see `dashboard_view_model.py`'s own
+docstring for why Shiboken forces that) satisfies it structurally, the
+same `ParamStepper` precedent `param_stepper.py` already set for
+`BotParamFieldWidget`.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from PySide6.QtWidgets import (
     QFrame,
@@ -27,19 +38,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
-from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params import (
-    BotParamFieldWidget,
-)
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     Overlay,
     StyledButton,
     StyleRole,
 )
 
+from .param_field import BotParamFieldWidget
+from .param_stepper import ParamStepper
+
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QHBoxLayout
-
-    from .trading_view_model import TradingViewModel
 
 _TITLE = "Thông số Chiến lược"
 _EMPTY_TEXT = "Chiến lược này không khai báo thông số nào."
@@ -47,14 +56,33 @@ _SAVE_TEXT = "Lưu"
 _CANCEL_TEXT = "Huỷ"
 
 
-class TradingStrategyParamsDialog(Overlay):
+class BotParamsSink(ParamStepper, Protocol):
+    """@brief What this dialog reads from and writes to a screen's
+    ViewModel — the `EPIC-022D` strategy-card block every implementer
+    duplicates verbatim (`ParamStepper`'s own docstring explains why a
+    `Protocol`, not a shared base class).
+
+    `botParamsChanged` is a PySide6 bound `Signal`, which has no clean
+    static type here — `presentation/` is excluded from the `mypy` gate
+    wholesale (`pyproject.toml`, `EPIC-002A`), same as every other `Signal`
+    member on a Protocol in this package.
+    """
+
+    botParamsChanged: Any
+    botParamsError: str
+    botParamsRows: list[dict]
+
+    def requestBotParamsSave(self, values: dict) -> None: ...
+
+
+class StrategyParamsDialog(Overlay):
     """@brief Edits the selected strategy's declared parameters."""
 
     def __init__(
-        self, view_model: TradingViewModel, parent: QWidget | None = None
+        self, view_model: BotParamsSink, parent: QWidget | None = None
     ) -> None:
         super().__init__(_TITLE, parent=parent)
-        self.setObjectName("tradingStrategyParamsDialog")
+        self.setObjectName("strategyParamsDialog")
         self._vm = view_model
         self._field_widgets: list[BotParamFieldWidget] = []
         self.resize(520, 560)

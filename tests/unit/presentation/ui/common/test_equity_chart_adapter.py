@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from Sagittarius_Elite_Warrior.src.domain.trading.equity_sample import EquitySample
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.equity_chart_adapter import (
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_chart_adapter import (
     equity_sample_to_candle,
     equity_samples_to_candles,
 )

@@ -16,12 +16,27 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from unittest.mock import MagicMock
 
 import pytest
+from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+    EquityCurveRecorder,
+)
 from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registry import (
     IndicatorScriptRegistry,
+)
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory import (
+    LiveStrategyFactory,
+)
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
+from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+    StrategyRegistry,
 )
 from Sagittarius_Elite_Warrior.src.domain.indicator_scripts import (
     EmaCrossScript,
     EmaRibbonScript,
+)
+from Sagittarius_Elite_Warrior.src.domain.strategies.ema_crossover_strategy import (
+    EmaCrossoverStrategy,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.backtest_chart_host import (
     BacktestChartHostFactory,
@@ -68,6 +83,18 @@ def health_mock_container(qapp):
     script_registry.register("ema_ribbon", EmaRibbonScript)
     script_registry.register("ema_cross", EmaCrossScript)
 
+    # `EPIC-023C` — must be real, not `MagicMock()`: `StrategyArmingCoordinator`
+    # reads `strategy_session.config` and formats it into the card's summary,
+    # and `restore_into_view_model()` calls `sorted(available_strategies())`
+    # — same reasoning `test_dashboard_presenter.py`'s own fixtures document.
+    strategy_registry = StrategyRegistry()
+    strategy_registry.register("ema_crossover", EmaCrossoverStrategy)
+    strategy_session = LiveStrategySession(
+        LiveStrategyFactory(
+            strategy_registry, MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        )
+    )
+
     def resolve_side_effect(interface):
         if interface == IConfig:
             return mock_config
@@ -79,6 +106,12 @@ def health_mock_container(qapp):
             return mock_event_bus
         if interface == IndicatorScriptRegistry:
             return script_registry
+        if interface == StrategyRegistry:
+            return strategy_registry
+        if interface == LiveStrategySession:
+            return strategy_session
+        if interface == EquityCurveRecorder:
+            return EquityCurveRecorder()
         if interface == HealthCheckQuery:
             return mock_health_query
         if interface == BacktestChartHostFactory:
@@ -179,9 +212,6 @@ def test_backtest_initializes_and_handles_health_updated_event(
     qapp, health_mock_container
 ):
     """Verify BackTestPresenter initializes and handles health events directly into log."""
-    from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
-        StrategyRegistry,
-    )
     from Sagittarius_Elite_Warrior.src.domain.strategies.base_strategy import (
         BaseStrategy,
     )

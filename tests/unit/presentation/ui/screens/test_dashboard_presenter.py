@@ -88,11 +88,75 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_container(mock_thread_mgr, mock_dispatcher, mock_config):
+def equity_recorder():
+    """`EPIC-023B` — a real, empty recorder by default (same shape
+    `test_trading_presenter_equity.py`'s own fixture has): `.samples` must
+    be a real iterable, not a `MagicMock` attribute, for
+    `equity_samples_to_candles()` to accept it."""
+    from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+        EquityCurveRecorder,
+    )
+
+    return EquityCurveRecorder()
+
+
+@pytest.fixture
+def strategy_registry():
+    """`EPIC-023C` — a real registry, same shape
+    `test_trading_presenter_toggle.py`'s own fixture has: `restore_into_
+    view_model()` calls `sorted(self._available_strategies())`, which a bare
+    `MagicMock` cannot satisfy."""
+    from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+        StrategyRegistry,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.strategies.ema_crossover_strategy import (
+        EmaCrossoverStrategy,
+    )
+
+    registry = StrategyRegistry()
+    registry.register("ema_crossover", EmaCrossoverStrategy)
+    return registry
+
+
+@pytest.fixture
+def strategy_session(strategy_registry):
+    """A real session over a real registry, with only the network-facing
+    collaborators mocked — same fixture Trading's own tests use."""
+    from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory import (
+        LiveStrategyFactory,
+    )
+    from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+        LiveStrategySession,
+    )
+
+    factory = LiveStrategyFactory(
+        strategy_registry, MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
+    return LiveStrategySession(factory)
+
+
+@pytest.fixture
+def mock_container(
+    mock_thread_mgr,
+    mock_dispatcher,
+    mock_config,
+    equity_recorder,
+    strategy_registry,
+    strategy_session,
+):
     container = MagicMock()
 
+    from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+        EquityCurveRecorder,
+    )
     from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registry import (
         IndicatorScriptRegistry,
+    )
+    from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+        LiveStrategySession,
+    )
+    from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+        StrategyRegistry,
     )
     from Sagittarius_Elite_Warrior.src.domain.indicator_scripts import (
         EmaCrossScript,
@@ -115,8 +179,14 @@ def mock_container(mock_thread_mgr, mock_dispatcher, mock_config):
             return mock_dispatcher
         if interface == IThreadManager:
             return mock_thread_mgr
+        if interface == StrategyRegistry:
+            return strategy_registry
+        if interface == LiveStrategySession:
+            return strategy_session
         if interface == IndicatorScriptRegistry:
             return script_registry
+        if interface == EquityCurveRecorder:
+            return equity_recorder
         return MagicMock()
 
     container.resolve.side_effect = resolve_side_effect
@@ -178,14 +248,28 @@ def test_boot_falls_back_to_an_unpersisted_store_when_none_is_registered(
 
 
 def test_boot_wires_the_container_registered_store_into_the_view(
-    qapp, mock_thread_mgr, mock_dispatcher, mock_config
+    qapp,
+    mock_thread_mgr,
+    mock_dispatcher,
+    mock_config,
+    strategy_registry,
+    strategy_session,
 ):
     """When the container *does* have a registered store — the real
     `app_bootstrapper.py` shape — construction must hand the View that
     exact instance, so a Dev Board symbol-list rebuild reads/writes the
     same persisted, per-symbol pins as any other screen."""
+    from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+        EquityCurveRecorder,
+    )
     from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registry import (
         IndicatorScriptRegistry,
+    )
+    from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+        LiveStrategySession,
+    )
+    from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+        StrategyRegistry,
     )
     from sagittarius_engine.interfaces.i_config import IConfig
     from sagittarius_engine.interfaces.i_dispatcher import IDispatcher
@@ -200,12 +284,18 @@ def test_boot_wires_the_container_registered_store_into_the_view(
             return mock_config
         if interface == IDispatcher:
             return mock_dispatcher
+        if interface == StrategyRegistry:
+            return strategy_registry
+        if interface == LiveStrategySession:
+            return strategy_session
         if interface == IThreadManager:
             return mock_thread_mgr
         if interface == IndicatorScriptRegistry:
             return IndicatorScriptRegistry()
         if interface == TimeframePinPreferences:
             return shared_store
+        if interface == EquityCurveRecorder:
+            return EquityCurveRecorder()
         return Mock()
 
     container.resolve.side_effect = resolve_side_effect
@@ -1637,6 +1727,200 @@ def test_order_blocked_appears_in_the_screens_own_log_panel(presenter):
     assert entry.level == "info"
     assert "BTCUSDT" in entry.message
     assert "max_notional_per_order" in entry.message
+
+
+# ---------------------------------------------------------------------------
+# `EPIC-023B` — live equity chart: seeded from `EquityCurveRecorder`'s
+# backlog on construction, appended to live via `EquityFeed`. Mirrors
+# `test_trading_presenter_equity.py` (`view` there is a `MagicMock`; here
+# `view` is a real `DashboardView`, so assertions spy on `view.equity_chart`'s
+# real methods via `monkeypatch` — same style the OrderFeed tests above use).
+# ---------------------------------------------------------------------------
+
+
+def _equity_sample(minute: int = 0):
+    from datetime import datetime
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.domain.trading.equity_sample import (
+        EquitySample,
+    )
+
+    return EquitySample(
+        captured_at=datetime(2026, 9, 2, 12, minute, tzinfo=UTC),
+        wallet_balance=Decimal("1000.00"),
+        unrealized_pnl=Decimal("25.50"),
+    )
+
+
+def test_construction_with_an_empty_recorder_seeds_an_empty_chart(
+    view, mock_container, monkeypatch
+):
+    spy = MagicMock()
+    monkeypatch.setattr(view.equity_chart, "render_historical_data", spy)
+
+    DashboardPresenter(view, mock_container)
+
+    spy.assert_called_once_with([])
+
+
+def test_construction_seeds_the_full_backlog_from_the_recorder(
+    view, mock_container, equity_recorder, monkeypatch
+):
+    from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_chart_adapter import (
+        equity_samples_to_candles,
+    )
+
+    equity_recorder.record(_equity_sample(0))
+    equity_recorder.record(_equity_sample(1))
+    spy = MagicMock()
+    monkeypatch.setattr(view.equity_chart, "render_historical_data", spy)
+
+    DashboardPresenter(view, mock_container)
+
+    spy.assert_called_once_with(
+        equity_samples_to_candles([_equity_sample(0), _equity_sample(1)])
+    )
+
+
+def test_equity_sampled_event_appends_one_point_to_the_chart(
+    presenter, view, monkeypatch
+):
+    from Sagittarius_Elite_Warrior.src.domain.events.equity_sampled_event import (
+        EquitySampledEvent,
+    )
+    from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_chart_adapter import (
+        equity_sample_to_candle,
+    )
+
+    spy = MagicMock()
+    monkeypatch.setattr(view.equity_chart, "append_closed_candle", spy)
+
+    sample = _equity_sample(5)
+    presenter._on_equity_sampled(EquitySampledEvent(sample=sample))
+
+    spy.assert_called_once_with(*equity_sample_to_candle(sample))
+
+
+# ---------------------------------------------------------------------------
+# `EPIC-023C` — strategy card: arm/disarm delegate to `StrategyArmingCoordinator`,
+# `SignalFeed` -> the "Tín hiệu gần nhất" card, filtered to the armed symbol.
+# Mirrors what `test_strategy_arming_coordinator.py` already covers at the
+# coordinator level — Trading itself has no dedicated presenter-level test
+# for these thin delegators either, so this stays to the genuinely
+# presenter-owned logic (the signal filter, the armed-summary refresh).
+# ---------------------------------------------------------------------------
+
+
+def test_construction_restores_the_strategy_card_from_the_real_registry(presenter):
+    """Proves `_arming_coordinator.restore_into_view_model()` actually ran
+    — an empty `strategyOptions` would mean the real "Chiến lược" combo
+    stays empty forever, the exact gap the fake `_build_strategy_combo()`
+    left before this epic."""
+    keys = [option["key"] for option in presenter._view_model.strategyOptions]
+    assert "ema_crossover" in keys
+    assert presenter._view_model.armedSummary == ""
+
+
+def test_arm_requested_delegates_to_the_coordinator(presenter, monkeypatch):
+    spy = MagicMock()
+    monkeypatch.setattr(presenter._arming_coordinator, "on_arm_clicked", spy)
+
+    presenter._on_arm_requested()
+
+    spy.assert_called_once_with()
+
+
+def test_disarm_requested_delegates_to_the_coordinator(presenter, monkeypatch):
+    spy = MagicMock()
+    monkeypatch.setattr(presenter._arming_coordinator, "on_disarm_clicked", spy)
+
+    presenter._on_disarm_requested()
+
+    spy.assert_called_once_with()
+
+
+def _signal_event(symbol="BTCUSDT"):
+    from datetime import UTC, datetime
+
+    from Sagittarius_Elite_Warrior.src.domain.events.signal_generated_event import (
+        SignalGeneratedEvent,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.signal import Signal
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.signal_action import (
+        SignalAction,
+    )
+
+    signal = Signal(
+        symbol=symbol,
+        action=SignalAction.BUY,
+        reason="RSI Oversold",
+        price=64000.0,
+        time=datetime(2026, 9, 8, 12, 0, 0, tzinfo=UTC),
+    )
+    return SignalGeneratedEvent(signal=signal)
+
+
+def test_signal_generated_for_the_armed_symbol_updates_the_card(
+    presenter, strategy_session
+):
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+        LiveStrategyConfig,
+    )
+
+    strategy_session.arm(
+        LiveStrategyConfig(
+            strategy_key="ema_crossover", symbol="BTCUSDT", interval="1m"
+        )
+    )
+
+    presenter._on_signal_generated(_signal_event("BTCUSDT"))
+
+    assert "BTCUSDT" not in presenter._view_model.lastSignalText  # symbol not restated
+    assert "BUY" in presenter._view_model.lastSignalText
+    assert "RSI Oversold" in presenter._view_model.lastSignalText
+
+
+def test_signal_generated_for_a_different_symbol_is_ignored(
+    presenter, strategy_session
+):
+    """A signal from a *backtest* `StrategyEngine` on the same shared bus
+    must never appear on this card as if it were live."""
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+        LiveStrategyConfig,
+    )
+
+    strategy_session.arm(
+        LiveStrategyConfig(
+            strategy_key="ema_crossover", symbol="BTCUSDT", interval="1m"
+        )
+    )
+
+    presenter._on_signal_generated(_signal_event("ETHUSDT"))
+
+    assert presenter._view_model.lastSignalText == ""
+
+
+def test_signal_generated_with_nothing_armed_is_ignored(presenter):
+    presenter._on_signal_generated(_signal_event("BTCUSDT"))
+
+    assert presenter._view_model.lastSignalText == ""
+
+
+def test_armed_config_changed_updates_the_summary(presenter, strategy_session):
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+        LiveStrategyConfig,
+    )
+
+    config = LiveStrategyConfig(
+        strategy_key="ema_crossover", symbol="BTCUSDT", interval="1m"
+    )
+    strategy_session.arm(config)
+
+    presenter._refresh_armed_summary(busy=False)
+
+    assert presenter._view_model.armedSummary != ""
+    assert presenter._view_model.strategyBusy is False
 
 
 # ---------------------------------------------------------------------------

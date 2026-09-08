@@ -10,6 +10,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.indicator_scripts.list_model import (
     IndicatorScriptListModel,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params import (
+    step_numeric_param_value,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.constants import DATETIME_FORMAT
 from sagittarius_engine.extensions.pyside_mvc import (
     BaseQmlViewModel,
@@ -76,6 +79,22 @@ class DashboardQmlViewModel(BaseQmlViewModel):
     startStreamRequested = Signal()
     stopStreamRequested = Signal()
 
+    #: `EPIC-023C` — same shape `TradingViewModel` carries for its own
+    #: strategy card (`EPIC-022D`): duplicated here, not shared, because
+    #: Shiboken does not support one `QObject` inheriting Qt `Property`/
+    #: `Signal` members from two independent `QObject` bases
+    #: (`architecture-rule.md` §2.1 — the same constraint that already
+    #: makes `Protocol` the port shape for `StrategyArmingCoordinator`
+    #: instead of a shared ABC). `StrategyArmingCoordinator` itself is
+    #: NOT duplicated — only the Qt boilerplate it reads/writes through.
+    strategyConfigChanged = Signal()
+    botParamsChanged = Signal()
+    lastSignalChanged = Signal()
+
+    armRequested = Signal()
+    disarmRequested = Signal()
+    botParamsSaveRequested = Signal("QVariantMap")
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._log_model = LogListModel(self)
@@ -108,6 +127,21 @@ class DashboardQmlViewModel(BaseQmlViewModel):
             DATETIME_FORMAT
         )
         self._end_date = now.strftime(DATETIME_FORMAT)
+
+        # `EPIC-023C` — strategy card + last signal, same fields
+        # `TradingViewModel.__init__` carries.
+        self._strategy_options: list[dict] = []
+        self._selected_strategy_key = ""
+        self._live_interval = ""
+        self._interval_options: list[str] = []
+        self._sizing_percent = 0.0
+        self._leverage = 1.0
+        self._armed_summary = ""
+        self._strategy_busy = False
+        self._bot_params_schema: list[dict] = []
+        self._bot_params_rows: list[dict] = []
+        self._bot_params_error = ""
+        self._last_signal_text = ""
 
     # ------------------------------------------------------------------ #
     # Log model — exposed to LogPanel.qml, mutated by the Presenter's
@@ -315,6 +349,146 @@ class DashboardQmlViewModel(BaseQmlViewModel):
             self.endDateChanged.emit()
 
     endDate = Property(str, _get_end_date, _set_end_date, notify=endDateChanged)
+
+    # ------------------------------------------------------------------ #
+    # Strategy card (`EPIC-023C`) — same shape as `TradingViewModel`'s own
+    # (`EPIC-022D`); see that class's docstrings for the full reasoning
+    # behind each property/slot, restated only where Dev Board differs.
+    # ------------------------------------------------------------------ #
+    @Property("QVariantList", notify=strategyConfigChanged)
+    def strategyOptions(self) -> list[dict]:
+        return self._strategy_options
+
+    @Property("QStringList", notify=strategyConfigChanged)
+    def intervalOptions(self) -> list[str]:
+        return self._interval_options
+
+    @Property(str, notify=strategyConfigChanged)
+    def selectedStrategyKey(self) -> str:
+        return self._selected_strategy_key
+
+    @Property(str, notify=strategyConfigChanged)
+    def liveInterval(self) -> str:
+        return self._live_interval
+
+    @Property(float, notify=strategyConfigChanged)
+    def sizingPercent(self) -> float:
+        return self._sizing_percent
+
+    @Property(float, notify=strategyConfigChanged)
+    def leverage(self) -> float:
+        return self._leverage
+
+    @Property(str, notify=strategyConfigChanged)
+    def armedSummary(self) -> str:
+        return self._armed_summary
+
+    @Property(bool, notify=strategyConfigChanged)
+    def strategyBusy(self) -> bool:
+        return self._strategy_busy
+
+    @Slot(list, list)
+    def set_strategy_options(
+        self, strategy_options: list[dict], interval_options: list[str]
+    ) -> None:
+        self._strategy_options = list(strategy_options)
+        self._interval_options = list(interval_options)
+        self.strategyConfigChanged.emit()
+
+    @Slot(str, str, float, float)
+    def set_strategy_selection(
+        self,
+        strategy_key: str,
+        interval: str,
+        sizing_percent: float,
+        leverage: float,
+    ) -> None:
+        self._selected_strategy_key = strategy_key
+        self._live_interval = interval
+        self._sizing_percent = sizing_percent
+        self._leverage = leverage
+        self.strategyConfigChanged.emit()
+
+    @Slot(str, bool)
+    def set_armed_summary(self, summary: str, busy: bool) -> None:
+        self._armed_summary = summary
+        self._strategy_busy = busy
+        self.strategyConfigChanged.emit()
+
+    @Slot(str)
+    def requestStrategySelection(self, strategy_key: str) -> None:
+        if strategy_key and strategy_key != self._selected_strategy_key:
+            self._selected_strategy_key = strategy_key
+            self.strategyConfigChanged.emit()
+
+    @Slot(str)
+    def requestIntervalSelection(self, interval: str) -> None:
+        if interval and interval != self._live_interval:
+            self._live_interval = interval
+            self.strategyConfigChanged.emit()
+
+    @Slot(float)
+    def requestSizingPercent(self, percent: float) -> None:
+        self._sizing_percent = percent
+
+    @Slot(float)
+    def requestLeverage(self, leverage: float) -> None:
+        self._leverage = leverage
+
+    @Slot()
+    def requestArm(self) -> None:
+        self.armRequested.emit()
+
+    @Slot()
+    def requestDisarm(self) -> None:
+        self.disarmRequested.emit()
+
+    # ------------------------------------------------------------------ #
+    # "Thông số Chiến lược" (`EPIC-023C`)
+    # ------------------------------------------------------------------ #
+    @Property("QVariantList", notify=botParamsChanged)
+    def botParamsRows(self) -> list[dict]:
+        return self._bot_params_rows
+
+    @Property(str, notify=botParamsChanged)
+    def botParamsError(self) -> str:
+        return self._bot_params_error
+
+    @Slot(list, list)
+    def set_bot_params(self, schema: list[dict], rows: list[dict]) -> None:
+        self._bot_params_schema = list(schema)
+        self._bot_params_rows = list(rows)
+        self.botParamsChanged.emit()
+
+    def step_bot_param_value(
+        self, field_name: str, raw_value: str, direction: int
+    ) -> str:
+        for group in self._bot_params_schema:
+            for field in group.get("fields", []):
+                if field.get("name") == field_name:
+                    return step_numeric_param_value(field, raw_value, direction)
+        return raw_value
+
+    @Slot(str)
+    def set_bot_params_error(self, message: str) -> None:
+        self._bot_params_error = message
+        self.botParamsChanged.emit()
+
+    @Slot("QVariantMap")
+    def requestBotParamsSave(self, values: dict) -> None:
+        self.botParamsSaveRequested.emit(values)
+
+    # ------------------------------------------------------------------ #
+    # Last signal (`EPIC-023C`)
+    # ------------------------------------------------------------------ #
+    @Property(str, notify=lastSignalChanged)
+    def lastSignalText(self) -> str:
+        return self._last_signal_text
+
+    @Slot(str)
+    def set_last_signal_text(self, text: str) -> None:
+        self._last_signal_text = text
+        self.lastSignalChanged.emit()
 
     # ------------------------------------------------------------------ #
     # Requests — QML calls these; only the Presenter connects to them.

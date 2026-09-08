@@ -327,9 +327,11 @@ class TradingView(BaseView):
         never opens it should pay for at screen construction."""
         if self._view_model is None:
             return
-        from .trading_strategy_params_dialog import TradingStrategyParamsDialog
+        from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.strategy_params_dialog import (
+            StrategyParamsDialog,
+        )
 
-        dialog = TradingStrategyParamsDialog(self._view_model, self)
+        dialog = StrategyParamsDialog(self._view_model, self)
         dialog.exec()
 
     # ------------------------------------------------------------------ #

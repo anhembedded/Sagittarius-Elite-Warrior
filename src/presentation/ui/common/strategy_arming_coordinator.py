@@ -1,5 +1,4 @@
-"""`EPIC-022D`/`EPIC-022F` — the Trading screen's strategy card, minus the
-widgets.
+"""`EPIC-022D`/`EPIC-022F` — a screen's strategy card, minus the widgets.
 
 @details Holds the parameter values the user is editing, turns the card's
 two buttons into `ArmStrategyCommand`/`DisarmStrategyCommand`, and
@@ -10,9 +9,19 @@ Split out of `TradingPresenter` rather than added to it: that file was
 already 729 lines before this feature, and `async-ui-action-rule.md` §2
 says a Presenter whose background-action logic outgrows one file splits
 by feature slice. Per that same section this Coordinator owns **no**
-action-id/cancellation bookkeeping — `TradingPresenter` keeps the single
+action-id/cancellation bookkeeping — the owning Presenter keeps its own
 `ActionOwnershipTracker` and calls in here; nothing below starts its own
 background work.
+
+`EPIC-023C` moved this out of `screens/trading/coordinators/` into
+`common/` once Dev Board needed the identical strategy card — every
+dependency already arrived through the `view_model`/`dispatcher`/callable
+Protocol below, with zero direct reference to `TradingPresenter`/
+`TradingViewModel`, so the move is a pure path change. Importing across
+from `screens/dashboard/` into a sibling screen's private `coordinators/`
+dir would have been the cross-screen-import anti-pattern
+`architecture-rule.md` §5 documents — the same reason `EPIC-023A`/`B`
+already promoted `PositionsPanel`/`OpenOrdersPanel`/`equity_chart_adapter.py`.
 """
 
 from __future__ import annotations
@@ -27,10 +36,12 @@ from Sagittarius_Elite_Warrior.src.application.services.live_strategy_config_sto
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
     ArmStrategyBlockReason,
     ArmStrategyCommand,
+    ArmStrategyCommandHandler,
     ArmStrategyResult,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy import (
     DisarmStrategyCommand,
+    DisarmStrategyCommandHandler,
     DisarmStrategyResult,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
@@ -83,7 +94,7 @@ class CommandDispatcher(Protocol):
     pass anything at all (`BOT-125` review).
     """
 
-    def dispatch(self, command: object) -> Any: ...
+    def dispatch(self, handler_class: type, input_dto: object | None = None) -> Any: ...
 
 
 class StrategyCardViewModel(Protocol):
@@ -266,9 +277,7 @@ class StrategyArmingCoordinator:
         tracker the Presenter owns and hands to every Coordinator") and
         distinguishes from a Coordinator minting its own action ids.
         """
-        action = self._tracker.start_action(self._arm_action_kind, None)
-        if action is None:
-            return
+        action = self._tracker.begin_action(self._arm_action_kind, None, None)
         self._report_state(busy=True)
         try:
             result = self.arm()
@@ -342,13 +351,17 @@ class StrategyArmingCoordinator:
         make the next boot's `_arm_from_config` fail the same way with no
         user around to see why.
         """
-        result = self._dispatcher.dispatch(ArmStrategyCommand(self.build_config()))
+        result = self._dispatcher.dispatch(
+            ArmStrategyCommandHandler, ArmStrategyCommand(self.build_config())
+        )
         if result.armed:
             self._store.save(self.build_config())
         return result
 
     def disarm(self) -> DisarmStrategyResult:
-        return self._dispatcher.dispatch(DisarmStrategyCommand())
+        return self._dispatcher.dispatch(
+            DisarmStrategyCommandHandler, DisarmStrategyCommand()
+        )
 
     def armed_summary(self, config: LiveStrategyConfig | None) -> str:
         """One line describing what is actually running, or "" for nothing.
