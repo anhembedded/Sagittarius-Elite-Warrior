@@ -1,7 +1,7 @@
 # BOT-128 — Bảng cuộn ngang thay vì mất cột
 
-**Trạng thái:** 🟡 Đang làm (2026-09-08)
-**Nguồn:** user báo màn Giao dịch chật chội, kèm ảnh app thật; sau khi sửa `BOT-126` (cuộn dọc) và `BOT-127` (băng console) thì lỗi này còn lại.
+**Trạng thái:** ✅ Hoàn thành (2026-09-08)
+**Nguồn:** user báo màn Giao dịch chật chội, kèm ảnh app thật; sau khi sửa `BOT-129` (cuộn dọc) và `BOT-127` (băng console) thì lỗi này còn lại.
 **Rủi ro:** 🟠 — sửa `DataTable.qml`, component dùng chung của **6 bảng**.
 
 ---
@@ -82,3 +82,21 @@ Cổng `ci-local.ps1 -Full` xanh, có grep `LOG_FILE`.
 - [`ui-presentation-rule.md`](../../.agents/rules/ui-presentation-rule.md) — bảng hẹp hơn cột của nó
   thì **cuộn**, không bao giờ bỏ cột; `DataTable` sở hữu việc này cho mọi bảng, đừng giải lại theo
   từng màn.
+
+
+---
+
+## 6. Implementation Notes (2026-09-08)
+
+**Hai test sai trước khi đúng**, ghi lại vì cả hai đều là kiểu sai làm test vô giá trị:
+
+1. Test đầu **không giữ tham chiếu widget** → Qt xoá object C++ → `RuntimeError: Internal C++ object
+   already deleted` thay vì fail đúng giá trị. Một test nổ vì lý do khác thì không đo được gì.
+2. Assert trên `ScrollBar.policy` — **không đọc được** từ Python
+   (`Can't find converter for 'QQuickScrollBar::Policy'`), nên nó ném thay vì so sánh. Đổi sang
+   `size` (tỉ lệ nội dung đang nhìn thấy). Một test không đọc nổi giá trị nó khẳng định thì không
+   phải test.
+
+**Verify:** cổng `-Full` xanh (`FAILED_STEPS: none`, 3756 passed, coverage 94.91%, `LOG_FILE` sạch),
+cộng đo trên app thật: bảng Vị thế khung 391px / `contentWidth` 896px, Lệnh chờ 390/838, thanh cuộn
+`visible=True`. Merge qua PR #173.

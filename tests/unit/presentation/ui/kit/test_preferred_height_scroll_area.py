@@ -1,4 +1,4 @@
-"""`BOT-126` — content must scroll when it overflows, not be squashed into the
+"""`BOT-129` — content must scroll when it overflows, not be squashed into the
 viewport.
 
 The bug these lock: a plain `QScrollArea` with `setWidgetResizable(True)` only

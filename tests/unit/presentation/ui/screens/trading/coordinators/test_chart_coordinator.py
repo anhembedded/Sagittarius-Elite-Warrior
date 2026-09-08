@@ -24,6 +24,7 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.sync.sync_market_data.c
     SyncMarketDataCommand,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.coordinators.chart_coordinator import (
+    _STREAM_OWNER,
     ChartCoordinator,
 )
 
@@ -80,7 +81,7 @@ def test_stop_dispatches_regardless_of_go_live() -> None:
     coordinator.stop()
 
     dispatcher.dispatch.assert_called_once_with(
-        StopLiveStreamCommand, StopLiveStreamCommand()
+        StopLiveStreamCommand, StopLiveStreamCommand(owner=_STREAM_OWNER)
     )
 
 
