@@ -12,11 +12,23 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from Sagittarius_Elite_Warrior.src.application.services.backtest_range_coverage import (
     BacktestRangeCoverage,
 )
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_backtest_range_coverage import (
     GetBacktestRangeCoverageQuery,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_historical_klines.query import (
     GetHistoricalKlinesQuery,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
+    ArmStrategyCommandHandler,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy import (
+    DisarmStrategyCommandHandler,
 )
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
 from Sagittarius_Elite_Warrior.src.main import create_app
@@ -177,6 +189,28 @@ def app_engine(request, monkeypatch, tmp_path):
     engine = create_app(config_manager)
 
     def mock_dispatch(command_type, command_obj):
+        # `ArmStrategyCommandHandler`/`DisarmStrategyCommandHandler` are run
+        # for real rather than faked: `StrategyArmingCoordinator.armed_summary()`
+        # reads its state from `LiveStrategySession.config`, which only the
+        # real handler mutates — a fabricated `ArmStrategyResult(armed=True)`
+        # would report success while leaving the session (and therefore the
+        # card's own "what is armed" label) unchanged. Both handlers are
+        # cheap, synchronous, and take only container-resolved collaborators,
+        # so building them here costs nothing a `_FakeResponse` branch below
+        # wouldn't already cost.
+        if command_type is ArmStrategyCommandHandler:
+            handler = ArmStrategyCommandHandler(
+                engine.context.container.resolve(LiveStrategySession),
+                engine.context.container.resolve(TradingSessionState),
+            )
+            return handler.execute(command_obj)
+        if command_type is DisarmStrategyCommandHandler:
+            handler = DisarmStrategyCommandHandler(
+                engine.context.container.resolve(LiveStrategySession),
+                engine.context.container.resolve(TradingSessionState),
+            )
+            return handler.execute(command_obj)
+
         response = _FakeResponse()
         if command_type is GetHistoricalKlinesQuery:
             # Mirrors GetHistoricalKlinesQueryHandler's own contract (added by

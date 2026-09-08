@@ -12,6 +12,9 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+    StrategyRegistry,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
     ArmStrategyBlockReason,
     ArmStrategyCommand,
@@ -23,28 +26,40 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy
     DisarmStrategyResult,
 )
 from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
+from Sagittarius_Elite_Warrior.src.domain.strategies.ema_crossover_strategy import (
+    EmaCrossoverStrategy,
+)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     LiveStrategyConfig,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
     ActionOwnershipTracker,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_arming_coordinator import (
+    StrategyArmingCoordinator,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_display import (
     humanize_strategy_key,
-)
-from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.coordinators.strategy_arming_coordinator import (
-    StrategyArmingCoordinator,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.trading.trading_view_model import (
     TradingViewModel,
 )
 
-#: Mirrors `conftest.TEST_STRATEGY_KEY`. Restated rather than imported:
-#: the test package has no `__init__.py`, so a relative import from a
-#: conftest is not a package import at all.
+#: Mirrors `screens/trading/conftest.py`'s own `TEST_STRATEGY_KEY`. Restated
+#: rather than imported: this file moved to `common/` with the coordinator
+#: itself (`EPIC-023C`), out of reach of that screen-scoped conftest — same
+#: "restate, don't cross-import a test fixture" reasoning this file already
+#: applied to the constant below before the move.
 TEST_STRATEGY_KEY = "ema_crossover"
 
 _INTERVALS = ["1m", "5m", "1h"]
+
+
+@pytest.fixture
+def strategy_registry() -> StrategyRegistry:
+    registry = StrategyRegistry()
+    registry.register(TEST_STRATEGY_KEY, EmaCrossoverStrategy)
+    return registry
 
 
 class _FakeConfig:
@@ -172,7 +187,7 @@ def test_arming_dispatches_the_command_with_what_the_card_shows(
 
     coordinator.arm()
 
-    command = dispatcher.dispatch.call_args.args[0]
+    command = dispatcher.dispatch.call_args.args[1]
     assert isinstance(command, ArmStrategyCommand)
     assert command.config == LiveStrategyConfig(
         strategy_key=TEST_STRATEGY_KEY,
@@ -245,7 +260,7 @@ def test_disarm_dispatches_the_disarm_command(
 
     result = coordinator.disarm()
 
-    assert isinstance(dispatcher.dispatch.call_args.args[0], DisarmStrategyCommand)
+    assert isinstance(dispatcher.dispatch.call_args.args[1], DisarmStrategyCommand)
     assert result.disarmed is True
 
 

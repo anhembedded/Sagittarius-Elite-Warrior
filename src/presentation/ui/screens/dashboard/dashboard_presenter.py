@@ -5,10 +5,22 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Signal, Slot
+from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+    EquityCurveRecorder,
+)
 from Sagittarius_Elite_Warrior.src.application.services.indicator_script_registry import (
     IndicatorScriptRegistry,
 )
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
+from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+    StrategyRegistry,
+)
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
+from Sagittarius_Elite_Warrior.src.domain.events.equity_sampled_event import (
+    EquitySampledEvent,
+)
 from Sagittarius_Elite_Warrior.src.domain.events.live_order_blocked_event import (
     LiveOrderBlockedEvent,
 )
@@ -24,14 +36,25 @@ from Sagittarius_Elite_Warrior.src.domain.events.position_changed_event import (
 from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
     PositionClosedEvent,
 )
+from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+    SUPPORTED_LIVE_INTERVALS,
+)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
+    ActionOwnershipTracker,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
     FALLBACK_INTERVAL,
     FALLBACK_SYMBOL,
     default_interval,
     default_symbol,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_chart_adapter import (
+    equity_sample_to_candle,
+    equity_samples_to_candles,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_feed import EquityFeed
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.health_check_coordinator import (
     HealthCheckCoordinator,
 )
@@ -44,6 +67,10 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.market_tick_feed impor
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.order_feed import OrderFeed
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.order_fill_marker import (
     order_filled_marker,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.signal_feed import SignalFeed
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.strategy_arming_coordinator import (
+    StrategyArmingCoordinator,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.symbol_options_coordinator import (
     SymbolOptionsCoordinator,
@@ -156,6 +183,12 @@ _DEFAULT_LOAD_MORE_BATCH_CANDLES: int = 75
 #: `EPIC-021K` §2.3/§3 — live-fill trade markers, same key `TradingPresenter`
 #: uses (separate `MarkerLayer` per `ChartCard`, so no collision between screens).
 _FILL_MARKERS_KEY = "live_fills"
+
+#: `EPIC-023C` — same action-kind string `TradingPresenter` uses for its own
+#: `ActionOwnershipTracker`; the two trackers are separate instances (each
+#: Presenter owns its own, `async-ui-action-rule.md` §2), so identical
+#: strings here do not collide.
+_ARM_ACTION = "arm_strategy"
 
 # WS status badge (top bar) text/color/tone per FSM state — presentational
 # only, derived from the state DashboardPresenter already tracks.
@@ -385,6 +418,13 @@ class DashboardPresenter(BasePresenter):
         # Resolve IThreadManager exactly once — stored as an instance attribute.
         # No further container.resolve(IThreadManager) calls anywhere else.
         self._thread_manager: IThreadManager = container.resolve(IThreadManager)
+        # `EPIC-023B` — the recorder outlives this screen (a DI singleton
+        # written by `FuturesUserDataStream` regardless of whether Dev Board
+        # is even open), same reasoning `TradingPresenter` documents for its
+        # own `_equity_recorder`.
+        self._equity_recorder: EquityCurveRecorder = container.resolve(
+            EquityCurveRecorder
+        )
 
         # EPIC-019A: shared with BackTestPresenter — `None` means "never
         # fetched", which is what makes the fetch happen once per session
@@ -473,6 +513,36 @@ class DashboardPresenter(BasePresenter):
         self._order_book = LiveOrderBookCoordinator(
             view=self.view, emit_log=self._append_log
         )
+
+        # `EPIC-023C` — the strategy card. Constructed before
+        # `_connect_ui_signals()` so its signals have something to reach,
+        # same reasoning `TradingPresenter` documents for its own identical
+        # construction. `_active_symbol` is not read until the user actually
+        # arms (the lambda below), well after it is assigned further down
+        # this constructor.
+        self._strategy_session: LiveStrategySession = container.resolve(
+            LiveStrategySession
+        )
+        self._arm_tracker: ActionOwnershipTracker[str, None, None] = (
+            ActionOwnershipTracker()
+        )
+        self._arming_coordinator = StrategyArmingCoordinator(
+            view_model=self._view_model,
+            config=self.config,
+            dispatcher=self.dispatcher,
+            available_strategies=lambda: container.resolve(
+                StrategyRegistry
+            ).available(),
+            get_active_symbol=lambda: self._active_symbol,
+            get_armed_config=lambda: self._strategy_session.config,
+            tracker=self._arm_tracker,
+            arm_action_kind=_ARM_ACTION,
+            set_status=lambda message, _is_error: self._append_log(message),
+            append_log=self._append_log,
+            on_armed_changed=self._on_armed_config_changed,
+        )
+        self._arming_coordinator.restore_into_view_model(list(SUPPORTED_LIVE_INTERVALS))
+        self._refresh_armed_summary(busy=False)
 
         # BOT-035 — one collaborator per Dev Board screen, same lifetime
         # pattern as AutoStartController: constructed once here, torn down
@@ -592,6 +662,15 @@ class DashboardPresenter(BasePresenter):
         self._connect_ui_signals()
         self._connect_engine_events()
         self._trigger_initial_health_check()
+
+        # `EPIC-023B` — read *after* `_connect_engine_events()` has already
+        # subscribed `_equity_feed`, not before: a live sample recorded in
+        # between subscribing and reading is otherwise missed entirely
+        # (subscribed-after-read order), same reasoning `TradingPresenter`
+        # documents for its own identical seed call.
+        self.view.equity_chart.render_historical_data(
+            equity_samples_to_candles(self._equity_recorder.samples)
+        )
 
         # EPIC-010D — restore the remembered form values, then start tracking
         # changes. Placed here deliberately: after `_active_interval` and the
@@ -822,6 +901,13 @@ class DashboardPresenter(BasePresenter):
         self._symbolOptionsReadySignal.connect(self._on_symbol_options_ready)
         self._symbolOptionsFailedSignal.connect(self._on_symbol_options_failed)
 
+        # `EPIC-023C` — strategy card, same connections `TradingPresenter`
+        # makes for the identical ViewModel signals.
+        view_model.strategyConfigChanged.connect(self._on_strategy_selection_changed)
+        view_model.botParamsSaveRequested.connect(self._on_bot_params_save_requested)
+        view_model.armRequested.connect(self._on_arm_requested)
+        view_model.disarmRequested.connect(self._on_disarm_requested)
+
         # Internal signals → view model update slots (all execute on the Qt
         # main thread).
         self.ui_log_signal.connect(self._append_log)
@@ -883,6 +969,14 @@ class DashboardPresenter(BasePresenter):
         self._order_feed.positionChanged.connect(self._on_position_changed)
         self._order_feed.positionClosed.connect(self._on_position_closed)
         self._order_feed.orderBlocked.connect(self._on_order_blocked)
+        # `EPIC-023B` — same one-place-subscribes Feed `TradingPresenter`
+        # already uses (`EPIC-021M`); a second consumer, not a new shape.
+        self._equity_feed = EquityFeed(self.event_bus, parent=self)
+        self._equity_feed.equitySampled.connect(self._on_equity_sampled)
+        # `EPIC-023C` — same shared bus `TradingPresenter` reads
+        # `SignalGeneratedEvent` from (`EPIC-022E`); a second consumer.
+        self._signal_feed = SignalFeed(self.event_bus, parent=self)
+        self._signal_feed.signalGenerated.connect(self._on_signal_generated)
 
     def _trigger_initial_health_check(self) -> None:
         self._health_check_coordinator.request_initial_check()
@@ -933,6 +1027,70 @@ class DashboardPresenter(BasePresenter):
         """`OrderFeed.orderBlocked` handler — already on the main thread.
         `BUG-084`."""
         self._order_book.on_order_blocked(event.symbol, event.reason)
+
+    def _on_equity_sampled(self, event: EquitySampledEvent) -> None:
+        """`EquityFeed.equitySampled` handler — already on the main thread.
+        Account-wide (no per-symbol filtering), same as `TradingPresenter`'s
+        own handler."""
+        self.view.equity_chart.append_closed_candle(
+            *equity_sample_to_candle(event.sample)
+        )
+
+    # ================================================================== #
+    # Strategy card (`EPIC-023C`) — the button handlers live in
+    # `StrategyArmingCoordinator`; what stays here is what this Presenter
+    # genuinely owns, same split `TradingPresenter` documents for itself.
+    # ================================================================== #
+
+    @Slot()
+    def _on_strategy_selection_changed(self) -> None:
+        self._arming_coordinator.on_strategy_selection_changed()
+
+    @Slot("QVariantMap")
+    @safe_ui_action
+    def _on_bot_params_save_requested(self, values: dict) -> None:
+        if self._arming_coordinator.apply_params(values):
+            self._append_log("Đã lưu Thông số Chiến lược.")
+
+    @Slot()
+    def _on_arm_requested(self) -> None:
+        self._arming_coordinator.on_arm_clicked()
+
+    @Slot()
+    def _on_disarm_requested(self) -> None:
+        self._arming_coordinator.on_disarm_clicked()
+
+    def _on_armed_config_changed(self, config, busy: bool) -> None:
+        """Called by the Coordinator whenever what is armed may have
+        changed. No chart overlay to keep in step here (`EPIC-022`'s
+        indicator/trend-region drawing stays Trading-only — Dev Board's own
+        chart cards already exist for the indicator-script testbed this
+        screen was built for)."""
+        self._view_model.set_armed_summary(
+            self._arming_coordinator.armed_summary(config), busy
+        )
+
+    def _refresh_armed_summary(self, *, busy: bool) -> None:
+        self._on_armed_config_changed(self._strategy_session.config, busy)
+
+    def _on_signal_generated(self, event) -> None:
+        """`SignalFeed.signalGenerated` handler — already on the main
+        thread. Filtered to the armed symbol, same reasoning
+        `TradingPresenter._on_signal_generated` documents: this event also
+        carries signals from a *backtest* `StrategyEngine` on the same
+        shared bus, and an unfiltered card would show a backtest's output
+        as if it were live."""
+        signal = getattr(event, "signal", None)
+        if signal is None:
+            return
+        config = self._strategy_session.config
+        if config is None or signal.symbol != config.symbol:
+            return
+        action = getattr(signal.action, "value", str(signal.action))
+        when = signal.time.strftime("%H:%M:%S")
+        self._view_model.set_last_signal_text(
+            f"{when} · {action} @ {signal.price:g} — {signal.reason}"
+        )
 
     # ================================================================== #
     # FSM Hooks

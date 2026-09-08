@@ -32,6 +32,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QDoubleSpinBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -40,6 +41,12 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QVBoxLayout,
     QWidget,
+)
+from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+    MAX_LEVERAGE,
+    MAX_SIZING_PERCENT,
+    MIN_LEVERAGE,
+    MIN_SIZING_PERCENT,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
@@ -55,7 +62,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.symbol_picker impo
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     Panel,
     SectionLabel,
+    StyledButton,
     StyledCheckBox,
+    StyleRole,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.kit.progress_banner_widget import (
     ProgressBannerWidget,
@@ -87,6 +96,15 @@ _FALLBACK_TIMEFRAME_LABEL = TimeFrame.ONE_MINUTE.value
 #: `ProgressBannerWidget` — one size for "a long task, a percent, a Cancel"
 #: everywhere it appears (BOT-123).
 _PROGRESS_BANNER_HEIGHT = 32
+
+# --- `EPIC-023C` strategy card — same fixed domain terms `TradingView`
+# uses (`ui-presentation-rule.md`: "Thông số Chiến lược" is a fixed term,
+# distinct from general Bot settings, never rephrased per screen). ---
+_PARAMS_BUTTON_TEXT = "Thông số Chiến lược…"
+_ARM_TEXT = "Nạp chiến lược"
+_DISARM_TEXT = "Gỡ"
+_NOT_ARMED_TEXT = "Chưa nạp chiến lược nào."
+_NO_SIGNAL_TEXT = "Chưa có tín hiệu nào."
 
 
 def _field_style() -> str:
@@ -121,11 +139,12 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
     to be `DevBoardPanel.qml`. `DashboardView` hosts this directly as a
     `QSplitter` child instead of a `QQuickWidget`.
 
-    **Deliberately not a `Surface`/`Panel`**, unlike the three cards it
-    contains. It paints the app background (`Palette.BG`) and draws no
-    border of its own — it is the region the cards sit *on*, not one of
-    them. Inheriting `Panel` would give it `BG_CARD` plus a border, i.e.
-    a fourth card wrapped around the other three.
+    **Deliberately not a `Surface`/`Panel`**, unlike the cards it contains
+    (System Controls, Chiến lược, Tín hiệu gần nhất, Indicators —
+    `EPIC-023C` added the middle two). It paints the app background
+    (`Palette.BG`) and draws no border of its own — it is the region the
+    cards sit *on*, not one of them. Inheriting `Panel` would give it
+    `BG_CARD` plus a border, i.e. one more card wrapped around the rest.
     """
 
     def __init__(
@@ -165,6 +184,8 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         scroll_layout.setContentsMargins(0, 0, 0, 0)
         scroll_layout.setSpacing(12)
         scroll_layout.addWidget(self._build_system_controls())
+        scroll_layout.addWidget(self._build_strategy_card())
+        scroll_layout.addWidget(self._build_last_signal_card())
         scroll_layout.addWidget(self._build_indicators())
         scroll_layout.addStretch(1)
         scroll.setWidget(scroll_body)
@@ -238,7 +259,6 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
 
         layout.addWidget(self._field_row("Market:", self._build_market_combo()))
         layout.addWidget(self._field_row("Symbol:", self._build_symbol_button()))
-        layout.addWidget(self._field_row("Strategy:", self._build_strategy_combo()))
 
         layout.addLayout(_section_row("Data Range"))
 
@@ -339,6 +359,208 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._view_model.script_model.modelReset.connect(self._rebuild_script_rows)
         return card
 
+    def _build_strategy_card(self) -> Panel:
+        """`EPIC-023C` — a real "Nạp chiến lược" card, replacing the fake
+        `_build_strategy_combo()` combo this screen used to carry (hard-coded
+        `["Manual", "SMA Crossover"]`, never dispatching anything). Wiring
+        mirrors `TradingView._build_strategy_card()` exactly — same fixed
+        domain terms, same objectNames — driven by the same
+        `StrategyArmingCoordinator` instance `DashboardPresenter` owns.
+
+        **Editable gating (`_sync_armed_summary`) is intentionally partial
+        here**: it disables while `strategyBusy`, but not yet while trading
+        is on — `DashboardQmlViewModel` has no `enabled`/`tradingStateChanged`
+        of its own until `EPIC-023D` adds Bật/Tắt giao dịch to this screen.
+        The server-side refusal (`EPIC-022` §4.1 — a swap while trading is on
+        is rejected by the command handler regardless of any UI gate) still
+        holds either way; only the pre-emptive client-side disable is
+        deferred, not the actual safety rule.
+        """
+        card = Panel()
+        layout = card.body_layout
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+        layout.addLayout(_section_row("Chiến lược"))
+
+        self._cbo_live_strategy = QComboBox()
+        self._cbo_live_strategy.setObjectName("cboLiveStrategy")
+        self._cbo_live_strategy.setFixedHeight(32)
+        self._cbo_live_strategy.setStyleSheet(_field_style())
+        layout.addWidget(self._field_row("Chiến lược", self._cbo_live_strategy))
+
+        self._cbo_live_interval = QComboBox()
+        self._cbo_live_interval.setObjectName("cboLiveInterval")
+        self._cbo_live_interval.setFixedHeight(32)
+        self._cbo_live_interval.setStyleSheet(_field_style())
+        layout.addWidget(self._field_row("Khung TG", self._cbo_live_interval))
+
+        self._spn_sizing_percent = QDoubleSpinBox()
+        self._spn_sizing_percent.setObjectName("spnLiveSizingPercent")
+        self._spn_sizing_percent.setRange(MIN_SIZING_PERCENT, MAX_SIZING_PERCENT)
+        self._spn_sizing_percent.setSingleStep(1.0)
+        self._spn_sizing_percent.setSuffix(" %")
+        self._spn_sizing_percent.setFixedHeight(32)
+        self._spn_sizing_percent.setStyleSheet(_field_style())
+        layout.addWidget(self._field_row("% vốn/lệnh", self._spn_sizing_percent))
+
+        self._spn_leverage = QDoubleSpinBox()
+        self._spn_leverage.setObjectName("spnLiveLeverage")
+        self._spn_leverage.setRange(MIN_LEVERAGE, MAX_LEVERAGE)
+        self._spn_leverage.setSingleStep(1.0)
+        self._spn_leverage.setSuffix(" x")
+        self._spn_leverage.setFixedHeight(32)
+        self._spn_leverage.setStyleSheet(_field_style())
+        layout.addWidget(self._field_row("Đòn bẩy", self._spn_leverage))
+
+        self._btn_strategy_params = StyledButton(
+            _PARAMS_BUTTON_TEXT, role=StyleRole.SECONDARY_BUTTON
+        )
+        self._btn_strategy_params.setObjectName("btnStrategyParams")
+        self._btn_strategy_params.setCursor(Qt.CursorShape.PointingHandCursor)
+        layout.addWidget(self._btn_strategy_params)
+
+        actions = QWidget()
+        actions_row = QHBoxLayout(actions)
+        actions_row.setContentsMargins(0, 0, 0, 0)
+        actions_row.setSpacing(8)
+        self._btn_arm_strategy = StyledButton(_ARM_TEXT, role=StyleRole.PRIMARY_BUTTON)
+        self._btn_arm_strategy.setObjectName("btnArmStrategy")
+        self._btn_arm_strategy.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_disarm_strategy = StyledButton(
+            _DISARM_TEXT, role=StyleRole.SECONDARY_BUTTON
+        )
+        self._btn_disarm_strategy.setObjectName("btnDisarmStrategy")
+        self._btn_disarm_strategy.setCursor(Qt.CursorShape.PointingHandCursor)
+        actions_row.addWidget(self._btn_arm_strategy, 1)
+        actions_row.addWidget(self._btn_disarm_strategy, 1)
+        layout.addWidget(actions)
+
+        self._lbl_armed_strategy = QLabel(_NOT_ARMED_TEXT)
+        self._lbl_armed_strategy.setObjectName("lblArmedStrategy")
+        self._lbl_armed_strategy.setWordWrap(True)
+        layout.addWidget(self._lbl_armed_strategy)
+
+        #: Everything above is disabled while an arm/disarm is in flight —
+        #: see the docstring above for what this does NOT yet gate on.
+        self._strategy_controls = (
+            self._cbo_live_strategy,
+            self._cbo_live_interval,
+            self._spn_sizing_percent,
+            self._spn_leverage,
+            self._btn_strategy_params,
+            self._btn_arm_strategy,
+            self._btn_disarm_strategy,
+        )
+
+        self._cbo_live_strategy.currentIndexChanged.connect(
+            lambda _index: self._view_model.requestStrategySelection(
+                self._cbo_live_strategy.currentData() or ""
+            )
+        )
+        self._cbo_live_interval.currentTextChanged.connect(
+            self._view_model.requestIntervalSelection
+        )
+        self._spn_sizing_percent.valueChanged.connect(
+            self._view_model.requestSizingPercent
+        )
+        self._spn_leverage.valueChanged.connect(self._view_model.requestLeverage)
+        self._btn_arm_strategy.clicked.connect(self._view_model.requestArm)
+        self._btn_disarm_strategy.clicked.connect(self._view_model.requestDisarm)
+        self._btn_strategy_params.clicked.connect(self._open_strategy_params_dialog)
+
+        self._view_model.strategyConfigChanged.connect(self._on_strategy_config_changed)
+        self._sync_strategy_options()
+        self._sync_strategy_selection()
+        self._sync_armed_summary()
+
+        return card
+
+    def _build_last_signal_card(self) -> Panel:
+        """`EPIC-023C` — mirrors `TradingView._build_last_signal_card()`."""
+        card = Panel()
+        layout = card.body_layout
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(6)
+        layout.addLayout(_section_row("Tín hiệu gần nhất"))
+        self._lbl_last_signal = QLabel(_NO_SIGNAL_TEXT)
+        self._lbl_last_signal.setObjectName("lblLastSignal")
+        self._lbl_last_signal.setWordWrap(True)
+        layout.addWidget(self._lbl_last_signal)
+        self._view_model.lastSignalChanged.connect(self._sync_last_signal)
+        self._sync_last_signal()
+        return card
+
+    def _open_strategy_params_dialog(self) -> None:
+        """Built fresh per opening — same reasoning `TradingView`'s own
+        method documents. Imported lazily for the same reason: the dialog
+        pulls in `QScrollArea`/`Overlay` chrome no user who never opens it
+        should pay for at panel construction."""
+        from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params.strategy_params_dialog import (
+            StrategyParamsDialog,
+        )
+
+        dialog = StrategyParamsDialog(self._view_model, self)
+        dialog.exec()
+
+    def _on_strategy_config_changed(self) -> None:
+        self._sync_strategy_options()
+        self._sync_strategy_selection()
+        self._sync_armed_summary()
+
+    def _sync_strategy_options(self) -> None:
+        """@details Each row's registry key rides on `setItemData`, never
+        on the visible text — same reasoning `TradingView`'s own method
+        documents (a renamed strategy silently stops being armable
+        otherwise)."""
+        self._cbo_live_strategy.blockSignals(True)
+        self._cbo_live_strategy.clear()
+        for option in self._view_model.strategyOptions:
+            self._cbo_live_strategy.addItem(
+                option.get("label", ""), option.get("key", "")
+            )
+        self._cbo_live_strategy.blockSignals(False)
+
+        self._cbo_live_interval.blockSignals(True)
+        self._cbo_live_interval.clear()
+        self._cbo_live_interval.addItems(self._view_model.intervalOptions)
+        self._cbo_live_interval.blockSignals(False)
+
+    def _sync_strategy_selection(self) -> None:
+        vm = self._view_model
+        self._cbo_live_strategy.blockSignals(True)
+        index = self._cbo_live_strategy.findData(vm.selectedStrategyKey)
+        if index >= 0:
+            self._cbo_live_strategy.setCurrentIndex(index)
+        self._cbo_live_strategy.blockSignals(False)
+
+        self._cbo_live_interval.blockSignals(True)
+        if vm.liveInterval:
+            self._cbo_live_interval.setCurrentText(vm.liveInterval)
+        self._cbo_live_interval.blockSignals(False)
+
+        for spin, value in (
+            (self._spn_sizing_percent, vm.sizingPercent),
+            (self._spn_leverage, vm.leverage),
+        ):
+            spin.blockSignals(True)
+            spin.setValue(value)
+            spin.blockSignals(False)
+
+    def _sync_armed_summary(self) -> None:
+        vm = self._view_model
+        summary = vm.armedSummary
+        self._lbl_armed_strategy.setText(summary or _NOT_ARMED_TEXT)
+        self._lbl_armed_strategy.setStyleSheet(
+            f"color: {Palette.SUCCESS if summary else Palette.MUTED}; font-size: 11px;"
+        )
+        for widget in self._strategy_controls:
+            widget.setEnabled(not vm.strategyBusy)
+
+    def _sync_last_signal(self) -> None:
+        self._lbl_last_signal.setText(
+            self._view_model.lastSignalText or _NO_SIGNAL_TEXT
+        )
+
     @staticmethod
     def _field_row(label_text: str, field: QWidget) -> QWidget:
         row = QWidget()
@@ -410,14 +632,6 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
     def _refresh_symbol_picker(self) -> None:
         if self._symbol_picker is not None and self._symbol_picker.isVisible():
             self._symbol_picker.refresh()
-
-    def _build_strategy_combo(self) -> QComboBox:
-        self._cbo_strategy = QComboBox()
-        self._cbo_strategy.setObjectName("cboStrategy")
-        self._cbo_strategy.addItems(["Manual", "SMA Crossover"])
-        self._cbo_strategy.setFixedHeight(32)
-        self._cbo_strategy.setStyleSheet(_field_style())
-        return self._cbo_strategy
 
     @staticmethod
     def _action_button_style(accent: str) -> str:
@@ -576,7 +790,6 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._btn_stop.setEnabled(vm.uiMode in ("LIVE", "LOCKED"))
         self._cbo_market.setEnabled(controls_active)
         self._btn_symbol.setEnabled(controls_active)
-        self._cbo_strategy.setEnabled(controls_active)
         self._txt_start_date.setEnabled(controls_active)
         self._txt_end_date.setEnabled(controls_active)
 

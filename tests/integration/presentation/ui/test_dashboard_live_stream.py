@@ -2,11 +2,26 @@ from concurrent.futures import Future
 from unittest.mock import MagicMock
 
 import pytest
+from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
+    EquityCurveRecorder,
+)
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory import (
+    LiveStrategyFactory,
+)
+from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
+    LiveStrategySession,
+)
+from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
+    StrategyRegistry,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_historical_klines.query import (
     GetHistoricalKlinesQuery,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.stream.start_live_stream.command import (
     StartLiveStreamCommand,
+)
+from Sagittarius_Elite_Warrior.src.domain.strategies.ema_crossover_strategy import (
+    EmaCrossoverStrategy,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.dashboard.dashboard_presenter import (
     DashboardPresenter,
@@ -63,6 +78,17 @@ def mock_app():
 
     mock_thread_mgr.submit.side_effect = submit_sync
 
+    # `EPIC-023C` — must be real, not `MagicMock()`, same reasoning
+    # `test_dashboard_presenter.py`'s own fixtures document.
+    strategy_registry = StrategyRegistry()
+    strategy_registry.register("ema_crossover", EmaCrossoverStrategy)
+    strategy_session = LiveStrategySession(
+        LiveStrategyFactory(
+            strategy_registry, MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        )
+    )
+    equity_recorder = EquityCurveRecorder()
+
     def resolve_side_effect(interface):
         from sagittarius_engine.interfaces.i_dispatcher import IDispatcher
 
@@ -72,6 +98,12 @@ def mock_app():
             return mock_thread_mgr
         if interface == IDispatcher:
             return app
+        if interface == StrategyRegistry:
+            return strategy_registry
+        if interface == LiveStrategySession:
+            return strategy_session
+        if interface == EquityCurveRecorder:
+            return equity_recorder
         return MagicMock()
 
     app.container.resolve.side_effect = resolve_side_effect

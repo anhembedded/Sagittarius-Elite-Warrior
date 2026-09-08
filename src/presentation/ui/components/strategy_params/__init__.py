@@ -18,9 +18,11 @@ from .bot_params_form import (
     step_numeric_param_value,
 )
 from .param_field import BotParamFieldWidget
+from .strategy_params_dialog import StrategyParamsDialog
 
 __all__ = [
     "BotParamFieldWidget",
+    "StrategyParamsDialog",
     "build_bot_params_rows",
     "build_bot_params_schema",
     "parse_bot_params",

@@ -28,6 +28,10 @@ from .dev_board_panel import DevBoardPanel
 _TITLE = "Developer Board (Live Testbed)"
 _SUBTITLE = "Kiểm thử chỉ báo & script trên dữ liệu trực tiếp"
 
+#: `EPIC-023B` — the equity chart's `ChartCard(symbol=...)` title, same
+#: constant `TradingView` uses for its own equity chart.
+_EQUITY_CHART_TITLE = "Vốn"
+
 
 class DashboardView(BaseView):
     """
@@ -46,7 +50,8 @@ class DashboardView(BaseView):
     chart-card column, in the workspace rather than `DevBoardPanel`'s rail
     — a rail column is too narrow for a many-column table (`BOT-128`'s own
     finding, same tables `TradingView` places in its workspace for the
-    same reason).
+    same reason). `EPIC-023B` adds the same account-wide equity chart below
+    the chart-card column, reusing `TradingView`'s own construction recipe.
     """
 
     def __init__(self, parent=None):
@@ -102,6 +107,16 @@ class DashboardView(BaseView):
 
         self.scroll_area.setWidget(self.charts_container)
 
+        # `EPIC-023B` — same construction recipe as
+        # `TradingView._build_equity_chart`: a dedicated `ChartCard`
+        # (account-level, not per-symbol — must not react to Dev Board's
+        # own per-chart-card symbol list), line type, no volume/toolbar.
+        self.equity_chart = ChartCard(_EQUITY_CHART_TITLE)
+        self.equity_chart.setObjectName("equityChart")
+        self.equity_chart.set_chart_type("line")
+        self.equity_chart.set_volume_visible(False)
+        self.equity_chart.toolbar.setVisible(False)
+
         self._workspace = QWidget()
         workspace_layout = QVBoxLayout(self._workspace)
         workspace_layout.setContentsMargins(0, 0, 0, 0)
@@ -112,9 +127,11 @@ class DashboardView(BaseView):
         # exact same reason), so a bare `addWidget(tables_row)` with no
         # factor squeezed both tables down to an unreadable sliver, visible
         # only once actually screenshotted — offscreen `pytest` alone never
-        # catches this class of layout defect.
+        # catches this class of layout defect. `equity_chart` gets the same
+        # treatment up front this time, not as a second bug to find later.
         workspace_layout.addWidget(tables_row, 1)
         workspace_layout.addWidget(self.scroll_area, 3)
+        workspace_layout.addWidget(self.equity_chart, 1)
 
         self._shell.set_workspace(self._workspace)
 

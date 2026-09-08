@@ -165,27 +165,33 @@ def test_reclicking_the_same_timeframe_does_not_reload(
     assert reloaded == []
 
 
-def test_strategy_dropdown_has_no_presenter_effect(
-    qtbot, main_window, navigate, qml_item
-):
-    """TC-GAP-04: Strategy dropdown is cosmetic today — `EmaCrossoverStrategy`
-    now exists for real (BOT-026), but this control names a strategy
-    ("SMA Crossover") that was never built, and BOT-039 will delete this
-    ComboBox outright in favor of a toggle list (mirroring the Indicator
-    mechanism) rather than wire it up. When BOT-039 lands, this test must be
-    rewritten to cover the new control — not deleted (precedent: BOT-036
-    §6.1)."""
+def test_strategy_dropdown_arms_the_selected_strategy(qtbot, main_window, navigate):
+    """TC-GAP-04: FIXED by `EPIC-023C` — the cosmetic `_cbo_strategy`
+    (named a strategy, "SMA Crossover", that was never built) is gone;
+    `dev_board_panel.py` now carries a real "Chiến lược" card wired to
+    `StrategyArmingCoordinator`, the exact collaborator `TradingPresenter`
+    already used. Picking a real registered strategy and clicking "Nạp
+    chiến lược" must actually arm it — not just repaint a combo."""
     qtbot.addWidget(main_window)
     presenter, view = _open_dashboard(navigate)
+    panel = view._panel
 
-    view._panel._cbo_strategy.setCurrentIndex(1)  # "SMA Crossover"
+    index = panel._cbo_live_strategy.findData("ema_crossover")
+    assert index >= 0, "ema_crossover must be a real registered strategy"
+    panel._cbo_live_strategy.setCurrentIndex(index)
+    # A fresh install has no saved interval yet (`liveInterval` starts as
+    # ""), so ArmStrategyCommand would refuse with MISSING_SYMBOL_OR_INTERVAL
+    # unless the user picks one — "5m" is deliberately not the combo's own
+    # already-showing first entry ("1m"), so this setCurrentText actually
+    # changes the selection and fires the signal that reports it to the
+    # view model, the same as a real click would.
+    panel._cbo_live_interval.setCurrentText("5m")
 
-    with qtbot.waitSignal(presenter.ui_history_reloaded_signal, timeout=2000):
-        _click_load_history(view, qml_item)
+    qtbot.mouseClick(panel._btn_arm_strategy, Qt.MouseButton.LeftButton)
+    qtbot.waitUntil(lambda: presenter._view_model.armedSummary != "", timeout=2000)
 
-    # conftest.MOCK_KLINE_COUNT mock candles come back regardless of the
-    # (ignored) strategy selection.
-    assert len(view.chart_cards[0]._raw_history) == 5
+    assert presenter._strategy_session.config.strategy_key == "ema_crossover"
+    assert panel._lbl_armed_strategy.text() == presenter._view_model.armedSummary
 
 
 def test_start_date_field_binds_to_the_view_model(

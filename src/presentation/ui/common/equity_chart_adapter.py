@@ -7,6 +7,13 @@ shape, written fresh for live data rather than importing
 lives in `screens/backtest/`; importing it here would recreate exactly the
 `qml/ -> screens/` dependency direction `EPIC-021L` inverted (`BUG-082`).
 Two short functions of its own is cheaper than the reverse dependency.
+
+`EPIC-023B` moved this out of `screens/trading/` into `common/` (same move
+`order_fill_marker.py` already made): both functions are pure, depend only
+on `domain/` and `components/chart_card/`, and Dev Board needed the exact
+same mapping for its own equity chart — importing across from
+`screens/dashboard/` into a sibling screen's directory would have been the
+cross-screen-import anti-pattern `architecture-rule.md` §5 documents.
 """
 
 from __future__ import annotations
