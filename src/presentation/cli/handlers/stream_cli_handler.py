@@ -42,7 +42,7 @@ class StreamCliHandler(ICliCommandHandler):
             symbols = [s.strip().upper() for s in args.symbols.split(",")]
             try:
                 cmd = StartLiveStreamCommand(
-                    symbols=symbols, interval=TimeFrame(args.interval)
+                    owner="cli", symbols=symbols, interval=TimeFrame(args.interval)
                 )
                 response = app.dispatch(StartLiveStreamCommand, cmd)
                 if response.success:
@@ -60,7 +60,7 @@ class StreamCliHandler(ICliCommandHandler):
 
         elif args.action == "stop":
             try:
-                cmd = StopLiveStreamCommand()
+                cmd = StopLiveStreamCommand(owner="cli")
                 response = app.dispatch(StopLiveStreamCommand, cmd)
                 if response.success:
                     print("✅ Live stream stopped.")

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 from datetime import UTC, datetime
 
 from binance import AsyncClient, BinanceSocketManager
@@ -27,11 +28,34 @@ logger = logging.getLogger("App.LiveStream")
 #: Delay before retrying the WebSocket connection after an `OSError`.
 _RECONNECT_DELAY_SECONDS = 5
 
+#: A subscription key: `(symbol, interval.value)` — plain `str` interval,
+#: not `TimeFrame`, so two owners on the same symbol/interval hash to the
+#: same key regardless of which one enters it first.
+_StreamKey = tuple[str, str]
+
 
 class BinanceWebsocketService(ILiveStreamService):
     """
-    @brief Infrastructure implementation of ILiveStreamService.
-    @details Manages a live Binance Kline WebSocket stream using the injected ITaskManager.
+    @brief Infrastructure implementation of `ILiveStreamService`.
+    @details Manages a single live Binance Kline WebSocket connection
+    (plain `kline_socket` for one active key, `multiplex_socket` for
+    several) via the injected `ITaskManager`, reference-counted per
+    `(symbol, interval)` key across every `owner` (`BOT-126`).
+
+    **Reconnect-on-change trade-off (`architecture-rule.md` §7 — a price
+    knowingly paid, not a bug):** whenever the *set* of active keys changes
+    (an owner subscribes/releases/changes symbol), the whole underlying
+    task is cancelled and respawned with the new key set — every owner
+    sharing that connection loses ticks for the brief reconnect window
+    (same latency already tolerated on a real network drop), even though
+    none of them lose their *subscription*. Adding true incremental
+    SUBSCRIBE/UNSUBSCRIBE frames on an already-open combined stream would
+    avoid this, but `python-binance`'s `BinanceSocketManager` does not
+    expose that conveniently — left as a follow-up if the reconnect gap
+    ever proves disruptive in practice, not part of `BOT-126`'s scope.
+    `test_subscribe_does_not_restart_when_key_set_is_unchanged` locks the
+    one case that must NOT pay this price: a second owner joining a key
+    another owner already holds.
     """
 
     def __init__(
@@ -45,71 +69,103 @@ class BinanceWebsocketService(ILiveStreamService):
         self._market_data_venue = market_data_venue
         self._task_handle: ITaskHandle | None = None
         self._token: CancellationToken | None = None
+        #: Guards `_subscriptions`/`_active_keys` against concurrent
+        #: `subscribe`/`release_owner` calls from different screens' own
+        #: `IThreadManager.submit()` worker threads — same reasoning
+        #: `InFlightSyncGuard` (`BOT-121`) gives its own lock.
+        self._lock = threading.Lock()
+        self._subscriptions: dict[_StreamKey, set[str]] = {}
+        self._active_keys: frozenset[_StreamKey] = frozenset()
 
     # -- ILiveStreamService ----------------------------------------------------
 
-    def start_stream(self, symbols: list[str], interval: TimeFrame) -> bool:
+    def subscribe(self, owner: str, symbols: list[str], interval: TimeFrame) -> bool:
         """
-        @brief Spawns the WebSocket stream as a background task via ITaskManager.
-        @return True if started, False if already running.
+        @brief Replaces `owner`'s subscriptions with `symbols`/`interval`,
+        restarting the underlying connection only if the resulting set of
+        active keys actually changed.
         """
+        with self._lock:
+            self._drop_owner_locked(owner)
+            for symbol in symbols:
+                self._subscriptions.setdefault((symbol, interval.value), set()).add(
+                    owner
+                )
+            self._apply_active_set_locked()
+        return True
+
+    def release_owner(self, owner: str) -> bool:
+        """@brief Drops every key `owner` holds; never touches another
+        owner's keys, even for the same `(symbol, interval)`."""
+        with self._lock:
+            had_any = self._drop_owner_locked(owner)
+            if had_any:
+                self._apply_active_set_locked()
+        if not had_any:
+            # DEBUG, không phải WARNING: dừng một stream chưa từng chạy là
+            # trạng thái **bình thường**, không phải sự cố — cùng lý do
+            # `stop_stream()` gốc từng ghi (đủ để làm đỏ bước "Run Log Scan"
+            # của `ci-local.ps1` nếu là WARNING, `logging-rule.md`).
+            logger.debug(
+                f"release_owner({owner}) requested but it held no subscription; nothing to do."
+            )
+        return had_any
+
+    def stop_all(self) -> bool:
+        """@brief Tears down every subscription for every owner — Engine
+        shutdown only, see this class's own docstring."""
+        with self._lock:
+            had_any = bool(self._subscriptions)
+            self._subscriptions.clear()
+            self._apply_active_set_locked()
+        return had_any
+
+    # -- Private: registry bookkeeping (caller must hold `self._lock`) --------
+
+    def _drop_owner_locked(self, owner: str) -> bool:
+        """@return True if `owner` held at least one key."""
+        had_any = False
+        for key in list(self._subscriptions):
+            owners = self._subscriptions[key]
+            if owner in owners:
+                owners.discard(owner)
+                had_any = True
+                if not owners:
+                    del self._subscriptions[key]
+        return had_any
+
+    def _apply_active_set_locked(self) -> None:
+        """Restarts the underlying task iff the desired key set changed."""
+        desired = frozenset(self._subscriptions)
+        if desired == self._active_keys:
+            return
+
         if self._task_handle is not None:
-            logger.warning("Stream is already running. Stop it first.")
-            return False
+            if self._token is not None:
+                self._token.cancel()
+            self._task_handle.cancel()
+            self._task_handle = None
+            self._token = None
 
+        self._active_keys = desired
+        if not desired:
+            return
+
+        keys = sorted(desired)
         self._token = CancellationToken()
-
-        logger.info(
-            f"Starting Binance WebSocket stream for {symbols} at {interval.value}"
-        )
-
+        logger.info(f"Starting Binance WebSocket stream for {keys}")
         self._task_handle = self._task_manager.spawn(
-            self._run_stream(symbols, interval, self._token),
-            name=f"BinanceStream[{','.join(symbols)}@{interval.value}]",
+            self._run_stream(keys, self._token),
+            name=f"BinanceStream[{','.join(f'{s}@{i}' for s, i in keys)}]",
             token=self._token,
             critical=True,  # Đảm bảo Engine chờ task này close gracefully khi shutdown
         )
-        return True
 
-    def stop_stream(self) -> bool:
-        """
-        @brief Signals cooperative cancellation and cancels the background task.
-        @return True if stopped, False if no stream was running.
-        """
-        if self._task_handle is None:
-            # DEBUG, không phải WARNING: dừng một stream chưa từng chạy là
-            # trạng thái **bình thường**, không phải sự cố.
-            # `LiveStreamEngineAdapter.stop()` gọi hàm này vô điều kiện mỗi lần
-            # tắt app, nên mọi phiên không mở stream đều sinh một WARNING —
-            # đủ để làm đỏ bước "Run Log Scan" của `ci-local.ps1`, và làm loãng
-            # log tới mức WARNING thật bị chìm (`logging-rule.md`).
-            # Thông tin "không có gì để dừng" đã nằm ở giá trị trả về `False`;
-            # nơi gọi mới đủ ngữ cảnh để quyết định đó có đáng cảnh báo không
-            # (user bấm Stop khi chưa chạy = đáng; app shutdown = không).
-            logger.debug("Stop requested but no stream is running; nothing to do.")
-            return False
-
-        logger.info("Stopping Binance WebSocket stream...")
-
-        # Signal the stream loop to exit cooperatively via CancellationToken
-        if self._token is not None:
-            self._token.cancel()
-
-        # Cancel the underlying future via ITaskHandle
-        self._task_handle.cancel()
-
-        self._task_handle = None
-        self._token = None
-
-        logger.info("Binance WebSocket stream stopped.")
-        return True
-
-    # -- Private ---------------------------------------------------------------
+    # -- Private: the stream loop ------------------------------------------------
 
     async def _run_stream(
         self,
-        symbols: list[str],
-        interval: TimeFrame,
+        keys: list[_StreamKey],
         token: CancellationToken,
     ) -> None:
         """
@@ -123,11 +179,13 @@ class BinanceWebsocketService(ILiveStreamService):
                 testnet=resolve_testnet_flag(self._market_data_venue)
             )
             bsm = BinanceSocketManager(client)
-            streams = [f"{symbol.lower()}@kline_{interval.value}" for symbol in symbols]
+            streams = [
+                f"{symbol.lower()}@kline_{interval}" for symbol, interval in keys
+            ]
 
             while not token.is_cancelled():
                 try:
-                    socket = self._create_socket(bsm, symbols, streams, interval)
+                    socket = self._create_socket(bsm, keys, streams)
                     async with socket as tscm:
                         while not token.is_cancelled():
                             await self._process_socket_message(tscm)
@@ -156,13 +214,14 @@ class BinanceWebsocketService(ILiveStreamService):
     @staticmethod
     def _create_socket(
         bsm: BinanceSocketManager,
-        symbols: list[str],
+        keys: list[_StreamKey],
         streams: list[str],
-        interval: TimeFrame,
     ) -> ReconnectingWebsocket:
-        """@brief A single symbol uses the plain kline socket; multiple share a multiplex socket."""
-        if len(streams) == 1:
-            return bsm.kline_socket(symbols[0].upper(), interval=interval.value)
+        """@brief A single `(symbol, interval)` key uses the plain kline
+        socket; several share a multiplex socket."""
+        if len(keys) == 1:
+            symbol, interval = keys[0]
+            return bsm.kline_socket(symbol.upper(), interval=interval)
         return bsm.multiplex_socket(streams)
 
     async def _process_socket_message(self, tscm: ReconnectingWebsocket) -> None:

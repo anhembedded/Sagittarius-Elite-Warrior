@@ -29,4 +29,4 @@ class LiveStreamEngineAdapter(IHostedService):
         @brief Called by the Engine on shutdown. Stops the stream if running.
         """
         logger.info("Engine shutting down, ensuring stream is stopped...")
-        self._stream_service.stop_stream()
+        self._stream_service.stop_all()

@@ -1129,6 +1129,14 @@ class DashboardPresenter(BasePresenter):
         `active_charts`/`ChartCard` directly — keeps one path for both a
         same-thread (here) and a cross-thread emitter to update the chart."""
         md = event.market_data
+        # `BOT-126` — same fault `BUG-085` fixed for `MarketTickEventHandler`,
+        # never applied here: a stream now genuinely can carry more than one
+        # interval for the same symbol at once (this screen and Trading each
+        # own their own subscription), and this screen's own chart cards all
+        # share one `self._active_interval` — a tick at any other interval
+        # would otherwise be drawn as if it belonged to the selected one.
+        if md.interval != self._active_interval:
+            return
         symbol = md.symbol
         is_closed = md.is_closed
 

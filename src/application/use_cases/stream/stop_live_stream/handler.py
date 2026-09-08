@@ -17,8 +17,8 @@ class StopLiveStreamCommandHandler(
         self._stream_service = stream_service
 
     def execute(self, request: StopLiveStreamCommand) -> StopLiveStreamResponse:
-        logger.info("Executing StopLiveStreamCommand")
-        success = self._stream_service.stop_stream()
+        logger.info(f"Executing StopLiveStreamCommand for owner={request.owner}")
+        success = self._stream_service.release_owner(request.owner)
         if success:
             logger.info("StopLiveStreamCommand executed successfully.")
             return StopLiveStreamResponse(

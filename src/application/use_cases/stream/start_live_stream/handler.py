@@ -18,9 +18,12 @@ class StartLiveStreamCommandHandler(
 
     def execute(self, request: StartLiveStreamCommand) -> StartLiveStreamResponse:
         logger.info(
-            f"Executing StartLiveStreamCommand for {request.symbols} at {request.interval.value}"
+            f"Executing StartLiveStreamCommand for owner={request.owner} "
+            f"{request.symbols} at {request.interval.value}"
         )
-        success = self._stream_service.start_stream(request.symbols, request.interval)
+        success = self._stream_service.subscribe(
+            request.owner, request.symbols, request.interval
+        )
         if success:
             logger.info("StartLiveStreamCommand executed successfully.")
             return StartLiveStreamResponse(

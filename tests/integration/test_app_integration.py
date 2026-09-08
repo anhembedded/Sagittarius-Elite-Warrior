@@ -56,7 +56,9 @@ def test_app_boot_and_stream_use_case(app_instance):
         app.boot()
 
         # Dispatch StartLiveStreamCommand
-        cmd = StartLiveStreamCommand(symbols=["BTCUSDT"], interval=TimeFrame("1m"))
+        cmd = StartLiveStreamCommand(
+            owner="test", symbols=["BTCUSDT"], interval=TimeFrame("1m")
+        )
         response = app.dispatch(StartLiveStreamCommand, cmd)
 
         assert response.success is True
@@ -68,7 +70,7 @@ def test_app_boot_and_stream_use_case(app_instance):
         time.sleep(0.1)
 
         # Stop the stream
-        stop_cmd = StopLiveStreamCommand()
+        stop_cmd = StopLiveStreamCommand(owner="test")
         stop_response = app.dispatch(StopLiveStreamCommand, stop_cmd)
 
         assert stop_response.success is True
