@@ -1,6 +1,6 @@
-# BOT-126 — Mọi màn hình phải cuộn khi tràn, thay vì bị bóp dẹp
+# BOT-129 — Mọi màn hình phải cuộn khi tràn, thay vì bị bóp dẹp
 
-**Trạng thái:** 🟡 Đang làm (2026-09-08)
+**Trạng thái:** ✅ Hoàn thành (2026-09-08)
 **Nguồn:** user báo *"màn Giao dịch UI xấu, mọi thứ quá chen chúc"* kèm ảnh chụp app thật, và yêu cầu *"mọi vùng phải cuộn được, hiện chỉ Backtest có"*.
 **Rủi ro:** 🟠 — đụng `PageShell`, tức cả 5 màn hình.
 
@@ -88,3 +88,27 @@ Cổng `ci-local.ps1 -Full` xanh, có grep `LOG_FILE`.
 2. **Băng console chiếm chỗ cố định.** Trong ảnh, "NHẬT KÝ GIAO DỊCH" chiếm ~350px và gần như trống,
    trong khi vùng làm việc phía trên bị dồn. Đây là câu hỏi **phân bổ không gian giữa các băng của
    `PageShell`**, không phải chuyện cuộn.
+
+
+---
+
+## 6. Implementation Notes (2026-09-08)
+
+**Đổi số từ `BOT-126` sang `BOT-129`.** Một phiên chạy song song dùng trùng số `BOT-126` cho
+[`ILiveStreamService` — sở hữu stream theo từng màn](BOT-126_live_stream_ownership_per_screen.md),
+và task đó **đã đóng + đã có dòng link trong `ROADMAP.md`** trong khi task này còn nằm `backlog/`
+chưa ai trỏ tới. Đổi số phía này vỡ ít thứ hơn: 2 tham chiếu trong code/test, so với ~15 của họ,
+và không phá link đã publish. Đúng lớp lỗi mà [Bug Board](../bug_report/README.md) đã cảnh báo
+("đánh số tay đã hỏng một lần ở đây, 2026-08-26") — lần này ở pool `BOT-XXX` thay vì `BUG-XXX`.
+
+**Lỗi thật tìm ra trong lúc làm:**
+
+1. **Bản nháp test đầu tiên không chứng minh gì.** Dòng test dựng bằng `setFixedHeight()` → minimum
+   = preferred → nội dung cuộn được **ngay cả với `QScrollArea` trần**, tức test xanh mà không phân
+   biệt được hai hành vi. Chỉ lộ ra vì có test baseline khẳng định "scroll area trần **không** cuộn
+   với nội dung này" — nó đỏ. Viết lại bằng `_CompressibleRow` (xin 40px, co xuống 5px).
+2. **Guard showcase của `kit/`** bắt widget mới chưa có trong `tools/kit_showcase`. Thêm mục
+   showcase thật (cố ý để thấp hơn nội dung để nhìn thấy thanh cuộn) thay vì xin miễn trừ.
+
+**Verify:** cổng `-Full` xanh (`FAILED_STEPS: none`, 3735 passed, coverage 94.78%, `LOG_FILE` sạch),
+cộng đo lại bằng probe trên app thật và ảnh chụp render thật. Merge qua PR #170.

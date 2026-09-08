@@ -7,7 +7,7 @@ column of cards whose children can each shrink has a minimum far below the
 height it actually wants, so Qt compresses it to fit and the scroll bar never
 appears — the panel looks cramped rather than scrollable.
 
-Measured on the real app at 1920x1080 (`BOT-126`): the Trading screen's rail
+Measured on the real app at 1920x1080 (`BOT-129`): the Trading screen's rail
 wants 1178px, was given 647px, and reported a minimum of 302px — so it was
 squeezed by 531px with no scroll bar offered. Backtest looked like "the one
 screen that scrolls" only because its content's minimum happens to be 1256px,
