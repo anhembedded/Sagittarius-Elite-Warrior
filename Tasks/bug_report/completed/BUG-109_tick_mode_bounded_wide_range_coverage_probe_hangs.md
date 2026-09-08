@@ -1,4 +1,4 @@
-# BUG-107 — Realtime/tick mode + a *bounded* but very wide range (e.g. "365 ngày qua") hangs the Run Backtest coverage probe with no progress bar
+# BUG-109 — Realtime/tick mode + a *bounded* but very wide range (e.g. "365 ngày qua") hangs the Run Backtest coverage probe with no progress bar
 
 **Reported date:** 2026-09-08
 **Severity:** 🟠 P1 — clicking "Chạy Backtest" in Realtime (tick) mode with

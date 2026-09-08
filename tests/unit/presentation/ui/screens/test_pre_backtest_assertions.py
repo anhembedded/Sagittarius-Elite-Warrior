@@ -81,7 +81,7 @@ def test_empty_custom_end_remains_an_unbounded_range_not_a_false_validation_erro
 
 
 # --------------------------------------------------------------------- #
-# `BUG-107` — Realtime/tick mode + a *bounded* but very wide range (the
+# `BUG-109` — Realtime/tick mode + a *bounded* but very wide range (the
 # "365 ngày qua" preset, or any custom range picked that wide) reaches
 # `GetBacktestRangeCoverageQuery` at the tick interval with no progress bar
 # and no cancellation (`BUG-073`'s own root cause, never fixed at the SQL

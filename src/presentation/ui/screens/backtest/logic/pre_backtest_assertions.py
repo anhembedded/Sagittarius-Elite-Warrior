@@ -25,7 +25,7 @@ _TICK_MODE_REQUIRES_BOUNDED_RANGE_MESSAGE = (
     "giải tick (giây) không có điểm bắt đầu khiến việc xác minh dữ liệu "
     "chậm dần theo mỗi lần thử và không bao giờ bắt kịp."
 )
-#: `BUG-107` — `Tasks/reports/tick_data_feasibility.md` §3.2/§3.3 measured
+#: `BUG-109` — `Tasks/reports/tick_data_feasibility.md` §3.2/§3.3 measured
 #: a single 7-day/1s coverage probe (query + handler) at ~17s and concluded
 #: it is "not usable synchronously — MUST run in background + progress +
 #: cancel". `_coverage_is_ready()` (`execution_coordinator.py`) calls this
@@ -72,7 +72,7 @@ class PreBacktestInput:
     #: rather than importing BacktestExecutionMode, so this module stays
     #: decoupled from the FSM layer the way its other fields already are.
     is_tick_mode: bool = False
-    #: BUG-107 — the *resolved* range (post `resolve_time_range()`), not raw
+    #: BUG-109 — the *resolved* range (post `resolve_time_range()`), not raw
     #: preset/text: a preset like "365 ngày qua" is just as wide as a
     #: hand-typed custom range, and both need the same width check. `None`
     #: for either means "unknown/still resolving" — `TickModeRequiresBoundedRangeRule`
@@ -155,7 +155,7 @@ class CustomDateRangeRule:
 def tick_mode_range_too_wide(
     is_tick_mode: bool, start_time: datetime | None, end_time: datetime | None
 ) -> bool:
-    """`BUG-107` — True when `is_tick_mode` and the resolved `(start_time,
+    """`BUG-109` — True when `is_tick_mode` and the resolved `(start_time,
     end_time)` span exceeds `_MAX_TICK_MODE_RANGE_DAYS`. A plain function
     (not only `TickModeRequiresBoundedRangeRule.validate()`) so
     `ChartPreviewCoordinator` — which already has resolved datetimes from
@@ -174,7 +174,7 @@ def tick_mode_range_too_wide(
 
 class TickModeRequiresBoundedRangeRule:
     """Reject Realtime/tick mode combined with an unbounded start_time, OR
-    (`BUG-107`) a *bounded* range wider than `_MAX_TICK_MODE_RANGE_DAYS`.
+    (`BUG-109`) a *bounded* range wider than `_MAX_TICK_MODE_RANGE_DAYS`.
 
     A None start_time makes GetBacktestRangeCoverageQuery's SQL scan every
     row ever synced for that symbol/interval with no lower bound (see
@@ -186,7 +186,7 @@ class TickModeRequiresBoundedRangeRule:
     the cutoff kept moving. BOT-075's own validated feasibility number was a
     bounded 7-day window, never unbounded history.
 
-    A *bounded* range does not dodge the same query cost: `BUG-107` reproduced
+    A *bounded* range does not dodge the same query cost: `BUG-109` reproduced
     the identical hang via the plain "365 ngày qua" preset — start_time is a
     real datetime, not None, so the check above alone never caught it. Both
     hazards get the same treatment: refuse to dispatch rather than attempt a

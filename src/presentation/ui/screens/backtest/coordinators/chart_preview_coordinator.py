@@ -107,7 +107,7 @@ class ChartPreviewCoordinator:
             # preset has resolved to a bounded value) and was never covered.
             return
         if tick_mode_range_too_wide(is_tick_mode, config.start_time, config.end_time):
-            # `BUG-107` — a *bounded* range (the "365 ngày qua" preset, or
+            # `BUG-109` — a *bounded* range (the "365 ngày qua" preset, or
             # any custom range picked that wide) is the same hazard, just
             # not caught by the `start_time is None` check above: the
             # coverage query is exactly as expensive over a long bounded

@@ -161,7 +161,7 @@ def test_an_unbounded_range_in_bar_close_mode_still_previews() -> None:
 def test_no_preview_is_requested_for_a_bounded_but_too_wide_range_in_tick_mode() -> (
     None
 ):
-    """`BUG-107` — a *bounded* range (e.g. the "365 ngày qua" preset) hits
+    """`BUG-109` — a *bounded* range (e.g. the "365 ngày qua" preset) hits
     the exact same coverage-query hazard the unbounded-range test above
     guards, just via `start_time` being a real datetime rather than
     `None`. The previous guard only checked for `None` and let this

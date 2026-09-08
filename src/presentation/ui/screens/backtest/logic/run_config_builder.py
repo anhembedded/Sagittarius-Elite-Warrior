@@ -200,7 +200,7 @@ def build_run_config(
     """
     preset = TimeRangePreset(view_model.time_range.preset)
 
-    # `BUG-107` — resolved BEFORE the assertions below, not after: a preset
+    # `BUG-109` — resolved BEFORE the assertions below, not after: a preset
     # like "365 ngày qua" is just as wide as a hand-typed custom range for
     # `TickModeRequiresBoundedRangeRule`'s purposes, and it needs the real
     # (start_time, end_time) pair to check that, not the raw preset/text
