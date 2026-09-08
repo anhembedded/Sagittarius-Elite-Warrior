@@ -96,6 +96,19 @@ if TYPE_CHECKING:
 
 #: `ActionOwnershipTracker`'s `TKind` — a single action kind (the toggle),
 #: same shape as `SettingsPresenter`'s `_CHECK_CONNECTION_ACTION`.
+#: `BUG-107` — opening the Trading screen must not open a network
+#: connection. Same rule, same default and the same reason as Dev Board's
+#: `DEV_BOARD_AUTOSTART_ENABLED` (`BOT-062`: "opening the screen must not
+#: silently start a live connection unless the user has opted in"); this
+#: screen was simply never held to it, because `EPIC-021I` designed it as
+#: "being open means live" back when it had no other way to get prices.
+#:
+#: Off by default: the chart still fills from the local database on open,
+#: and goes live the moment the user enables trading — which is an explicit
+#: request for live prices, unlike clicking a sidebar item.
+_CHART_AUTOSTART_CONFIG_KEY: str = "TRADING_CHART_AUTOSTART_ENABLED"
+_DEFAULT_CHART_AUTOSTART_ENABLED: bool = False
+
 _TOGGLE_ACTION = "toggle_trading"
 #: `EPIC-022D` — its own `ActionOwnershipTracker` slot, for the same
 #: reason `BUG-089` gave Emergency Stop one: a tracker holds exactly one
@@ -340,8 +353,20 @@ class TradingPresenter(BasePresenter):
             equity_samples_to_candles(self._equity_recorder.samples)
         )
 
+        # `BUG-107` — history from the local database always; the network
+        # (Binance sync + websocket) only when the user has opted in.
+        self._chart_live_requested = bool(
+            self.config.get(
+                _CHART_AUTOSTART_CONFIG_KEY,
+                _DEFAULT_CHART_AUTOSTART_ENABLED,
+                cast=bool,
+            )
+        )
         self._chart_coordinator.start(
-            self._active_symbol, self._active_interval, self._cancellation_token
+            self._active_symbol,
+            self._active_interval,
+            self._cancellation_token,
+            go_live=self._chart_live_requested,
         )
 
     def shutdown(self) -> None:
@@ -446,12 +471,45 @@ class TradingPresenter(BasePresenter):
         self._active_interval = timeframe
         self._restart_chart()
 
-    def _restart_chart(self) -> None:
+    def _go_live_if_not_already(self) -> None:
+        """Promotes the chart from local-history-only to live, once.
+
+        @details Deliberately does NOT go through `_restart_chart()`'s
+        stop-then-start: there is no stream of this screen's own to stop
+        yet (it has only ever read local history), so a `stop()` here would
+        do nothing but risk killing a stream Dev Board already has running.
+        `StartLiveStreamCommand` takes over the single process-wide stream
+        on its own — the original always-live open path never called
+        `stop()` first either.
+        """
+        if self._chart_live_requested:
+            return
+        self._chart_live_requested = True
         self._cancellation_token.cancel()
         self._cancellation_token = CancellationToken()
-        self._chart_coordinator.stop()
         self._chart_coordinator.start(
-            self._active_symbol, self._active_interval, self._cancellation_token
+            self._active_symbol,
+            self._active_interval,
+            self._cancellation_token,
+            go_live=True,
+        )
+
+    def _restart_chart(self) -> None:
+        """Symbol/interval change: reload the chart for the new selection.
+
+        @details `stop()` runs first only when this screen is itself the
+        live one — same reasoning as `_go_live_if_not_already()`: this
+        screen must only ever stop a stream it started.
+        """
+        self._cancellation_token.cancel()
+        self._cancellation_token = CancellationToken()
+        if self._chart_live_requested:
+            self._chart_coordinator.stop()
+        self._chart_coordinator.start(
+            self._active_symbol,
+            self._active_interval,
+            self._cancellation_token,
+            go_live=self._chart_live_requested,
         )
 
     @Slot(str, list, list)
@@ -591,6 +649,13 @@ class TradingPresenter(BasePresenter):
         self._view_model.set_trading_state(result.enabled, False)
         if result.enabled:
             self._view_model.set_status("Đã bật giao dịch.", False)
+            # `BUG-107` — THIS is the explicit request for live prices, not
+            # the sidebar click that opened the screen. Trading without them
+            # would be trading blind, so the chart goes live here and stays
+            # live for the rest of the session (turning trading back off does
+            # not stop it: the stream is process-wide and Dev Board may be
+            # relying on it — the same constraint `shutdown()` documents).
+            self._go_live_if_not_already()
             # A refusal is the only path that ever returns a non-empty
             # `reconciled_positions` (see `EnableTradingCommandHandler`) —
             # a successful enable therefore always starts with none open.
