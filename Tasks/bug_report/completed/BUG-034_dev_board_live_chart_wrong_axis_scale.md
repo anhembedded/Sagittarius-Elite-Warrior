@@ -1,13 +1,15 @@
 # BUG-034 — Dev Board Live Chart: giá nến không hiển thị, trục Y bị auto-range sai thang đo
 
 **Reported date:** 2026-08-23
-**Severity:** Chưa đánh giá
-**Status:** 🔴 Open — 4 lượt điều tra (2026-08-23, 08-26, 08-30, 08-31), root cause vẫn chưa xác
-nhận được. Đã loại trừ 7 giả thuyết (indicator overlay sai thang, `DevIndicatorScript` vẽ RSI/MACD
-lên plot giá, subplot rò dữ liệu, kline map sai thang, `autorange=[False, 1.0]` là bug, trend-zone
-shading, marker Buy/Sell/Overbought) — 3 giả thuyết cuối loại trừ bằng đối chiếu source
-`pyqtgraph` thật, không suy đoán. Cần tái hiện sống (Windows/GUI thật hoặc Binance thật) để đi
-tiếp — headless repro với dữ liệu tổng hợp không tái hiện được.
+**Severity:** ⚪ **Đóng — không tái hiện được từ môi trường hiện có** (trước: Chưa đánh giá)
+**Status:** ⚪ **Đóng 2026-09-08 (user quyết định).** 4 lượt điều tra (2026-08-23, 08-26, 08-30,
+08-31), root cause vẫn chưa xác nhận được. Đã loại trừ 7 giả thuyết (indicator overlay sai thang,
+`DevIndicatorScript` vẽ RSI/MACD lên plot giá, subplot rò dữ liệu, kline map sai thang,
+`autorange=[False, 1.0]` là bug, trend-zone shading, marker Buy/Sell/Overbought) — 3 giả thuyết
+cuối loại trừ bằng đối chiếu source `pyqtgraph` thật, không suy đoán.
+
+**⚠️ Đọc §9 trước khi coi đây là "không có lỗi".** Bug này **có bằng chứng sống** (§7), khác hẳn
+một báo cáo không tái hiện được lần nào.
 
 ---
 
@@ -251,3 +253,50 @@ dữ liệu tổng hợp (§6) đã chứng minh không tái hiện được —
 tick thật hoặc hình dạng dữ liệu của 1 symbol/tick cụ thể (`0GTRY` ở §7), không dựng lại được
 bằng dữ liệu giả lập ngẫu nhiên. Việc cần làm tiếp không đổi so với §5 bước 1–2 — chưa bước nào
 làm được vì thiếu môi trường, không phải vì thiếu hướng đi.
+
+
+---
+
+## 9. Đóng hồ sơ 2026-09-08 — user quyết định dừng điều tra
+
+**Đóng vì hết đường đi trong môi trường có sẵn, KHÔNG phải vì lỗi không tồn tại.** Ghi rõ vì hai
+chuyện đó dẫn tới hai hành động rất khác nhau nếu triệu chứng quay lại.
+
+### 9.1. Cái ĐÃ được chứng minh
+
+§7 là **log sản xuất thật**, không phải suy đoán:
+
+```text
+[chart-data] ChartCard(0GTRY): ... | price [7.6760, 8.1730] | y-range [-71.3690, 46.1465] | ...
+```
+
+Dải giá thật cao ~0,5 đơn vị nằm trong một trục Y cao ~117,5 đơn vị — nến bị ép dẹp tới mức biến
+mất. Đây là hành vi sai, đã xảy ra, đã ghi lại. Đóng hồ sơ **không** đảo ngược điều đó.
+
+### 9.2. Cái KHÔNG được chứng minh, và vì sao dừng
+
+Cơ chế gây ra nó. Bốn lượt điều tra loại trừ được 7 giả thuyết nhưng không tới được nguyên nhân,
+và mọi hướng còn lại (§8.4) đều cần **tái hiện sống trên Windows/GUI thật hoặc Binance thật** —
+thứ không có trong môi trường phát triển của repo này. Headless repro với dữ liệu tổng hợp đã thử
+và không tái hiện được (§6).
+
+Bốn lượt đã dừng ở cùng một chỗ vì cùng một lý do, và lý do đó không đổi được từ bên trong repo.
+Giữ hồ sơ mở thêm chỉ làm cột "Đang mở" của Bug Board báo một việc mà không ai bắt đầu được. Nên:
+đóng, giữ nguyên toàn bộ bằng chứng.
+
+### 9.3. Nếu triệu chứng quay lại — công cụ chẩn đoán ĐÃ nằm sẵn trong code
+
+Đây là lý do đóng hồ sơ này rẻ hơn nó có vẻ. Lượt điều tra 1 (§4) đã bổ sung vĩnh viễn vào dòng
+log `[chart-data]` của `ChartCard.render_historical_data()` ba trường: `price [min, max]`,
+`y-range [min, max]`, `autorange`. Chính ba trường đó là thứ đã bắt được bằng chứng §7.
+
+Nghĩa là **không cần mở lại hồ sơ để bắt đầu chẩn đoán** — chỉ cần chạy với `--debug` rồi
+`grep '\[chart-data\]' logs/debug-*.log` là có ngay dữ kiện. Việc còn thiếu vẫn đúng như §5
+bước 1–2: một lần tái hiện sống có ảnh chụp **kèm vùng subplot** + log của đúng lần đó.
+
+### 9.4. Nếu mở lại
+
+Mở **hồ sơ mới**, tham chiếu ngược file này; đừng sửa lại file đã đóng. Bắt đầu từ §8.4 (danh sách
+nghi vấn đã thu hẹp còn các `PlotDataItem` thang giá thật, trong đó `"Widening band"` =
+`close + session_range` là biểu thức duy nhất có phép cộng và là chỗ `NaN`/`inf` có thể lọt vào) —
+đừng làm lại 7 giả thuyết đã loại trừ.

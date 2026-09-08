@@ -1,11 +1,11 @@
 # BUG-068 — QBasicTimer::start: Timers cannot be started from another thread trong quá trình kiểm tra Database Gaps
 
 **Reported date:** 2026-08-30  
-**Severity:** 🟠 **P2**  
-**Status:** 🔴 Open — đã điều tra 2026-08-31, root cause **chưa xác nhận được**: tái hiện sống
-thật (app boot thật, DB seed gap thật, không mock) trên `offscreen` cho **0 cảnh báo**, nghi
-thuộc lớp lỗi chỉ tồn tại trên nền tảng có cửa sổ thật (xem §3). Cần tái hiện trên Windows thật
-để đi tiếp — không đoán fix khi chưa xác nhận được cơ chế.
+**Severity:** ⚪ **Đóng — không tái hiện được từ môi trường hiện có** (trước: 🟠 P2)  
+**Status:** ⚪ **Đóng 2026-09-08 (user quyết định).** Đã điều tra 2026-08-31, root cause **chưa
+xác nhận được**: tái hiện sống thật (app boot thật, DB seed gap thật, không mock) trên `offscreen`
+cho **0 cảnh báo**, nghi thuộc lớp lỗi chỉ tồn tại trên nền tảng có cửa sổ thật (xem §3). Xem §5
+để biết đóng hồ sơ này nghĩa là gì và không nghĩa là gì.
 
 ---
 
@@ -76,3 +76,40 @@ repo này đã ghi nhận trước đó — không phải bug này bị bỏ qua
 3. Việc điều tra 2026-08-31 (script tái hiện, kết quả, giả thuyết) không đưa vào test tự động
    được vì không tái hiện được trên `offscreen` — không có gì để viết assertion "phải thấy cảnh
    báo X" khi biết chắc offscreen sẽ không bao giờ tạo ra nó.
+
+
+---
+
+## 5. Đóng hồ sơ 2026-09-08 — user quyết định dừng điều tra
+
+**Đóng vì không tái hiện được từ môi trường có sẵn, không phải vì đã sửa.** Không có dòng code nào
+đổi cho bug này.
+
+### 5.1. Vì sao đây là ca "đóng" hợp lý hơn `BUG-034`
+
+Khác với `BUG-034` (có log sản xuất thật ghi lại đúng triệu chứng), hồ sơ này chỉ có **4 dòng cảnh
+báo Qt** trong một log user gửi. §3 đã tái hiện sống thật toàn bộ đường đi — boot app thật,
+container/DI thật, `ThreadManager` thật, DB seed gap thật, `qInstallMessageHandler` bắt mọi message
+Qt — và cho **0 cảnh báo**, kể cả khi ép `QSG_RENDER_LOOP=threaded`.
+
+Giả thuyết còn lại (§3, chưa xác nhận): threaded render loop của Qt Quick chỉ chạy trên nền tảng có
+cửa sổ thật; `offscreen` — nền tảng **bắt buộc** cho mọi test tự động trong repo này — luôn rơi về
+basic loop. Nếu đúng, đây là lớp lỗi mà tầng Sanity/offscreen **về nguyên tắc không nhìn thấy
+được**, đúng khoảng trống môi trường mà tầng Desktop E2E tồn tại để lấp.
+
+### 5.2. Mức độ nguy hiểm thật, để lần sau cân nhắc lại cho đúng
+
+Đây là **cảnh báo**, không phải exception hay crash: `QBasicTimer::start` bị Qt từ chối và in ra
+stderr, thao tác Inspect Gaps vẫn chạy xong. Không có báo cáo nào về UI đơ hay mất dữ liệu kèm theo
+nó. Đó là lý do P2 (không phải P1) ngay từ đầu, và là lý do đóng mà không sửa là chấp nhận được —
+khác hẳn nếu nó từng làm treo event loop như `BUG-031`.
+
+### 5.3. Nếu quay lại
+
+Mở **hồ sơ mới**, tham chiếu ngược file này, và đi thẳng theo §4 bước 1–2 (tái hiện trên Windows
+thật; nếu tái hiện được thì thử `QSG_RENDER_LOOP=basic` để xác nhận/bác bỏ giả thuyết §3). Đừng làm
+lại phần đã loại trừ ở §3: query handler, `Dispatcher.dispatch()`, `SignalLogHandler`, và toàn bộ
+đường `ui_gap_inspector_signal` → `GapInspectorDialog`.
+
+**Không viết test tự động cho hồ sơ này** — §4 bước 3 đã nói rõ lý do: không thể assert "phải thấy
+cảnh báo X" khi biết chắc `offscreen` không bao giờ tạo ra nó.
