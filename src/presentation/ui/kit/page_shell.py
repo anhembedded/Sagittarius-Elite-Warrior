@@ -38,10 +38,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QFrame,
     QHBoxLayout,
     QLabel,
     QLayout,
@@ -52,6 +50,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..assets import Palette
+from .preferred_height_scroll_area import PreferredHeightScrollArea
 
 #: `QSplitter`'s initial pane split, not a hard cap — the user can still
 #: drag the handle. Matches the Pattern Library's "300px rail" as a
@@ -256,16 +255,14 @@ class PageShell(QWidget):  # base-exempt: pure layout composite, no chrome of it
 
     @staticmethod
     def _scrollable(widget: QWidget) -> QWidget:
-        """Wraps `widget` in a vertical-only `QScrollArea` so its natural
-        content height is never squeezed by the viewport — passed through
-        unchanged if the caller already manages its own `QScrollArea`
-        (Backtest/Settings/Dashboard), never double-wrapped."""
+        """Wraps `widget` in a vertical-only `PreferredHeightScrollArea` so
+        its natural content height is never squeezed by the viewport — passed
+        through unchanged if the caller already manages its own `QScrollArea`
+        (Backtest/Settings/Dashboard build a `PreferredHeightScrollArea` of
+        their own for the same reason), never double-wrapped."""
         if isinstance(widget, QScrollArea):
             return widget
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll = PreferredHeightScrollArea()
         scroll.setWidget(widget)
         # Marks this as a wrapper `set_workspace()` itself created, so a
         # later call detaching it knows to `takeWidget()` first — see there.

@@ -1,4 +1,8 @@
-# Nhiệm vụ: BOT-095B — Màn hình Backtest FSM & Quản lý Trạng thái Stale Data (Dirty Tracking)
+# Nhiệm vụ: BOT-131 — Màn hình Backtest FSM & Quản lý Trạng thái Stale Data (Dirty Tracking)
+
+> **Đổi số từ `BOT-095B` sang `BOT-131` (2026-09-08).** Số cũ đã bị
+> [`BOT-095B` — Backtest FSM Dirty Tracking](../completed/BOT-095B_backtest_fsm_dirty_tracking.md)
+> dùng và task đó đã xong + đã có link trong `ROADMAP.md`; task này vẫn chưa làm nên đổi phía này.
 
 > Thuộc Epic [`BOT-095`](BOT-095_backtest_signals_fsm_lifecycle_epic.md).
 > Phụ thuộc: [`BOT-095A`](../completed/BOT-095A_declarative_fsm_engine_foundation.md) (Hạ tầng `DeclarativeStateMachine`).

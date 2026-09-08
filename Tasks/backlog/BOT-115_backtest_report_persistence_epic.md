@@ -38,7 +38,7 @@ Ba nguyên tắc chốt trước khi code:
 
 ### 3.2. FSM Dirty Tracking sẽ đánh nhau với import
 
-[`BOT-095B`](BOT-095B_backtest_fsm_and_stale_data_lifecycle.md) so sánh toolbar hiện tại với config lần chạy cuối để phát hiện kết quả cũ. Import một report = màn hình đang hiện kết quả **không đến từ toolbar** → FSM sẽ lập tức bắn banner "Cấu hình đã thay đổi" một cách vô nghĩa.
+[`BOT-131`](BOT-131_backtest_fsm_and_stale_data_lifecycle.md) so sánh toolbar hiện tại với config lần chạy cuối để phát hiện kết quả cũ. Import một report = màn hình đang hiện kết quả **không đến từ toolbar** → FSM sẽ lập tức bắn banner "Cấu hình đã thay đổi" một cách vô nghĩa.
 
 **Quyết định:** cần một state riêng cho chế độ xem báo cáo đã nhập, có banner nêu rõ nguồn gốc file, bấm Run thì thoát chế độ đó. Không xử lý chỗ này thì tính năng vẫn "chạy" nhưng UX rối.
 

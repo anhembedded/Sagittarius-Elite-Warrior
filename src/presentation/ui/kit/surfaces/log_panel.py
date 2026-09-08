@@ -8,7 +8,7 @@ from __future__ import annotations
 import contextlib
 from typing import Protocol
 
-from PySide6.QtCore import QModelIndex
+from PySide6.QtCore import QModelIndex, QSize
 from PySide6.QtWidgets import QAbstractItemView, QListView, QWidget
 
 from ..controls import Badge, StyledButton
@@ -44,6 +44,55 @@ class LogModel(Protocol):
     def rowCount(self, parent: QModelIndex = ...) -> int: ...
     def clear(self) -> None: ...
     def copyAllToClipboard(self) -> None: ...
+
+
+#: How tall the console band may grow before it starts scrolling instead.
+#: `BOT-127`: a cap, not a fixed height — the band is content-driven below it.
+#: Chosen as "about eight lines", the point past which a reader scrolls anyway
+#: rather than reads the band as a whole.
+_MAX_VISIBLE_ROWS = 8
+
+#: Floor so an empty console is still recognisably a panel with a header and
+#: not a hairline the user cannot aim at to drop a log into.
+_MIN_VISIBLE_ROWS = 2
+
+#: Vertical padding a delegate typically adds around one line of text. Only
+#: used for the empty-model fallback below, where there is no row to measure —
+#: which is exactly the case that matters, since an empty console is the one
+#: holding space it has nothing to show in.
+_ROW_PADDING = 4
+
+
+class _ContentHeightLogList(QListView):
+    """@brief A list that asks for the height its rows actually need.
+
+    @details Named `...LogList` rather than `...ListView`: the repo guard in
+    `test_screen_layer_structure.py` reserves a `*View` class name for an MVP
+    View under `screens/`, and this is a widget, not a screen.
+
+    @details Qt's default `QListView.sizeHint()` is a constant (256x192-ish)
+    with no relation to the model, and `LogPanel` sits in `PageShell`'s console
+    band, which is laid out at its size hint. Measured on the real app
+    (`BOT-127`): the Trading screen's console held **244px while showing one
+    line of log**, taking that space permanently from the workspace above it.
+
+    Asking for `rows x row height`, clamped between `_MIN_VISIBLE_ROWS` and
+    `_MAX_VISIBLE_ROWS`, makes an idle console small and a busy one useful,
+    without either being a hard-coded band height.
+    """
+
+    def sizeHint(self) -> QSize:
+        base = super().sizeHint()
+        model = self.model()
+        rows = 0 if model is None else model.rowCount(QModelIndex())
+        row_height = self.sizeHintForRow(0)
+        if row_height <= 0:
+            # No row to measure — an empty log. Falling back to Qt's constant
+            # here would defeat the whole point: the empty console is the one
+            # that was holding 244px with nothing in it.
+            row_height = self.fontMetrics().lineSpacing() + _ROW_PADDING
+        visible = min(max(rows, _MIN_VISIBLE_ROWS), _MAX_VISIBLE_ROWS)
+        return QSize(base.width(), visible * row_height + 2 * self.frameWidth())
 
 
 class LogPanel(Card):
@@ -95,7 +144,7 @@ class LogPanel(Card):
         self.clear_button.clicked.connect(self._clear)
         self.header_actions.addWidget(self.clear_button)
 
-        self.list_view = QListView()
+        self.list_view = _ContentHeightLogList()
         self.list_view.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         apply_role(self.list_view, StyleRole.LIST_SURFACE)
         self.body_layout.addWidget(self.list_view, 1)

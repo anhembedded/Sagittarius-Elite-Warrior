@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 // Shared header + row-list + empty-state skeleton for every `qml/` table
@@ -78,64 +79,129 @@ ColumnLayout {
     property string listObjectName: "dataTableRows"
     property string emptyObjectName: "dataTableEmpty"
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: 8
-
-        Repeater {
-            model: root.columns
-            delegate: Text {
-                objectName: "dataTableHeaderCell_" + (modelData.key !== undefined ? modelData.key : index)
-                Layout.preferredWidth: modelData.width !== undefined ? modelData.width : -1
-                Layout.fillWidth: !!modelData.fillWidth
-                // Same fix as `DatabaseStatusRow.qml`'s row delegate (BUG-076):
-                // without `elide`, a `fillWidth` `Text` still shrinks its own
-                // layout box (`width`) when space runs out, but the painted
-                // glyphs are NOT clipped to that box — `contentWidth` stays
-                // at the label's full un-truncated size regardless, so the
-                // text visibly overflows into whatever sits to its right
-                // (measured: "FIRST RECORD"'s box shrank to 61px, but its
-                // un-elided `contentWidth` stayed 77px, overflowing 16px
-                // into "LAST RECORD"'s column). `elide` truncates the
-                // rendering to fit; `Layout.minimumWidth: 0` is `RowLayout`'s
-                // own contract for allowing that box to shrink below the
-                // un-elided implicit width in the first place.
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
-                horizontalAlignment: modelData.align === "right" ? Text.AlignRight : Text.AlignLeft
-                text: modelData.label
-                textFormat: Text.PlainText
-                color: Theme.muted
-                font.pixelSize: 10
-                font.letterSpacing: root.headerLetterSpacing
-            }
+    //: `BOT-128` — the width the declared columns actually need. A table
+    //: whose columns are narrower than the box simply fills it; one whose
+    //: columns need more makes the `Flickable` below scroll instead of
+    //: dropping the columns that did not fit.
+    //:
+    //: Why sum the declared widths rather than let the header `RowLayout`
+    //: compress: those widths are a Single Source of Truth shared with each
+    //: caller's row delegate (see the note at the top). Compressing the
+    //: header without compressing the rows misaligns the two, which is why
+    //: the header cells below no longer shrink below what they declared.
+    readonly property real requiredWidth: {
+        var total = 0
+        for (var i = 0; i < columns.length; ++i) {
+            var declared = columns[i].width
+            total += declared !== undefined ? declared : root.fillColumnMinimumWidth
         }
+        return columns.length > 0
+            ? total + (columns.length - 1) * root.headerSpacing
+            : 0
     }
 
-    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+    //: Space between header cells, and the same value the content width
+    //: above accounts for — one constant rather than an `8` in two places
+    //: that can drift apart.
+    readonly property real headerSpacing: 8
 
-    ListView {
-        id: rowsView
-        objectName: root.listObjectName
+    //: What a `fillWidth` column is assumed to need when the table is at
+    //: its scrolling minimum. `fillWidth` columns have no declared width by
+    //: definition, and a column of zero width is not a column.
+    readonly property real fillColumnMinimumWidth: 80
+
+    Flickable {
+        id: scroller
+        objectName: "dataTableScroller"
         Layout.fillWidth: true
         Layout.fillHeight: true
         clip: true
-        reuseItems: root.reuseItems
-        spacing: root.rowSpacing
-        model: root.rowsModel
-        delegate: root.rowDelegate
-    }
+        //: Never narrower than the box: a table that fits must look exactly
+        //: as it did before this wrapper existed.
+        contentWidth: Math.max(width, root.requiredWidth)
+        contentHeight: height
+        flickableDirection: Flickable.HorizontalFlick
+        boundsBehavior: Flickable.StopAtBounds
 
-    Text {
-        objectName: root.emptyObjectName
-        Layout.fillWidth: true
-        Layout.topMargin: 12
-        visible: root.isEmpty
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
-        text: root.emptyText
-        textFormat: Text.PlainText
-        color: Theme.muted
-        font.pixelSize: 11
+        ScrollBar.horizontal: ScrollBar {
+            objectName: "dataTableHorizontalScrollBar"
+            //: Only present when there is something to scroll to, so a
+            //: table that fits does not grow a permanent empty bar.
+            policy: scroller.contentWidth > scroller.width
+                ? ScrollBar.AlwaysOn
+                : ScrollBar.AlwaysOff
+        }
+
+        ColumnLayout {
+            id: content
+            width: scroller.contentWidth
+            height: scroller.height
+            spacing: root.spacing
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: root.headerSpacing
+
+            Repeater {
+                model: root.columns
+                delegate: Text {
+                    objectName: "dataTableHeaderCell_" + (modelData.key !== undefined ? modelData.key : index)
+                    Layout.preferredWidth: modelData.width !== undefined ? modelData.width : -1
+                    Layout.fillWidth: !!modelData.fillWidth
+                    // `elide` stays for the `fillWidth` column, which is still
+                    // the one column that can be squeezed (BUG-076: without it a
+                    // shrunken `Text` keeps painting its full un-elided glyphs
+                    // over whatever sits to its right — measured at 16px of
+                    // overflow into the next column).
+                    //
+                    // `BOT-128` changed the other half: a declared-width column
+                    // no longer shrinks below what it declared. It used to carry
+                    // `Layout.minimumWidth: 0`, which let a narrow box compress
+                    // every column — and since each width is shared with the
+                    // caller's row delegate, which did NOT compress, the header
+                    // and its rows drifted out of alignment and the columns that
+                    // did not fit were simply lost off the edge. The `Flickable`
+                    // above scrolls to them instead.
+                    Layout.minimumWidth: modelData.width !== undefined
+                        ? modelData.width
+                        : 0
+                    elide: Text.ElideRight
+                    horizontalAlignment: modelData.align === "right" ? Text.AlignRight : Text.AlignLeft
+                    text: modelData.label
+                    textFormat: Text.PlainText
+                    color: Theme.muted
+                    font.pixelSize: 10
+                    font.letterSpacing: root.headerLetterSpacing
+                }
+            }
+        }
+
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+            ListView {
+                id: rowsView
+                objectName: root.listObjectName
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                reuseItems: root.reuseItems
+                spacing: root.rowSpacing
+                model: root.rowsModel
+                delegate: root.rowDelegate
+            }
+
+            Text {
+                objectName: root.emptyObjectName
+                Layout.fillWidth: true
+                Layout.topMargin: 12
+                visible: root.isEmpty
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: root.emptyText
+                textFormat: Text.PlainText
+                color: Theme.muted
+                font.pixelSize: 11
+            }
+        }
     }
 }

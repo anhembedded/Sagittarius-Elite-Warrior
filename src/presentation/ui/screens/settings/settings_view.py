@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,
@@ -33,6 +32,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.timeframe_picker i
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     PageShell,
+    PreferredHeightScrollArea,
     StyledButton,
     StyledField,
     StyleRole,
@@ -277,7 +277,7 @@ class SettingsView(BaseView):
             actions=self._build_save_button(),
         )
 
-        scroll = QScrollArea()
+        scroll = PreferredHeightScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         content = QWidget()

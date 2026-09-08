@@ -58,7 +58,7 @@ Older docs/habits mentioning "bump the submodule pointer" describe a process tha
 
 ## 3. The lifecycle of a TASK (new feature)
 
-1. **Task file** in `Tasks/backlog/` following the `BOT-XXX_short_description.md` template (the next number after the largest existing one). If the user asks for a feature with no task → create the task file first, then code. Large epics get sub-tasks `BOT-XXXA`, `BOT-XXXB`… and the epic must have a table listing its sub-tasks.
+1. **Task file** in `Tasks/backlog/` following the `BOT-XXX_short_description.md` template (the next number after the largest existing one). **Take that number from the files on disk, not from `ROADMAP.md`** — a board lags, and two sessions reading the same lagging board pick the same number. This has happened four times (`BUG-051`/`BUG-052`, `BUG-058` twice, `BOT-120`, `BOT-126`); `tests/unit/test_task_board_is_consistent.py` now fails the gate on a collision or a dangling board link, so a clash surfaces at merge instead of months later. If the user asks for a feature with no task → create the task file first, then code. Large epics get sub-tasks `BOT-XXXA`, `BOT-XXXB`… and the epic must have a table listing its sub-tasks.
 2. **Task file content** is written in Vietnamese, and must at minimum contain: real context & problem (not generic), design + the **reason** for any non-obvious decision, per-file changes, testing.
 3. **Code + tests.** See §5 for which test tier is the right one.
 4. **On completion:** `git mv Tasks/backlog/BOT-XXX_*.md Tasks/completed/`, change the status to `✅ Hoàn thành (YYYY-MM-DD)`, and add an "Implementation Notes" section recording the **real bugs found while doing the work**, design decisions, and test counts. This is the task file's greatest value to a later reader — don't write it just to tick a box.
@@ -318,6 +318,25 @@ When you finish a sub-task: `git mv incomplete/EPIC-XXXY_*.md completed/`, write
 ### 12.5 Four principles the user has settled, applying to every task
 
 1. **Fix the mechanism, not a hot fix.** Fixing only the one place that was reported, when the same fault recurs in several places, is unacceptable. A fix you cannot explain — *why* the symptom disappeared — does not count as a fix (`bug-fix-rule.md`).
+
+   **Extended 2026-09-08 (user's decision, in these words: *"luôn chọn general solution"*).**
+   When a fix can be made either **locally** (this screen, this call site) or as a **general
+   mechanism** (the shared component every caller goes through), **take the general one** —
+   and do not present the local one as the recommended option. This settles a class of
+   question that had been asked repeatedly and answered inconsistently.
+
+   Worked example, the one that produced this rule (`BOT-128`): two tables on the Trading
+   screen lost 4 of 7 columns because their declared widths needed ~840px and the layout gave
+   each ~390px. Local fix: stack those two tables vertically — one line, zero risk, fixes what
+   was reported. General fix: give the shared `DataTable.qml` a horizontal scroll, so **all six**
+   tables in the app stop losing columns at any window width. The agent recommended the local
+   one because it was cheaper; the user overruled it, and was right — the local fix leaves the
+   same defect armed in five other places.
+
+   The counterweight is **scope**, not cost: a general mechanism must still be the general form
+   of *the reported problem*, not a speculative abstraction over problems nobody has (§7's "the
+   4 stub cards guessed the wrong shape"). Cost alone is never the reason to prefer local — say
+   that a general fix is larger and then do it anyway.
 2. **More files is better — one abstraction per file, and different abstractions don't even share a directory.** Splitting is the default; **merging is what needs a reason**. Two hard constraints: (a) two things at **different abstraction levels** must not share a file (Port vs implementation, base class vs subclass); (b) files at **different abstraction levels** must not share a `dir` — a directory is a layer, not a bucket (`interfaces/` holds no implementations, a shared `widgets/` holds no widget specific to one screen). The only counterweight is Single-Scope Cohesion in `code-quality-rule.md`, and it **only** wins when the definitions describe **the same lifecycle** (an FSM's enum + its matrix) — "same feature"/"same screen" does **not** count. Thresholds that force a split: **>400 lines/file** or **>15 public methods/class**. Quick arbitration: *does changing A force you to change B?* Yes → same file; no → split. Full text in [`rules/architecture-rule.md`](rules/architecture-rule.md) §5 "Abstraction-Level Separation".
 3. **Present the design before implementing** for any restructuring work: PlantUML class + component, as-is and to-be, stating clearly what is shared and what is per-screen — get it approved before writing the task file and the code.
 4. **No commit, no push unless the user asks** (§7).

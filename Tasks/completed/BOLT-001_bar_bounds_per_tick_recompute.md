@@ -2,7 +2,7 @@
 
 **Nguồn:** chạy `.jules/bolt.prompt.md`
 **Ưu tiên:** P2 — không sửa lỗi nào; rút thời gian một vòng chạy đã có thật
-**Liên quan:** [`BUG-058`](../bug_report/completed/BUG-058_ui_freeze_during_historical_tick_backtest.md) (freeze khi chạy 2.592.000 tick)
+**Liên quan:** [`BUG-058`](../bug_report/completed/BUG-108_ui_freeze_during_historical_tick_backtest.md) (freeze khi chạy 2.592.000 tick)
 **Trạng thái:** ✅ Hoàn thành 2026-08-26
 **Báo cáo đo:** [`../reports/BOLT-001_bar_bounds_benchmark.md`](../reports/BOLT-001_bar_bounds_benchmark.md)
 

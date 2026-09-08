@@ -91,10 +91,28 @@ class ChartCoordinator:
         self._emit_stream_failed = emit_stream_failed
         self._emit_log = emit_log
 
-    def start(self, symbol: str, interval_str: str, token: CancellationToken) -> None:
-        """Submits the sync + history-load + stream-start sequence to the
-        background thread pool for `symbol`/`interval_str`."""
-        self._thread_manager.submit(self._run, symbol, interval_str, token)
+    def start(
+        self,
+        symbol: str,
+        interval_str: str,
+        token: CancellationToken,
+        *,
+        go_live: bool = False,
+    ) -> None:
+        """Submits the chart load for `symbol`/`interval_str`.
+
+        @param go_live When `False` (the default) this reads **local history
+        only** — one `GetHistoricalKlinesQuery` against the app's own
+        database, no network. When `True` it also syncs from Binance and
+        opens the websocket.
+
+        @details `BUG-107`: opening a screen is not a request to go on the
+        network. `go_live` defaults to `False` so a caller that forgets the
+        argument gets the quiet behaviour, not a live stream — the failure
+        this parameter exists to prevent should not be reachable by
+        omission.
+        """
+        self._thread_manager.submit(self._run, symbol, interval_str, token, go_live)
 
     def stop(self) -> None:
         """Fast and synchronous — same as Dev Board's own
@@ -105,27 +123,41 @@ class ChartCoordinator:
             StopLiveStreamCommand, StopLiveStreamCommand(owner=_STREAM_OWNER)
         )
 
-    def _run(self, symbol: str, interval_str: str, token: CancellationToken) -> None:
+    def _run(
+        self,
+        symbol: str,
+        interval_str: str,
+        token: CancellationToken,
+        go_live: bool,
+    ) -> None:
         try:
             interval = TimeFrame(interval_str)
 
-            self._emit_log(f"Đang đồng bộ dữ liệu {symbol} từ Binance...")
-            self._dispatcher.dispatch(
-                SyncMarketDataCommand,
-                SyncMarketDataCommand(
-                    symbols=[symbol],
-                    interval=interval,
-                    cancellation_requested=token.is_cancelled,
-                ),
-            )
-            if token.is_cancelled():
-                return
+            if not go_live:
+                self._emit_log(
+                    f"Đang tải dữ liệu {symbol} từ cơ sở dữ liệu cục bộ "
+                    "(chưa kết nối trực tiếp — bật giao dịch để kết nối)."
+                )
+
+            if go_live:
+                self._emit_log(f"Đang đồng bộ dữ liệu {symbol} từ Binance...")
+                self._dispatcher.dispatch(
+                    SyncMarketDataCommand,
+                    SyncMarketDataCommand(
+                        symbols=[symbol],
+                        interval=interval,
+                        cancellation_requested=token.is_cancelled,
+                    ),
+                )
+                if token.is_cancelled():
+                    return
 
             self._load_history(symbol, interval)
             if token.is_cancelled():
                 return
 
-            self._start_stream(symbol, interval)
+            if go_live:
+                self._start_stream(symbol, interval)
         except Exception as exc:  # noqa: BLE001 - worker boundary: report the real failure instead of losing it to a background-thread traceback
             self._emit_stream_failed(f"Lỗi hệ thống: {exc}")
         finally:
