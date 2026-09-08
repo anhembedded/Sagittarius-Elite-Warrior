@@ -95,6 +95,15 @@ class DashboardQmlViewModel(BaseQmlViewModel):
     disarmRequested = Signal()
     botParamsSaveRequested = Signal("QVariantMap")
 
+    #: `EPIC-023D` — same shape `TradingViewModel` carries for its own
+    #: Enable/Disable toggle + session stats (duplicated for the same
+    #: Shiboken reason the strategy-card block above documents).
+    tradingStateChanged = Signal()
+    sessionStatsChanged = Signal()
+
+    toggleRequested = Signal()
+    emergencyStopRequested = Signal()
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._log_model = LogListModel(self)
@@ -142,6 +151,13 @@ class DashboardQmlViewModel(BaseQmlViewModel):
         self._bot_params_rows: list[dict] = []
         self._bot_params_error = ""
         self._last_signal_text = ""
+
+        # `EPIC-023D` — Enable/Disable toggle + session stats, same fields
+        # `TradingViewModel.__init__` carries.
+        self._enabled = False
+        self._toggle_busy = False
+        self._orders_sent_this_session = 0
+        self._open_symbols_count = 0
 
     # ------------------------------------------------------------------ #
     # Log model — exposed to LogPanel.qml, mutated by the Presenter's
@@ -489,6 +505,47 @@ class DashboardQmlViewModel(BaseQmlViewModel):
     def set_last_signal_text(self, text: str) -> None:
         self._last_signal_text = text
         self.lastSignalChanged.emit()
+
+    # ------------------------------------------------------------------ #
+    # Enable/Disable trading toggle + session stats (`EPIC-023D`) — same
+    # shape as `TradingViewModel`'s own (written from Python only, except
+    # the click itself).
+    # ------------------------------------------------------------------ #
+    @Property(bool, notify=tradingStateChanged)
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @Property(bool, notify=tradingStateChanged)
+    def toggleBusy(self) -> bool:
+        return self._toggle_busy
+
+    @Slot(bool, bool)
+    def set_trading_state(self, enabled: bool, busy: bool) -> None:
+        self._enabled = enabled
+        self._toggle_busy = busy
+        self.tradingStateChanged.emit()
+
+    @Slot()
+    def requestToggle(self) -> None:
+        self.toggleRequested.emit()
+
+    @Slot()
+    def requestEmergencyStop(self) -> None:
+        self.emergencyStopRequested.emit()
+
+    @Property(int, notify=sessionStatsChanged)
+    def ordersSentThisSession(self) -> int:
+        return self._orders_sent_this_session
+
+    @Property(int, notify=sessionStatsChanged)
+    def openSymbolsCount(self) -> int:
+        return self._open_symbols_count
+
+    @Slot(int, int)
+    def set_session_stats(self, orders_sent: int, open_symbols_count: int) -> None:
+        self._orders_sent_this_session = orders_sent
+        self._open_symbols_count = open_symbols_count
+        self.sessionStatsChanged.emit()
 
     # ------------------------------------------------------------------ #
     # Requests — QML calls these; only the Presenter connects to them.

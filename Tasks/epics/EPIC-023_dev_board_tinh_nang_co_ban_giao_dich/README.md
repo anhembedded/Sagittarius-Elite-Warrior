@@ -1,6 +1,6 @@
 # EPIC-023 — Dev Board có các tính năng cơ bản của màn Giao dịch
 
-- **Trạng thái:** 🟡 Đang làm (3/4 task con)
+- **Trạng thái:** ✅ Hoàn thành (4/4 task con)
 - **Repo:** Elite
 - **Lập ngày:** 2026-09-08, theo yêu cầu trực tiếp của user: "dev board cần có các tính năng cơ
   bản của màn hình giao dịch, để cho test các tính năng cơ bản đó"
@@ -78,7 +78,7 @@ dịch thật/testnet, dừng khẩn cấp) — làm sau cùng, soát kỹ nhấ
 | **A** | [Bảng Vị thế + Lệnh chờ khớp trên Dev Board](completed/EPIC-023A_bang_vi_the_va_lenh_cho_khop.md) | — | ✅ |
 | **B** | [Biểu đồ Vốn (equity) trên Dev Board](completed/EPIC-023B_bieu_do_von_realtime.md) | — | ✅ |
 | **C** | [Card "Chiến lược" thật — Nạp/Gỡ + Tín hiệu gần nhất](completed/EPIC-023C_card_chien_luoc_that_va_tin_hieu.md) | A (đọc cùng `_active_symbol`) | ✅ |
-| **D** | [Bật/Tắt giao dịch + Dừng khẩn cấp + Thống kê phiên](incomplete/EPIC-023D_bat_tat_giao_dich_va_dung_khan_cap.md) | A, C | 🔴 |
+| **D** | [Bật/Tắt giao dịch + Dừng khẩn cấp + Thống kê phiên](completed/EPIC-023D_bat_tat_giao_dich_va_dung_khan_cap.md) | A, C | ✅ |
 
 ---
 

@@ -17,6 +17,20 @@ from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session im
 from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
     StrategyRegistry,
 )
+from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
+    TradingSessionState,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
+    DisableTradingCommand,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.emergency_stop import (
+    EmergencyStopCommand,
+    EmergencyStopResult,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.enable_trading import (
+    EnableTradingBlockReason,
+    EnableTradingCommand,
+)
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
 from Sagittarius_Elite_Warrior.src.domain.events.equity_sampled_event import (
     EquitySampledEvent,
@@ -40,8 +54,10 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config imp
     SUPPORTED_LIVE_INTERVALS,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
+from Sagittarius_Elite_Warrior.src.presentation.enum_labels import EnumLabels
 from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.action_ownership_tracker import (
+    ActionOutcome,
     ActionOwnershipTracker,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.app_defaults import (
@@ -189,6 +205,39 @@ _FILL_MARKERS_KEY = "live_fills"
 #: Presenter owns its own, `async-ui-action-rule.md` §2), so identical
 #: strings here do not collide.
 _ARM_ACTION = "arm_strategy"
+
+#: `EPIC-023D` — same action-kind strings `TradingPresenter` uses for its own
+#: toggle/Emergency Stop trackers; again separate instances, so no collision.
+_TOGGLE_ACTION = "toggle_trading"
+_EMERGENCY_STOP_ACTION = "emergency_stop"
+
+#: `EnumLabels`, not a bare dict — same reasoning `TradingPresenter`'s own
+#: `_BLOCK_REASON_MESSAGES` documents: construction refuses an incomplete
+#: table rather than letting a `.get(..., generic)` silently hide a missing
+#: refusal message.
+_BLOCK_REASON_MESSAGES = EnumLabels(
+    EnableTradingBlockReason,
+    {
+        EnableTradingBlockReason.TRADING_VENUE_DISABLED: (
+            "Trading venue đang tắt trong cấu hình — chỉ hỗ trợ Futures Testnet."
+        ),
+        EnableTradingBlockReason.CONNECTION_NOT_READY: (
+            "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
+        ),
+        EnableTradingBlockReason.NO_STRATEGY_ARMED: (
+            'Chưa nạp chiến lược — chọn chiến lược rồi bấm "Nạp chiến lược" trước.'
+        ),
+        EnableTradingBlockReason.UNEXPECTED_POSITIONS: (
+            "Tài khoản đang có vị thế mở ngoài dự kiến — vui lòng xử lý thủ công "
+            "trên sàn trước khi bật giao dịch."
+        ),
+        EnableTradingBlockReason.SUPERSEDED_BY_CONCURRENT_STATE_CHANGE: (
+            "Một thao tác khác (thường là DỪNG KHẨN CẤP) đã thay đổi trạng thái "
+            "trong lúc đang đối soát — không bật giao dịch. Kiểm tra lại rồi thử "
+            "lại nếu vẫn muốn bật."
+        ),
+    },
+)
 
 # WS status badge (top bar) text/color/tone per FSM state — presentational
 # only, derived from the state DashboardPresenter already tracks.
@@ -402,6 +451,15 @@ class DashboardPresenter(BasePresenter):
     ui_script_info_signal = Signal(str, list)
     ui_script_marker_signal = Signal(str, list)
 
+    #: `EPIC-023D` — Enable/Disable trading + Emergency Stop, same worker-
+    #: boundary shape `TradingPresenter` uses for its own three signals.
+    #: `(action_id, EnableTradingResult | None, error_message | None)`.
+    enableTradingCompleted = Signal(tuple)
+    #: `(action_id, error_message | None)`.
+    disableTradingCompleted = Signal(tuple)
+    #: `(action_id, EmergencyStopResult | None, error_message | None)`.
+    emergencyStopCompleted = Signal(tuple)
+
     INITIAL_STATE = UIMode.IDLE
 
     def __init__(self, view: DashboardView, container: IContainer) -> None:
@@ -418,6 +476,11 @@ class DashboardPresenter(BasePresenter):
         # Resolve IThreadManager exactly once — stored as an instance attribute.
         # No further container.resolve(IThreadManager) calls anywhere else.
         self._thread_manager: IThreadManager = container.resolve(IThreadManager)
+        # `EPIC-023D` — account-wide, shared with Trading (bấm ở Dev Board
+        # hoặc Trading đều ra cùng một sự thật — xem EPIC-023's README §2).
+        self._session_state: TradingSessionState = container.resolve(
+            TradingSessionState
+        )
         # `EPIC-023B` — the recorder outlives this screen (a DI singleton
         # written by `FuturesUserDataStream` regardless of whether Dev Board
         # is even open), same reasoning `TradingPresenter` documents for its
@@ -543,6 +606,25 @@ class DashboardPresenter(BasePresenter):
         )
         self._arming_coordinator.restore_into_view_model(list(SUPPORTED_LIVE_INTERVALS))
         self._refresh_armed_summary(busy=False)
+
+        # `EPIC-023D` — Enable/Disable trading + Emergency Stop. Own tracker
+        # instances, not shared with `_arm_tracker` above or with Trading's
+        # own (`async-ui-action-rule.md` §2: a tracker holds exactly one
+        # active action regardless of kind, so sharing would let an
+        # unrelated click on this screen fence a toggle/emergency-stop
+        # result on Trading — or the other screen's own action fence this
+        # one — as stale).
+        self._toggle_tracker: ActionOwnershipTracker[str, None, None] = (
+            ActionOwnershipTracker()
+        )
+        self._emergency_stop_tracker: ActionOwnershipTracker[str, None, None] = (
+            ActionOwnershipTracker()
+        )
+        # Seeds from whatever `TradingSessionState` already says — if
+        # Trading enabled it first, opening Dev Board must show "đang BẬT",
+        # never a default "TẮT" that contradicts the account's real state.
+        self._view_model.set_trading_state(self._session_state.enabled, False)
+        self._refresh_session_stats()
 
         # BOT-035 — one collaborator per Dev Board screen, same lifetime
         # pattern as AutoStartController: constructed once here, torn down
@@ -908,6 +990,15 @@ class DashboardPresenter(BasePresenter):
         view_model.armRequested.connect(self._on_arm_requested)
         view_model.disarmRequested.connect(self._on_disarm_requested)
 
+        # `EPIC-023D` — Enable/Disable trading + Emergency Stop, same
+        # connections `TradingPresenter` makes for the identical ViewModel
+        # signals.
+        view_model.toggleRequested.connect(self._on_toggle_requested)
+        view_model.emergencyStopRequested.connect(self._on_emergency_stop_requested)
+        self.enableTradingCompleted.connect(self._on_enable_trading_completed)
+        self.disableTradingCompleted.connect(self._on_disable_trading_completed)
+        self.emergencyStopCompleted.connect(self._on_emergency_stop_completed)
+
         # Internal signals → view model update slots (all execute on the Qt
         # main thread).
         self.ui_log_signal.connect(self._append_log)
@@ -1003,8 +1094,11 @@ class DashboardPresenter(BasePresenter):
            as `TradingPresenter._record_fill_marker`'s
            `symbol == self._active_symbol` guard for its single chart. This
            half stays here — it is genuinely screen-specific, unlike #1.
+        3. `EPIC-023D` — refreshes the session-stats card, same as
+           `TradingPresenter._on_order_filled`.
         """
         self._order_book.on_order_filled(event.order)
+        self._refresh_session_stats()
 
         symbol = event.order.symbol
         card = self.active_charts.get(symbol)
@@ -1028,6 +1122,12 @@ class DashboardPresenter(BasePresenter):
         `BUG-084`."""
         self._order_book.on_order_blocked(event.symbol, event.reason)
 
+    def _refresh_session_stats(self) -> None:
+        self._view_model.set_session_stats(
+            self._session_state.orders_sent_this_session,
+            len(self._session_state.known_open_symbols),
+        )
+
     def _on_equity_sampled(self, event: EquitySampledEvent) -> None:
         """`EquityFeed.equitySampled` handler — already on the main thread.
         Account-wide (no per-symbol filtering), same as `TradingPresenter`'s
@@ -1035,6 +1135,216 @@ class DashboardPresenter(BasePresenter):
         self.view.equity_chart.append_closed_candle(
             *equity_sample_to_candle(event.sample)
         )
+
+    # ================================================================== #
+    # Enable/Disable trading toggle (`EPIC-023D`) — a single async action,
+    # fenced with `ActionOwnershipTracker`, same pattern `TradingPresenter`
+    # uses for its own identical toggle. `EnableTradingCommand`/
+    # `DisableTradingCommand` are account-wide (`TradingSessionState` is a
+    # DI singleton), so a click here has the exact same effect a click on
+    # Trading's own toggle would — deliberately: see `EPIC-023`'s README §2.
+    #
+    # Unlike Trading, there is no `_go_live_if_not_already()` call on a
+    # successful enable: Dev Board's chart liveness is already governed
+    # independently by its own Load History/Start Live buttons (and
+    # `DEV_BOARD_AUTOSTART_ENABLED`), so enabling trading here must not
+    # also force the chart into live mode as a side effect.
+    # ================================================================== #
+
+    @Slot()
+    @safe_ui_action
+    def _on_toggle_requested(self) -> None:
+        # `BUG-089` (Trading's own precedent) — the toggle button is already
+        # disabled by `busy=True` while Emergency Stop runs, but this is the
+        # real guard: a click that slips through anyway must not begin a
+        # new toggle action and, via the shared session state, race the
+        # Emergency Stop already in flight.
+        if self._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING:
+            self._append_log(
+                "Đang dừng khẩn cấp — vui lòng đợi xong trước khi bật/tắt giao dịch."
+            )
+            return
+        action = self._toggle_tracker.begin_action(_TOGGLE_ACTION, None, None)
+        currently_enabled = self._session_state.enabled
+        self._view_model.set_trading_state(currently_enabled, True)
+        if currently_enabled:
+            self._thread_manager.submit(self._run_disable, action.action_id)
+        else:
+            self._thread_manager.submit(self._run_enable, action.action_id)
+
+    def _run_enable(self, action_id: int) -> None:
+        try:
+            result = self.dispatcher.dispatch(
+                EnableTradingCommand, EnableTradingCommand()
+            )
+            self.enableTradingCompleted.emit((action_id, result, None))
+        except Exception as exc:  # noqa: BLE001 - worker boundary: report the real failure instead of losing it to a background-thread traceback
+            self.enableTradingCompleted.emit((action_id, None, str(exc)))
+
+    def _run_disable(self, action_id: int) -> None:
+        try:
+            self.dispatcher.dispatch(DisableTradingCommand, DisableTradingCommand())
+            self.disableTradingCompleted.emit((action_id, None))
+        except Exception as exc:  # noqa: BLE001 - worker boundary
+            self.disableTradingCompleted.emit((action_id, str(exc)))
+
+    @Slot(tuple)
+    def _on_enable_trading_completed(self, payload: tuple) -> None:
+        action_id, result, error = payload
+        if not self._toggle_tracker.is_current_pending(action_id, _TOGGLE_ACTION):
+            self._toggle_tracker.log_stale_callback(
+                "enable_trading", action_id, _TOGGLE_ACTION
+            )
+            return
+
+        if error is not None or result is None:
+            self._toggle_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._view_model.set_trading_state(self._session_state.enabled, False)
+            self._append_log(f"Lỗi khi bật giao dịch: {error}")
+            return
+
+        self._toggle_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
+        self._view_model.set_trading_state(result.enabled, False)
+        if result.enabled:
+            self._append_log("Đã bật giao dịch.")
+            # A refusal is the only path that ever returns a non-empty
+            # `reconciled_positions` (see `EnableTradingCommandHandler`) —
+            # a successful enable therefore always starts with none open.
+            self._order_book.replace_all(
+                positions=[], open_orders=result.reconciled_open_orders
+            )
+        else:
+            self._append_log(_BLOCK_REASON_MESSAGES[result.block_reason])
+            self._order_book.replace_all(
+                positions=result.reconciled_positions,
+                open_orders=result.reconciled_open_orders,
+            )
+        self._refresh_session_stats()
+
+    @Slot(tuple)
+    def _on_disable_trading_completed(self, payload: tuple) -> None:
+        action_id, error = payload
+        if not self._toggle_tracker.is_current_pending(action_id, _TOGGLE_ACTION):
+            self._toggle_tracker.log_stale_callback(
+                "disable_trading", action_id, _TOGGLE_ACTION
+            )
+            return
+
+        if error is not None:
+            self._toggle_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._view_model.set_trading_state(self._session_state.enabled, False)
+            self._append_log(f"Lỗi khi tắt giao dịch: {error}")
+            return
+
+        self._toggle_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
+        self._view_model.set_trading_state(False, False)
+        self._append_log("Đã tắt giao dịch.")
+
+    # ================================================================== #
+    # Emergency Stop (`EPIC-023D`) — deliberately NOT `@safe_ui_action`
+    # (that decorator swallows exceptions; this button's whole point is
+    # that a failure must be seen, never silently dropped mid-flow —
+    # ONBOARDING.md §8, bẫy 8), same reasoning `TradingPresenter` documents
+    # for its own identical button. The manual `try/except` below reports
+    # every failure through the log instead, the same "worker boundary"
+    # idiom `_run_enable`/`_run_disable` above already use.
+    # ================================================================== #
+
+    @Slot()
+    def _on_emergency_stop_requested(self) -> None:
+        try:
+            # `BUG-089` debounce (Trading's own precedent) — the Emergency
+            # Stop button is deliberately never disabled (it must always be
+            # clickable), so a second click while one is still in flight is
+            # only caught here: without this, it would submit a second,
+            # independent `EmergencyStopCommand` against the live exchange
+            # racing the first one's own cancel/close calls.
+            if self._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING:
+                self._append_log(
+                    "Đang dừng khẩn cấp — yêu cầu đã được gửi, vui lòng đợi."
+                )
+                return
+            action = self._emergency_stop_tracker.begin_action(
+                _EMERGENCY_STOP_ACTION, None, None
+            )
+            # Disables the toggle button for the duration — Enable/Disable
+            # must not race Emergency Stop's own `disable()`/`place_order()`
+            # calls.
+            self._view_model.set_trading_state(self._session_state.enabled, True)
+            self._append_log("Đang dừng khẩn cấp...")
+            self._thread_manager.submit(self._run_emergency_stop, action.action_id)
+        except Exception as exc:  # noqa: BLE001 - deliberately not @safe_ui_action, see this section's own docstring
+            self._view_model.set_trading_state(self._session_state.enabled, False)
+            self._append_log(f"Lỗi khi dừng khẩn cấp: {exc}")
+
+    def _run_emergency_stop(self, action_id: int) -> None:
+        try:
+            result = self.dispatcher.dispatch(
+                EmergencyStopCommand, EmergencyStopCommand()
+            )
+            self.emergencyStopCompleted.emit((action_id, result, None))
+        except Exception as exc:  # noqa: BLE001 - worker boundary
+            self.emergencyStopCompleted.emit((action_id, None, str(exc)))
+
+    @Slot(tuple)
+    def _on_emergency_stop_completed(self, payload: tuple) -> None:
+        action_id, result, error = payload
+        if not self._emergency_stop_tracker.is_current_pending(
+            action_id, _EMERGENCY_STOP_ACTION
+        ):
+            self._emergency_stop_tracker.log_stale_callback(
+                "emergency_stop", action_id, _EMERGENCY_STOP_ACTION
+            )
+            return
+
+        if error is not None or result is None:
+            self._emergency_stop_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._view_model.set_trading_state(self._session_state.enabled, False)
+            self._append_log(f"[ERROR] Dừng khẩn cấp thất bại: {error}")
+            return
+
+        self._emergency_stop_tracker.finish_action(
+            action_id,
+            ActionOutcome.SUCCEEDED if result.fully_succeeded else ActionOutcome.FAILED,
+        )
+        self._view_model.set_trading_state(self._session_state.enabled, False)
+        self._log_emergency_stop_result(result)
+        self._apply_emergency_stop_final_state(result)
+        if result.fully_succeeded:
+            self._append_log("Đã dừng khẩn cấp.")
+        else:
+            self._append_log("DỪNG KHẨN CẤP — THẤT BẠI MỘT PHẦN. Xem nhật ký.")
+
+    def _apply_emergency_stop_final_state(self, result: EmergencyStopResult) -> None:
+        """`BUG-093` (Trading's own precedent) — the user-data stream is
+        already stopped by Emergency Stop's own step 1, so
+        `_on_order_filled`/`_on_position_changed`/`_on_position_closed` will
+        never fire for whatever steps 2-3 actually did. Without this, the
+        Positions/Open Orders tables keep showing whatever they held right
+        before the button was pressed."""
+        if not result.final_state_confirmed:
+            self._append_log(
+                "[WARNING] Không thể xác nhận trạng thái tài khoản sau khi dừng "
+                "khẩn cấp — bảng vị thế/lệnh chờ bên dưới có thể không còn đúng. "
+                "Chạy `exchange-status` để kiểm tra trực tiếp."
+            )
+            return
+        self._order_book.replace_all(
+            positions=result.final_positions, open_orders=result.final_open_orders
+        )
+
+    def _log_emergency_stop_result(self, result: EmergencyStopResult) -> None:
+        self._append_log("DỪNG KHẨN CẤP")
+        for index, (label, step) in enumerate(
+            (
+                ("Tắt giao dịch", result.trading_disabled),
+                ("Huỷ lệnh chờ", result.orders_cancelled),
+                ("Đóng vị thế", result.positions_closed),
+            ),
+            start=1,
+        ):
+            mark = "✔" if step.succeeded else "✘"
+            self._append_log(f"  {index}. {label} ... {mark} {step.detail}")
 
     # ================================================================== #
     # Strategy card (`EPIC-023C`) — the button handlers live in

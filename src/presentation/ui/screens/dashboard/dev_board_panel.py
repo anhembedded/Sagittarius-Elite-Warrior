@@ -65,6 +65,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     StyledButton,
     StyledCheckBox,
     StyleRole,
+    apply_role,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.kit.progress_banner_widget import (
     ProgressBannerWidget,
@@ -105,6 +106,12 @@ _ARM_TEXT = "Nạp chiến lược"
 _DISARM_TEXT = "Gỡ"
 _NOT_ARMED_TEXT = "Chưa nạp chiến lược nào."
 _NO_SIGNAL_TEXT = "Chưa có tín hiệu nào."
+
+# --- `EPIC-023D` toggle/Emergency Stop — same fixed text `TradingView` uses. --- #
+_TOGGLE_ON_TEXT = "Tắt giao dịch"
+_TOGGLE_OFF_TEXT = "Bật giao dịch"
+_TOGGLE_BUSY_TEXT = "Đang xử lý..."
+_EMERGENCY_STOP_TEXT = "DỪNG KHẨN CẤP"
 
 
 def _field_style() -> str:
@@ -186,6 +193,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         scroll_layout.addWidget(self._build_system_controls())
         scroll_layout.addWidget(self._build_strategy_card())
         scroll_layout.addWidget(self._build_last_signal_card())
+        scroll_layout.addWidget(self._build_session_card())
         scroll_layout.addWidget(self._build_indicators())
         scroll_layout.addStretch(1)
         scroll.setWidget(scroll_body)
@@ -204,6 +212,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._sync_ws_status()
         self._sync_controls_active()
         self._sync_progress()
+        self._sync_trading_state()
 
     # ------------------------------------------------------------------ #
     # Layout
@@ -236,12 +245,39 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._btn_reload.setFixedHeight(26)
         self._btn_reload.clicked.connect(self._view_model.requestLoadHistory)
 
+        # `EPIC-023D` — same header placement `TradingView` gives its own
+        # toggle button; Dev Board has no separate context bar for
+        # "DỪNG KHẨN CẤP" the way Trading does, so it goes in `header_actions`
+        # too, right beside the toggle — both must stay visible regardless
+        # of which System Controls card state the panel is scrolled to.
+        self._btn_toggle_trading = StyledButton(
+            _TOGGLE_OFF_TEXT, role=StyleRole.PRIMARY_BUTTON
+        )
+        self._btn_toggle_trading.setObjectName("btnToggleTrading")
+        self._btn_toggle_trading.setFixedHeight(26)
+        self._btn_toggle_trading.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_toggle_trading.clicked.connect(self._view_model.requestToggle)
+
+        self._btn_emergency_stop = StyledButton(
+            _EMERGENCY_STOP_TEXT, role=StyleRole.DANGER_BUTTON
+        )
+        self._btn_emergency_stop.setObjectName("btnEmergencyStop")
+        self._btn_emergency_stop.setFixedHeight(26)
+        self._btn_emergency_stop.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_emergency_stop.clicked.connect(self._view_model.requestEmergencyStop)
+
     @property
     def header_actions(self) -> list[QWidget]:
         """Public accessor for `DashboardView` to place in the page header —
         mirrors `BackTestTopPanel.run_button`'s reason for existing: the
         private attributes stay what every existing test keys off."""
-        return [self._price_ticker_label, self._ws_status_pill, self._btn_reload]
+        return [
+            self._price_ticker_label,
+            self._ws_status_pill,
+            self._btn_reload,
+            self._btn_toggle_trading,
+            self._btn_emergency_stop,
+        ]
 
     @property
     def console_widget(self) -> AppLogPanel:
@@ -367,14 +403,11 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         domain terms, same objectNames — driven by the same
         `StrategyArmingCoordinator` instance `DashboardPresenter` owns.
 
-        **Editable gating (`_sync_armed_summary`) is intentionally partial
-        here**: it disables while `strategyBusy`, but not yet while trading
-        is on — `DashboardQmlViewModel` has no `enabled`/`tradingStateChanged`
-        of its own until `EPIC-023D` adds Bật/Tắt giao dịch to this screen.
-        The server-side refusal (`EPIC-022` §4.1 — a swap while trading is on
-        is rejected by the command handler regardless of any UI gate) still
-        holds either way; only the pre-emptive client-side disable is
-        deferred, not the actual safety rule.
+        `_sync_armed_summary()` disables the whole card while `strategyBusy`
+        OR while trading is on (`EPIC-023D`) — the same pre-emptive,
+        visible-before-click half of `EPIC-022` §4.1's rule `TradingView`'s
+        own `_apply_armed_summary` enforces; the command handler refuses the
+        swap server-side regardless either way.
         """
         card = Panel()
         layout = card.body_layout
@@ -490,6 +523,56 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._sync_last_signal()
         return card
 
+    def _build_session_card(self) -> Panel:
+        """`EPIC-023D` — mirrors `TradingView._build_session_card()`."""
+        card = Panel()
+        card.setObjectName("devBoardSessionCard")
+        layout = card.body_layout
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+        layout.addLayout(_section_row("Phiên giao dịch"))
+
+        layout.addWidget(self._field_label("Số lệnh đã gửi phiên này"))
+        self._lbl_orders_sent = QLabel("0")
+        self._lbl_orders_sent.setObjectName("lblOrdersSentThisSession")
+        apply_role(self._lbl_orders_sent, StyleRole.STAT_VALUE)
+        layout.addWidget(self._lbl_orders_sent)
+
+        layout.addWidget(self._field_label("Số symbol đang có vị thế mở"))
+        self._lbl_open_symbols = QLabel("0")
+        self._lbl_open_symbols.setObjectName("lblOpenSymbolsCount")
+        apply_role(self._lbl_open_symbols, StyleRole.STAT_VALUE)
+        layout.addWidget(self._lbl_open_symbols)
+
+        self._sync_session_stats()
+        return card
+
+    @staticmethod
+    def _field_label(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setStyleSheet(f"color: {Palette.MUTED}; font-size: 11px;")
+        return label
+
+    def _sync_session_stats(self) -> None:
+        vm = self._view_model
+        self._lbl_orders_sent.setText(str(vm.ordersSentThisSession))
+        self._lbl_open_symbols.setText(str(vm.openSymbolsCount))
+
+    def _sync_trading_state(self) -> None:
+        vm = self._view_model
+        self._btn_toggle_trading.setEnabled(not vm.toggleBusy)
+        if vm.toggleBusy:
+            self._btn_toggle_trading.setText(_TOGGLE_BUSY_TEXT)
+        else:
+            self._btn_toggle_trading.setText(
+                _TOGGLE_ON_TEXT if vm.enabled else _TOGGLE_OFF_TEXT
+            )
+        # The strategy card's editable gate reads `vm.enabled` too
+        # (`_sync_armed_summary`) — must re-run on every toggle, not just
+        # on `strategyConfigChanged`, the same pairing `TradingView`'s own
+        # `tradingStateChanged` connection documents.
+        self._sync_armed_summary()
+
     def _open_strategy_params_dialog(self) -> None:
         """Built fresh per opening — same reasoning `TradingView`'s own
         method documents. Imported lazily for the same reason: the dialog
@@ -553,8 +636,13 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._lbl_armed_strategy.setStyleSheet(
             f"color: {Palette.SUCCESS if summary else Palette.MUTED}; font-size: 11px;"
         )
+        # `EPIC-022` §4.1 — swapping the engine under an open position is
+        # refused by the command handler too; this is the same rule made
+        # visible before the click rather than after it (`TradingView`'s
+        # own `_apply_armed_summary` docstring).
+        editable = not vm.strategyBusy and not vm.enabled
         for widget in self._strategy_controls:
-            widget.setEnabled(not vm.strategyBusy)
+            widget.setEnabled(editable)
 
     def _sync_last_signal(self) -> None:
         self._lbl_last_signal.setText(
@@ -698,6 +786,8 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         vm.startDateChanged.connect(self._sync_start_date)
         vm.endDateChanged.connect(self._sync_end_date)
         vm.symbolChanged.connect(self._sync_symbol)
+        vm.tradingStateChanged.connect(self._sync_trading_state)
+        vm.sessionStatsChanged.connect(self._sync_session_stats)
 
     def _on_start_date_edited(self, text: str) -> None:
         self._view_model.startDate = text
