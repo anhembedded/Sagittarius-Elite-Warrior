@@ -213,3 +213,51 @@ implicit_reexport = true
 strict_equality = false
 extra_checks = false
 
+[[tool.mypy.overrides]]
+# EPIC-002D — second module: Application, per that task's own §2.3 ("mở
+# rộng dần sang Application"). Measured the same way as Domain: an
+# isolated `mypy --strict` run over `src/application/` (126 files) found
+# only 2 errors — `live_strategy_config_store.py` (constructor parameter
+# missing its `IConfig` annotation, fixed for real in the same change)
+# and `get_historical_klines/handler.py` (a real pre-existing `arg-type`
+# defect, already carried as frozen debt in the main `exclude` list above
+# — same "genuine debt, not this increment's job" reasoning as the 4
+# Domain strategy files, carved back out by the next override).
+module = ["Sagittarius_Elite_Warrior.src.application.*"]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_unused_ignores = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
+
+[[tool.mypy.overrides]]
+# `get_historical_klines/handler.py` — already excluded from the base gate
+# entirely (main `exclude` list above); re-excluded from the blanket
+# Application strictness immediately above for the same reason the 4
+# Domain strategy files are: real debt (`query.symbol: str | list[str]`
+# passed where `IMarketDataRepository.get_klines()` expects a plain `str`
+# — a genuine narrowing gap between `_execute_single`/`_execute_multi`,
+# not a strictness artifact), left for a later increment.
+module = [
+    "Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_historical_klines.handler",
+]
+disallow_any_generics = false
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+warn_unused_ignores = false
+warn_return_any = false
+implicit_reexport = true
+strict_equality = false
+extra_checks = false
+
