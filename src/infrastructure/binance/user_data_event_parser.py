@@ -83,7 +83,7 @@ def is_fill_execution(payload: dict[str, Any]) -> bool:
     """@brief Whether this `ORDER_TRADE_UPDATE` represents an actual fill
     (partial or complete) rather than a plain status transition (`NEW`,
     `CANCELED`, `EXPIRED`, ...)."""
-    return payload["o"].get("x") == _TRADE_EXECUTION_TYPE
+    return bool(payload["o"].get("x") == _TRADE_EXECUTION_TYPE)
 
 
 def fill_details(payload: dict[str, Any]) -> tuple[Decimal, Decimal]:

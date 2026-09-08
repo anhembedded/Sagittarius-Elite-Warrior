@@ -1,9 +1,9 @@
 # EPIC-002D — Lộ trình siết `--strict` dần theo module
 
 **Thuộc Epic:** [`EPIC-002`](../README.md)
-**Trạng thái:** 🟡 Đang làm — `src/domain/` và `src/application/` (mỗi bên trừ 1-4 file nợ thật đã
-biết) đã bật `--strict` thật (2026-09-08, xem §5/§6). Vẫn là backlog dài hạn theo đúng §3 — không
-có mốc "xong hẳn", mở rộng dần theo module.
+**Trạng thái:** 🟡 Đang làm — `src/domain/`, `src/application/`, `src/infrastructure/` (mỗi bên trừ
+1-4 file nợ thật đã biết) đã bật `--strict` thật (2026-09-08, xem §5/§6/§7). Vẫn là backlog dài
+hạn theo đúng §3 — không có mốc "xong hẳn", mở rộng dần theo module.
 **Phụ thuộc:** [`EPIC-002B`](../completed/EPIC-002B_wire_mypy_into_ci_local.md).
 
 ---
@@ -199,8 +199,48 @@ Cùng quy trình §5.5: tiêm hàm thiếu annotation vào `live_strategy_config
 **File đổi:** `pyproject.toml` (2 override mới, cùng khuôn §5.3),
 `src/application/services/live_strategy_config_store.py`. Không đổi hành vi runtime.
 
-**Module tiếp theo (chưa làm):** `src/infrastructure/`/`src/presentation/` — theo đúng cảnh báo
-sẵn có ở §2 điểm 3, 2 layer này có nhiều phụ thuộc ngoài (PySide6, SQLAlchemy) nên nhiều khả năng
-cần `# type: ignore` có chủ đích thay vì sửa thật thuần tuý; `src/presentation/` riêng còn bị
-chặn bởi false positive `@Property` đã ghi ở §2.3, cần quyết định stub/plugin trước khi đo được
-gì có ý nghĩa.
+## 7. Module thứ ba — `src/infrastructure/` (2026-09-08, cùng phiên với §5/§6)
+
+User yêu cầu tiếp tục thêm lần nữa ("làm tiếp module tiếp theo"), rồi xác nhận rõ áp dụng đúng
+doctrine "tự quyết định" ở `ONBOARDING.md` §7 khi được hỏi lại — không dừng chờ duyệt từng bước
+nữa.
+
+### 7.1. Đo baseline — cảnh báo ở §2 điểm 3 không tự động đúng, phải đo mới biết
+
+§2 điểm 3 đã cảnh báo Infrastructure "dễ cần `# type: ignore` có chủ đích hơn là sửa thật" vì phụ
+thuộc ngoài (SQLAlchemy, `python-binance`). Đo thật trước khi tin lời cảnh báo đó: `mypy --strict`
+cô lập trên 22 file KHÔNG thuộc 4 file đã đóng băng nợ sẵn (`client.py`, `models.py`,
+`sqlalchemy_repository.py`, `kline_row_mapper.py` — nợ `Column[T]`-vs-`T` từ `EPIC-002A`, không
+đụng tới) — **chỉ 2 lỗi**, không hơn Domain/Application bao nhiêu. Cảnh báo ở §2 là một prior hợp
+lý, không phải luật phải theo mà không đo.
+
+### 7.2. Sửa thật cả 2 lỗi
+
+- `binance_websocket_service.py::_parse_kline(self, msg: dict)` — thiếu type argument, sửa
+  `dict[str, Any]` (thêm import `Any`). File này chính `BOT-126` vừa viết lại cùng phiên trước đó
+  — mypy bắt được ngay khoảng trống nhỏ đó.
+- `user_data_event_parser.py::is_fill_execution()` — `return payload["o"].get("x") ==
+  _TRADE_EXECUTION_TYPE`: so sánh `Any == str` tự nó có kiểu `Any`, không phải `bool`, cho tới khi
+  bọc `bool(...)` — đúng lớp lỗi mypy hay gặp ở phép `==` trên giá trị `Any`.
+
+### 7.3. Xác minh
+
+Cùng quy trình §5.5/§6.4: tiêm hàm thiếu annotation vào `user_data_event_parser.py`, xác nhận
+`mypy` bắt được (`no-untyped-def`) trước khi gỡ ra.
+
+- `mypy --config-file pyproject.toml --namespace-packages --explicit-package-bases src scripts`:
+  `Success: no issues found in 257 source files` — sạch ngay lần chạy đầu.
+- `ruff check`/`ruff format --check`: sạch.
+- `pytest tests/unit/`: **3639 passed**.
+- `pytest tests/integration/`: **108 passed, 4 skipped**.
+- `pytest tests/sanity/`: **26 passed**.
+
+**File đổi:** `pyproject.toml` (2 override mới, cùng khuôn §5.3/§6),
+`src/infrastructure/binance/binance_websocket_service.py`,
+`src/infrastructure/binance/user_data_event_parser.py`. Không đổi hành vi runtime.
+
+**Module tiếp theo (chưa làm):** `src/presentation/` — bị chặn bởi false positive `@Property`
+của PySide6 đã ghi ở §2.3 (mypy đọc `@Property` descriptor thành kiểu `Property` của chính nó
+thay vì kiểu runtime thật nó trả về), cần quyết định stub/plugin trước khi đo được gì có ý
+nghĩa — không phải một-vài-annotation như 3 module trên, mà là một quyết định công cụ riêng.
+`scripts/` cũng còn nguyên nợ cũ (không thuộc phạm vi rollout theo module `src/`).
