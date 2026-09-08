@@ -4,7 +4,7 @@
 **Thuộc Epic:** [`BOT-115`](BOT-115_backtest_report_persistence_epic.md)  
 **Độ phức tạp:** 🔴 **L (Thinking)**  
 **Trạng thái:** 🔴 **Backlog**  
-**Dependencies:** [`BOT-115A`](BOT-115A_backtest_report_schema_and_serializer.md), [`BOT-095B`](BOT-095B_backtest_fsm_and_stale_data_lifecycle.md)
+**Dependencies:** [`BOT-115A`](BOT-115A_backtest_report_schema_and_serializer.md), [`BOT-131`](BOT-131_backtest_fsm_and_stale_data_lifecycle.md)
 
 ---
 

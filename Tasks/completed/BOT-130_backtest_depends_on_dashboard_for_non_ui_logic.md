@@ -1,4 +1,4 @@
-# BOT-120: Màn Backtest phụ thuộc màn Dashboard cho 3 thứ phi-UI
+# BOT-130: Màn Backtest phụ thuộc màn Dashboard cho 3 thứ phi-UI
 
 **Trạng thái:** ✅ Xong 2026-08-25
 

@@ -1,4 +1,9 @@
-# BUG-058 — UI đơ nhiều lần (5.1s → 69.1s) trong lúc chạy Historical Tick Backtest
+# BUG-108 — UI đơ nhiều lần (5.1s → 69.1s) trong lúc chạy Historical Tick Backtest
+
+> **Đổi số từ `BUG-058` sang `BUG-108` (2026-09-08).** `BUG-058` đã được dùng cho
+> [stylesheet không scope](BUG-058_unscoped_stylesheets_box_every_label.md) — chính là một trong
+> hai bug được đổi thành `BUG-057`/`BUG-058` ở lần va số 2026-08-26 mà Bug Board ghi lại, nên số
+> đó giữ nguyên và bug này nhận số mới.
 
 **Reported date:** 2026-08-26
 **Severity:** 🟠 P1 (freeze #2, root-caused và sửa) — 2 freeze còn lại (#4/#5, sau
@@ -10,7 +15,7 @@ Freeze #4/#5 (giai đoạn mô phỏng, sau `ticks_loaded`) **vẫn Open** — c
 
 ---
 
-> **Đổi số 2026-08-26:** hồ sơ này trước mang mã `BUG-051`, trùng với một bug khác đã đóng (`Tasks/bug_report/completed/BUG-051_*.md`) — Bug Board quy định mã phải là số kế tiếp số lớn nhất **ở cả hai thư mục**, và quy định đó đã bị vi phạm. Hồ sơ đang mở đổi thành `BUG-058` (hồ sơ đã đóng giữ mã cũ vì ROADMAP và các commit đã merge tham chiếu). Mọi commit/PR trước ngày này nhắc `BUG-051` **trong ngữ cảnh bug này** là chỉ chính hồ sơ đây.
+> **Đổi số 2026-08-26:** hồ sơ này trước mang mã `BUG-051`, trùng với một bug khác đã đóng (`Tasks/bug_report/completed/BUG-051_*.md`) — Bug Board quy định mã phải là số kế tiếp số lớn nhất **ở cả hai thư mục**, và quy định đó đã bị vi phạm. Hồ sơ đang mở đổi thành `BUG-108` (hồ sơ đã đóng giữ mã cũ vì ROADMAP và các commit đã merge tham chiếu). Mọi commit/PR trước ngày này nhắc `BUG-051` **trong ngữ cảnh bug này** là chỉ chính hồ sơ đây.
 
 
 ## 1. Hiện tượng (Symptom)
