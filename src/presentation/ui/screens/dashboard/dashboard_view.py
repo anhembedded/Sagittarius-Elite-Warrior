@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card import (
     ChartCard,
 )
@@ -8,6 +8,18 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.timefra
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     PageShell,
     PreferredHeightScrollArea,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_order_row import (
+    OpenOrderRow,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_orders_panel import (
+    OpenOrdersPanel,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_panel import (
+    PositionsPanel,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
+    PositionRow,
 )
 from sagittarius_engine.extensions.pyside_mvc import BaseView
 
@@ -29,6 +41,12 @@ class DashboardView(BaseView):
     Controls, Indicators, Monitor log) on the right. FSM state reaches the
     panel through `apply_ui_mode` -> the view model's `uiMode` property,
     same mechanism as before — only the render layer changed.
+
+    `EPIC-023A` adds the account-wide Vị thế/Lệnh chờ khớp tables above the
+    chart-card column, in the workspace rather than `DevBoardPanel`'s rail
+    — a rail column is too narrow for a many-column table (`BOT-128`'s own
+    finding, same tables `TradingView` places in its workspace for the
+    same reason).
     """
 
     def __init__(self, parent=None):
@@ -54,6 +72,22 @@ class DashboardView(BaseView):
         # ViewModel at construction). Re-set below once it exists.
         self._shell.set_header(_TITLE, _SUBTITLE)
 
+        # `EPIC-023A` — Vị thế/Lệnh chờ khớp, account-wide, same widgets
+        # `TradingView` embeds (moved to `qml/PositionsTable`/`qml/
+        # OpenOrdersTable` for exactly this reuse — see those modules'
+        # docstrings).
+        self._positions_panel = PositionsPanel()
+        self._positions_panel.setObjectName("positionsPanel")
+        self._open_orders_panel = OpenOrdersPanel()
+        self._open_orders_panel.setObjectName("openOrdersPanel")
+
+        tables_row = QWidget()
+        tables_layout = QHBoxLayout(tables_row)
+        tables_layout.setContentsMargins(0, 0, 0, 0)
+        tables_layout.setSpacing(12)
+        tables_layout.addWidget(self._positions_panel, 1)
+        tables_layout.addWidget(self._open_orders_panel, 1)
+
         # Main workspace content: QScrollArea for dynamic ChartCards.
         self.scroll_area = PreferredHeightScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -67,7 +101,22 @@ class DashboardView(BaseView):
         # instead of being squeezed to their minimum size with empty space below.
 
         self.scroll_area.setWidget(self.charts_container)
-        self._shell.set_workspace(self.scroll_area)
+
+        self._workspace = QWidget()
+        workspace_layout = QVBoxLayout(self._workspace)
+        workspace_layout.setContentsMargins(0, 0, 0, 0)
+        workspace_layout.setSpacing(12)
+        # Stretch, not just sizeHint — `Panel`/`QQuickWidget` reports a
+        # near-zero natural sizeHint (`TradingView._build_workspace` gives
+        # its own copy of these same two panels a stretch factor for the
+        # exact same reason), so a bare `addWidget(tables_row)` with no
+        # factor squeezed both tables down to an unreadable sliver, visible
+        # only once actually screenshotted — offscreen `pytest` alone never
+        # catches this class of layout defect.
+        workspace_layout.addWidget(tables_row, 1)
+        workspace_layout.addWidget(self.scroll_area, 3)
+
+        self._shell.set_workspace(self._workspace)
 
     def set_view_model(self, view_model, context_name: str = "viewModel") -> None:
         """Builds the right-hand DevBoardPanel against `view_model` — the
@@ -79,8 +128,14 @@ class DashboardView(BaseView):
         self._view_model = view_model
         self._panel = DevBoardPanel(view_model)
         self._shell.set_header(_TITLE, _SUBTITLE, actions=self._panel.header_actions)
-        self._shell.set_workspace(self.scroll_area, rail=self._panel)
+        self._shell.set_workspace(self._workspace, rail=self._panel)
         self._shell.set_console(self._panel.console_widget)
+
+    def set_positions(self, rows: list[PositionRow]) -> None:
+        self._positions_panel.set_rows(rows)
+
+    def set_open_orders(self, rows: list[OpenOrderRow]) -> None:
+        self._open_orders_panel.set_rows(rows)
 
     def set_symbol_preferences(self, preferences) -> None:
         """EPIC-014: DashboardPresenter injects the container-registered

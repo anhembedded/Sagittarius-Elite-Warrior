@@ -1,8 +1,12 @@
-"""Embeds `PositionsTable.qml` inline in the Trading screen's workspace.
+"""Embeds `OpenOrdersTable.qml` inline in a screen's workspace.
 
-@details Same shape `DatabaseStatusPanel` uses for `DatabaseStatusTable.qml`
-(`EPIC-015` Phase 2): a `QQuickWidget` hosted directly on a `kit.Panel`,
-not through `QmlOverlay` (this is not a dialog).
+@details Same shape as `PositionsPanel`/`DatabaseStatusPanel`.
+
+`EPIC-023A` moved this out of `screens/trading/trading_widgets/` into this
+already-shared `qml/OpenOrdersTable/` directory — see `positions_panel.py`'s
+own docstring for the full reasoning (Dev Board needed the same widget;
+reaching into a sibling screen's private dir would have been the
+cross-screen-import anti-pattern `architecture-rule.md` §5 documents).
 """
 
 from __future__ import annotations
@@ -13,25 +17,20 @@ from PySide6.QtCore import QObject, Qt, QUrl
 from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import Panel
-from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
-    PositionRow,
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_order_row import (
+    OpenOrderRow,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_vm import (
-    PositionsVM,
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_orders_vm import (
+    OpenOrdersVM,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.style import ensure_qml_style
 from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
-_QML = (
-    Path(__file__).resolve().parents[3]
-    / "qml"
-    / "PositionsTable"
-    / "PositionsTable.qml"
-)
+_QML = Path(__file__).resolve().parent / "OpenOrdersTable.qml"
 
 
-class PositionsPanel(Panel):
-    """The Positions table, embedded (not modal)."""
+class OpenOrdersPanel(Panel):
+    """The Open Orders table, embedded (not modal)."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -39,10 +38,10 @@ class PositionsPanel(Panel):
         self.body_layout.setContentsMargins(12, 12, 12, 12)
         self.body_layout.setSpacing(8)
 
-        self._vm = PositionsVM(parent=self)
+        self._vm = OpenOrdersVM(parent=self)
 
         self._quick = QQuickWidget()
-        self._quick.setObjectName("positionsTableQuick")
+        self._quick.setObjectName("openOrdersTableQuick")
         self._quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
         self._quick.setClearColor(Qt.GlobalColor.transparent)
         root_context = self._quick.rootContext()
@@ -57,7 +56,7 @@ class PositionsPanel(Panel):
             )
         self.body_layout.addWidget(self._quick, 1)
 
-    def set_rows(self, rows: list[PositionRow]) -> None:
+    def set_rows(self, rows: list[OpenOrderRow]) -> None:
         self._vm.set_rows(rows)
 
     @property

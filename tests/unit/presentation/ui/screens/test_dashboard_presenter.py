@@ -1455,7 +1455,7 @@ def test_presenter_shutdown_cancels_cancellation_token_and_shuts_down_autostart(
 # ---------------------------------------------------------------------------
 
 
-def _fill_event(symbol="ETHUSDT", order_time=None):
+def _fill_event(symbol="ETHUSDT", order_time=None, status=None):
     from decimal import Decimal
 
     from Sagittarius_Elite_Warrior.src.domain.events.order_filled_event import (
@@ -1465,6 +1465,7 @@ def _fill_event(symbol="ETHUSDT", order_time=None):
         ClientOrderId,
     )
     from Sagittarius_Elite_Warrior.src.domain.trading.order import Order
+    from Sagittarius_Elite_Warrior.src.domain.trading.order_status import OrderStatus
     from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
     from Sagittarius_Elite_Warrior.src.domain.value_objects.order_side import OrderSide
 
@@ -1474,6 +1475,7 @@ def _fill_event(symbol="ETHUSDT", order_time=None):
         side=OrderSide.BUY,
         order_type=OrderType.MARKET,
         quantity=Decimal("0.05"),
+        status=status or OrderStatus.NEW,
         order_time=order_time,
     )
     return OrderFilledEvent(
@@ -1505,6 +1507,136 @@ def test_order_filled_for_a_symbol_with_no_open_chart_is_a_no_op(presenter):
     presenter._on_order_filled(_fill_event("ETHUSDT"))  # must not raise
 
     assert presenter._fill_markers_by_symbol == {}
+
+
+# ---------------------------------------------------------------------------
+# `EPIC-023A` — OrderFeed -> Vị thế/Lệnh chờ khớp tables (account-wide, same
+# behaviour `TradingPresenter`'s own OrderFeed handlers already have — see
+# `test_trading_presenter_toggle.py`'s mirror-image tests).
+# ---------------------------------------------------------------------------
+
+
+def _position(symbol="BTCUSDT"):
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.domain.trading.live_position import (
+        LivePosition,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_status import (
+        MarginType,
+    )
+
+    return LivePosition(
+        symbol=symbol,
+        position_amt=Decimal("0.5"),
+        entry_price=Decimal("64000.00"),
+        mark_price=Decimal("64500.00"),
+        unrealized_pnl=Decimal("10.0"),
+        leverage=10,
+        margin_type=MarginType.CROSSED,
+        liquidation_price=None,
+        updated_at=datetime.now(UTC),
+    )
+
+
+def test_order_filled_with_a_live_status_adds_to_open_orders(
+    presenter, view, monkeypatch
+):
+    from Sagittarius_Elite_Warrior.src.presentation.ui.qml.OpenOrdersTable.open_order_row import (
+        build_open_order_row,
+    )
+
+    spy = MagicMock()
+    monkeypatch.setattr(view, "set_open_orders", spy)
+    event = _fill_event("BTCUSDT")
+
+    presenter._on_order_filled(event)
+
+    spy.assert_called_once_with([build_open_order_row(event.order)])
+
+
+def test_order_filled_with_a_terminal_status_removes_it(presenter, view, monkeypatch):
+    from Sagittarius_Elite_Warrior.src.domain.trading.order_status import OrderStatus
+
+    spy = MagicMock()
+    monkeypatch.setattr(view, "set_open_orders", spy)
+    presenter._on_order_filled(_fill_event("BTCUSDT", status=OrderStatus.NEW))
+    spy.reset_mock()
+
+    presenter._on_order_filled(_fill_event("BTCUSDT", status=OrderStatus.FILLED))
+
+    spy.assert_called_once_with([])
+
+
+def test_position_changed_updates_the_positions_table(presenter, view, monkeypatch):
+    from Sagittarius_Elite_Warrior.src.domain.events.position_changed_event import (
+        PositionChangedEvent,
+    )
+    from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
+        build_position_row,
+    )
+
+    spy = MagicMock()
+    monkeypatch.setattr(view, "set_positions", spy)
+    position = _position()
+
+    presenter._on_position_changed(PositionChangedEvent(position=position))
+
+    spy.assert_called_once_with([build_position_row(position)])
+
+
+def test_position_closed_removes_it_from_the_positions_table(
+    presenter, view, monkeypatch
+):
+    """`BUG-086` regression, Dev Board's own copy."""
+    from Sagittarius_Elite_Warrior.src.domain.events.position_changed_event import (
+        PositionChangedEvent,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
+        PositionClosedEvent,
+    )
+
+    spy = MagicMock()
+    monkeypatch.setattr(view, "set_positions", spy)
+    position = _position()
+    presenter._on_position_changed(PositionChangedEvent(position=position))
+    spy.reset_mock()
+
+    presenter._on_position_closed(PositionClosedEvent(symbol=position.symbol))
+
+    spy.assert_called_once_with([])
+
+
+def test_position_closed_for_an_unknown_symbol_is_a_no_op(presenter, view, monkeypatch):
+    from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
+        PositionClosedEvent,
+    )
+
+    spy = MagicMock()
+    monkeypatch.setattr(view, "set_positions", spy)
+
+    presenter._on_position_closed(PositionClosedEvent(symbol="ETHUSDT"))
+
+    spy.assert_called_once_with([])
+
+
+def test_order_blocked_appears_in_the_screens_own_log_panel(presenter):
+    """`BUG-084` — Dev Board's own copy of the same visibility fix."""
+    from Sagittarius_Elite_Warrior.src.domain.events.live_order_blocked_event import (
+        LiveOrderBlockedEvent,
+    )
+
+    presenter._on_order_blocked(
+        LiveOrderBlockedEvent(symbol="BTCUSDT", reason="max_notional_per_order")
+    )
+
+    log_model = presenter._view_model.log_model
+    assert log_model.rowCount() == 1
+    entry = log_model._entries[0]
+    assert entry.level == "info"
+    assert "BTCUSDT" in entry.message
+    assert "max_notional_per_order" in entry.message
 
 
 # ---------------------------------------------------------------------------

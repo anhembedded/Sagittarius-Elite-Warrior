@@ -1,6 +1,7 @@
 import pytest
 from Sagittarius_Elite_Warrior.src.domain.trading.order_status import (
     OrderStatus,
+    is_terminal,
     is_valid_transition,
 )
 
@@ -56,3 +57,24 @@ def test_invalid_transitions_are_blocked(
 )
 def test_terminal_statuses_have_no_outgoing_transition(terminal: OrderStatus) -> None:
     assert all(not is_valid_transition(terminal, target) for target in OrderStatus)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        OrderStatus.FILLED,
+        OrderStatus.CANCELED,
+        OrderStatus.REJECTED,
+        OrderStatus.EXPIRED,
+    ],
+)
+def test_is_terminal_true_for_terminal_statuses(status: OrderStatus) -> None:
+    assert is_terminal(status)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [OrderStatus.NEW, OrderStatus.PARTIALLY_FILLED, OrderStatus.UNKNOWN],
+)
+def test_is_terminal_false_for_non_terminal_statuses(status: OrderStatus) -> None:
+    assert not is_terminal(status)
