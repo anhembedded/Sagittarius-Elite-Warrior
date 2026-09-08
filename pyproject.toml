@@ -149,3 +149,67 @@ exclude = [
 module = ["binance", "binance.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# EPIC-002D — first module piloted on `--strict`, per that task's own §2:
+# Domain was the natural first candidate ("Strong Typing & Immutability"
+# already followed everywhere — frozen dataclasses, full annotations, no
+# bare `Any`), confirmed by measurement: only 15 errors across 3 files
+# out of 83 source files, all real (Any leaking through a deliberately
+# dynamic `input_*()` boundary, one missing generic type argument, one
+# untyped-comparison-helper family) — fixed for real, not suppressed, in
+# the same change that added this override.
+#
+# Spelled out as the individual flags `--strict` expands to (measured via
+# `mypy.main.define_options()` on the pinned 1.19.1), NOT the `strict =
+# true` shorthand: that shorthand does not scope reliably to the matched
+# module in per-module override sections — verified the hard way, it
+# leaked `disallow_untyped_calls`/`no-untyped-def` errors into unrelated
+# `infrastructure/`/`application/`/`scripts/` files on the very first
+# real-gate run after adding it.
+#
+# Widen this list as later modules earn it (§2.4 of that task); do not add
+# a module here that has not actually been measured clean.
+module = ["Sagittarius_Elite_Warrior.src.domain.*"]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_unused_ignores = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
+
+[[tool.mypy.overrides]]
+# The 4 strategy files above are still `--strict`-dirty for a real,
+# non-trivial reason (their shared indicator-handle dict collapses to
+# `float | MACDValue | SupportResistanceValue`, so every per-strategy read
+# needs a narrowing decision, not a one-line annotation) — already carried
+# as pre-existing debt in the main `exclude` list above. Re-excluded from
+# the blanket Domain strictness immediately above (each flag reset to its
+# global, non-strict default) so this module pattern matching them too does
+# not newly force them into the gate via being imported by another
+# strict-checked Domain module; fixing them for real is follow-up work for
+# a later `EPIC-002D` increment, not part of this one.
+module = [
+    "Sagittarius_Elite_Warrior.src.domain.strategies.ema_crossover_strategy",
+    "Sagittarius_Elite_Warrior.src.domain.strategies.ema_trend_pullback_strategy",
+    "Sagittarius_Elite_Warrior.src.domain.strategies.long_term_trend_zone_strategy",
+    "Sagittarius_Elite_Warrior.src.domain.strategies.multi_ema_trend_follower_strategy",
+]
+disallow_any_generics = false
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+warn_unused_ignores = false
+warn_return_any = false
+implicit_reexport = true
+strict_equality = false
+extra_checks = false
+

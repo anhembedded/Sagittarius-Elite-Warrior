@@ -1,7 +1,9 @@
 # EPIC-002D — Lộ trình siết `--strict` dần theo module
 
 **Thuộc Epic:** [`EPIC-002`](../README.md)
-**Trạng thái:** 🔴 Chưa làm — backlog dài hạn, không chặn `EPIC-002A`/`B`/`C`.
+**Trạng thái:** 🟡 Đang làm — `src/domain/` (trừ 4 file strategy đã biết) đã bật `--strict` thật
+(2026-09-08, xem §5). Vẫn là backlog dài hạn theo đúng §3 — không có mốc "xong hẳn", mở rộng dần
+theo module.
 **Phụ thuộc:** [`EPIC-002B`](../completed/EPIC-002B_wire_mypy_into_ci_local.md).
 
 ---
@@ -83,3 +85,74 @@ không phân biệt được hai loại — phải đọc.
 **không** thuộc lộ trình này: nó bị chi phối bởi một false positive hệ thống
 của PySide6 `@Property`, cần quyết định stub/plugin (§2.3), không phải sửa
 từng file.
+
+## 5. Module đầu tiên bật `--strict` thật — `src/domain/` (2026-09-08)
+
+User giao quyền tự quyết ("you will make decision on your own") đúng như §1 dự tính. Làm đúng
+theo §2 điểm 1-2: đo trước, không đoán.
+
+### 5.1. Đo baseline
+
+`mypy --strict` chạy cô lập trên `src/domain/` (83 file, trừ 4 file strategy đã biết nợ —
+xem §5.3): **chỉ 15 lỗi trên 3 file** — đúng dự đoán §2 điểm 2 ("Domain layer... nhiều khả năng
+đã gần đạt `--strict` sẵn mà không cần sửa nhiều").
+
+### 5.2. Sửa thật, không suppress
+
+- `src/domain/strategies/base_strategy.py`, `src/domain/indicator_scripts/base_indicator_script.py`
+  (4 lỗi `no-any-return` mỗi file, `input_int`/`input_float`/`input_bool`/`input_string`):
+  `InputDeclarations.declare()` trả `Any` một cách có chủ đích — kiểu thật phụ thuộc
+  `spec.kind`, và đúng `input_*()` wrapper là nơi DUY NHẤT biết mình vừa khai báo kind nào.
+  Bọc `typing.cast(int/float/bool/str, ...)` — phát biểu lại bất biến đã đúng sẵn (`_coerce()`
+  raise chứ không bao giờ trả sai kiểu cho đúng `InputKind` đã khai), không phải che giấu gì.
+- `base_indicator_script.py` thêm: `_as_series()`/`crossed_above()`/`crossed_below()`/
+  `crossed()`/`is_above()`/`is_below()` thiếu hẳn type annotation cho tham số `a`/`b`, và
+  `IndicatorHandle` (generic) dùng trần không type argument. Thêm type alias
+  `type SeriesLike = IndicatorHandle[Any] | Series` (PEP 695 — file đã dùng cú pháp này cho
+  chính `IndicatorHandle[T]`) — `Any` là bound trung thực vì `_as_series()` chỉ đọc `.series`,
+  không bao giờ đọc giá trị `T`-typed.
+- `src/domain/backtesting/backtest_metrics.py` (1 lỗi `no-any-return`, `_calmar_ratio()`):
+  `float ** float` được typeshed gõ lỏng (cơ số âm mũ phân số ra `complex` ở runtime thật).
+  Annotate biến trung gian `cagr_percent: float` — phát biểu đúng bất biến miền
+  (`end_equity`/`start_equity` luôn không âm trong domain này, kết quả luôn là số thực).
+
+### 5.3. Cấu hình — bài học thật về `strict = true` trong override
+
+`[[tool.mypy.overrides]]` với `strict = true` (thay vì liệt kê từng cờ) **rò rỉ ra ngoài
+module đã khớp** — xác nhận bằng chạy thật: lần chạy đầu bắt thêm 27 lỗi `no-untyped-def`/
+`no-untyped-call` ở `infrastructure/`/`application/`/`scripts/`, hoàn toàn không khớp pattern
+`Sagittarius_Elite_Warrior.src.domain.*`. Sửa bằng cách liệt kê đúng 12 cờ riêng lẻ mà
+`--strict` bung ra (đo thật qua `mypy.main.define_options()` trên bản 1.19.1 đang cài, không
+chép từ tài liệu — `warn_redundant_casts` bị mypy từ chối làm per-module flag, loại khỏi danh
+sách). 4 file strategy còn nợ (§5.4) được giữ ngoài bằng 1 override thứ hai, cụ thể hơn,
+đặt SAU override chính — mỗi cờ trả về default không-strict.
+
+### 5.4. Chưa đụng — nợ thật, không phải phạm vi lượt này
+
+4 file `src/domain/strategies/{ema_crossover,ema_trend_pullback,long_term_trend_zone,
+multi_ema_trend_follower}_strategy.py` vẫn nằm trong `exclude` khối chính, **chưa** bật
+`--strict`: đo riêng cho thấy 29 lỗi thật, khác hẳn lớp lỗi 3 file trên — dict indicator handle
+dùng chung trong mỗi strategy suy biến kiểu thành `float | MACDValue | SupportResistanceValue`,
+mỗi điểm đọc cần quyết định narrow-kiểu riêng (không phải 1 dòng annotate). Đây là chiến lược
+giao dịch thật đang chạy production — sửa vội rủi ro cao hơn lợi ích của lượt này. Để lại đúng
+làm tăng tiếp theo của lộ trình (§2 điểm 3: "Mở rộng dần").
+
+### 5.5. Xác minh
+
+Môi trường Linux thật (venv `python3.12` + `Sagittarius_Engine` clone, dựng lại từ `BOT-126`
+cùng phiên): thêm 1 hàm thiếu annotation vào `backtest_metrics.py`, xác nhận `mypy` bắt được
+ngay (`no-untyped-def`) — chứng minh cờ strict THẬT SỰ có hiệu lực trên domain, không phải cấu
+hình chết — rồi gỡ hàm probe đó ra.
+
+- `mypy --config-file pyproject.toml --namespace-packages --explicit-package-bases src scripts`:
+  `Success: no issues found in 257 source files`.
+- `ruff check`/`ruff format --check` trên các file đổi: sạch.
+- `pytest tests/unit/domain/`: **484 passed**.
+- `pytest tests/unit/`: **3639 passed**.
+- `pytest tests/integration/`: **108 passed, 4 skipped** (skip có sẵn từ trước).
+- `pytest tests/sanity/`: **26 passed**.
+
+**File đổi:** `pyproject.toml` (2 override mới), `src/domain/strategies/base_strategy.py`,
+`src/domain/indicator_scripts/base_indicator_script.py`, `src/domain/backtesting/backtest_metrics.py`.
+Không sửa hành vi runtime nào — toàn bộ thay đổi là annotation/cast/type alias, xác nhận bằng
+test suite xanh nguyên vẹn trước/sau.

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from Sagittarius_Elite_Warrior.src.domain.indicators.i_indicator import IIndicator
 from Sagittarius_Elite_Warrior.src.domain.scripting import (
@@ -96,19 +96,28 @@ class BaseStrategy(IStrategy):
         suffix: str | None = None,
         step: float | None = None,
     ) -> int:
-        return self._inputs.declare(
-            build_input(
-                InputKind.INT,
-                name,
-                default,
-                label,
-                minval,
-                maxval,
-                None,
-                group,
-                suffix,
-                step,
-            )
+        # `InputDeclarations.declare()` returns `Any` — the real type varies
+        # by `spec.kind`, and only each `input_*()` wrapper knows which one
+        # it just declared. The `cast` states that known invariant; it does
+        # not paper over anything `declare()`/`_coerce()` don't already
+        # guarantee (`_coerce()` raises rather than return a wrong-typed
+        # value for `InputKind.INT`).
+        return cast(
+            int,
+            self._inputs.declare(
+                build_input(
+                    InputKind.INT,
+                    name,
+                    default,
+                    label,
+                    minval,
+                    maxval,
+                    None,
+                    group,
+                    suffix,
+                    step,
+                )
+            ),
         )
 
     def input_float(
@@ -123,19 +132,22 @@ class BaseStrategy(IStrategy):
         suffix: str | None = None,
         step: float | None = None,
     ) -> float:
-        return self._inputs.declare(
-            build_input(
-                InputKind.FLOAT,
-                name,
-                default,
-                label,
-                minval,
-                maxval,
-                None,
-                group,
-                suffix,
-                step,
-            )
+        return cast(
+            float,
+            self._inputs.declare(
+                build_input(
+                    InputKind.FLOAT,
+                    name,
+                    default,
+                    label,
+                    minval,
+                    maxval,
+                    None,
+                    group,
+                    suffix,
+                    step,
+                )
+            ),
         )
 
     def input_bool(
@@ -146,8 +158,11 @@ class BaseStrategy(IStrategy):
         label: str | None = None,
         group: str | None = None,
     ) -> bool:
-        return self._inputs.declare(
-            build_input(InputKind.BOOL, name, default, label, group=group)
+        return cast(
+            bool,
+            self._inputs.declare(
+                build_input(InputKind.BOOL, name, default, label, group=group)
+            ),
         )
 
     def input_string(
@@ -159,10 +174,13 @@ class BaseStrategy(IStrategy):
         label: str | None = None,
         group: str | None = None,
     ) -> str:
-        return self._inputs.declare(
-            build_input(
-                InputKind.STRING, name, default, label, options=options, group=group
-            )
+        return cast(
+            str,
+            self._inputs.declare(
+                build_input(
+                    InputKind.STRING, name, default, label, options=options, group=group
+                )
+            ),
         )
 
     def evaluate(self, context: StrategyContext) -> Signal:
