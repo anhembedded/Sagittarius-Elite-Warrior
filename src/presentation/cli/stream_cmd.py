@@ -23,7 +23,7 @@ def execute_stream(app: App, args):
         )
         sys.exit(1)
 
-    cmd = StartLiveStreamCommand(symbols=symbols_list, interval=timeframe)
+    cmd = StartLiveStreamCommand(owner="cli", symbols=symbols_list, interval=timeframe)
     try:
         response = app.dispatch(StartLiveStreamCommand, cmd)
     except Exception as e:  # noqa: BLE001 - CLI boundary: report the real failure instead of an uncaught traceback

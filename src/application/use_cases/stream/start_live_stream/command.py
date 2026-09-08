@@ -6,11 +6,21 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFra
 
 class StartLiveStreamCommand(BaseModel):
     """
-    @brief Command to start the live market data stream.
+    @brief Command to subscribe `owner` to a live market data stream
+    (`BOT-126` — replaces `owner`'s previous subscriptions, if any; never
+    affects another owner's).
     """
 
+    owner: str
     symbols: list[str]
     interval: TimeFrame
+
+    @field_validator("owner")
+    @classmethod
+    def validate_owner(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("owner cannot be empty")
+        return v
 
     @field_validator("symbols")
     @classmethod

@@ -535,6 +535,10 @@ màn nào gọi `StartLiveStreamCommand` sau cùng quyết định symbol nào c
 người dùng bấm Stop), không phải hồi quy do lượt build này — ghi lại vì `chart_coordinator.py`
 mới sẽ chạm đúng chỗ này. Dựng multiplexing per-screen là việc ngoài phạm vi epic này.
 
+**Cập nhật:** đã giải quyết ở [`BOT-126`](../../../completed/BOT-126_live_stream_ownership_per_screen.md)
+— `ILiveStreamService` đổi sang đếm tham chiếu theo `(symbol, interval)` cho từng owner
+(`subscribe`/`release_owner`/`stop_all` thay `start_stream`/`stop_stream`).
+
 ### 6.5 Kiểm thử
 
 - **Contract (`ast` hai chiều):** `test_trading_view_contract.py` — 4 thành viên, khớp đúng bảng

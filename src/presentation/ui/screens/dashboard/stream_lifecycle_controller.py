@@ -64,6 +64,12 @@ _DEFAULT_LOAD_MORE_BATCH_CANDLES = 75
 #: own validator) — a lowercase "btcusdt" is not itself an error.
 _SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{5,20}$")
 
+#: `BOT-126` — this screen's own identity on `ILiveStreamService`. Exactly
+#: one Dev Board `DashboardPresenter`/`StreamLifecycleController` is ever
+#: alive at once, matching the `StateScope(key="dashboard")` this screen
+#: already uses for its own persisted state.
+_STREAM_OWNER = "dashboard"
+
 
 def _parse_datetime_utc(raw: str) -> datetime | None:
     """Mirrors DataManagementPresenter._parse_datetime — same format, same
@@ -308,7 +314,7 @@ class StreamLifecycleController:
         token.cancel()
         self._reset_cancellation_token()
         try:
-            cmd = StopLiveStreamCommand()
+            cmd = StopLiveStreamCommand(owner=_STREAM_OWNER)
             self.dispatcher.dispatch(StopLiveStreamCommand, cmd)
             self._view_model.log_model.append("Live Stream stopped.")
             self.fsm.transition_to(UIMode.IDLE)
@@ -503,7 +509,9 @@ class StreamLifecycleController:
 
     def _start_websocket_stream(self, symbols: list[str], interval: TimeFrame) -> None:
         self._emit_log("Opening Websocket stream...")
-        cmd = StartLiveStreamCommand(symbols=symbols, interval=interval)
+        cmd = StartLiveStreamCommand(
+            owner=_STREAM_OWNER, symbols=symbols, interval=interval
+        )
         response = self.dispatcher.dispatch(StartLiveStreamCommand, cmd)
 
         if response and getattr(response, "success", True):

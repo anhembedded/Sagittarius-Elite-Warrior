@@ -14,8 +14,9 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import (
 def test_start_live_stream_command_success():
     """Test successful initialization with valid symbols and interval."""
     command = StartLiveStreamCommand(
-        symbols=["BTCUSDT", "ETHUSDT"], interval=TimeFrame.ONE_MINUTE
+        owner="trading", symbols=["BTCUSDT", "ETHUSDT"], interval=TimeFrame.ONE_MINUTE
     )
+    assert command.owner == "trading"
     assert command.symbols == ["BTCUSDT", "ETHUSDT"]
     assert command.interval == TimeFrame.ONE_MINUTE
 
@@ -23,15 +24,28 @@ def test_start_live_stream_command_success():
 def test_start_live_stream_command_empty_symbols():
     """Test that an empty symbols list raises a ValidationError."""
     with pytest.raises(ValidationError) as excinfo:
-        StartLiveStreamCommand(symbols=[], interval=TimeFrame.ONE_MINUTE)
+        StartLiveStreamCommand(
+            owner="trading", symbols=[], interval=TimeFrame.ONE_MINUTE
+        )
 
     assert "Symbols list cannot be empty" in str(excinfo.value)
+
+
+def test_start_live_stream_command_empty_owner():
+    """`BOT-126` — owner is the scope key every subscription is released
+    by; an empty one would be indistinguishable from "no owner"."""
+    with pytest.raises(ValidationError) as excinfo:
+        StartLiveStreamCommand(
+            owner="  ", symbols=["BTCUSDT"], interval=TimeFrame.ONE_MINUTE
+        )
+
+    assert "owner cannot be empty" in str(excinfo.value)
 
 
 def test_start_live_stream_command_symbols_uppercase():
     """Test that symbol strings are properly uppercased during validation."""
     command = StartLiveStreamCommand(
-        symbols=["btcusdt", "ethusdt"], interval=TimeFrame.ONE_MINUTE
+        owner="trading", symbols=["btcusdt", "ethusdt"], interval=TimeFrame.ONE_MINUTE
     )
     assert command.symbols == ["BTCUSDT", "ETHUSDT"]
 
@@ -40,7 +54,9 @@ def test_start_live_stream_command_invalid_interval():
     """Test that invalid intervals fail validation."""
     with pytest.raises(ValidationError) as excinfo:
         # Pydantic will raise validation error for not being an enum member
-        StartLiveStreamCommand(symbols=["BTCUSDT"], interval="invalid_interval")
+        StartLiveStreamCommand(
+            owner="trading", symbols=["BTCUSDT"], interval="invalid_interval"
+        )
 
     assert "Input should be" in str(excinfo.value)
 

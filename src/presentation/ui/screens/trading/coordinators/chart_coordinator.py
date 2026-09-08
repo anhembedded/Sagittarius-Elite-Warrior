@@ -18,20 +18,14 @@ Owns no async action-id/cancellation bookkeeping of its own
 (`async-ui-action-rule.md` §2): the `CancellationToken` is created and
 reset by `TradingPresenter`, passed in on every call.
 
-**Cross-screen caveat.** `ILiveStreamService` (behind
-`StartLiveStreamCommand`/`StopLiveStreamCommand`) is one process-wide
-stream, not one per screen — confirmed by reading
-`i_live_stream_service.py`: `start_stream(symbols, interval)` takes no
-caller identity, and `stop_stream()` takes no arguments at all. Opening
-Dev Board and Trading at the same time means whichever screen last called
-`StartLiveStreamCommand` decides which symbol's ticks reach BOTH charts;
-`stop()` here, called on this screen's own symbol/interval change, stops
-that shared stream outright, including for Dev Board if it happens to be
-running. This is a pre-existing architectural constraint, not a
-regression this build introduces — Dev Board's own `_on_timeframe_changed`
-already does the identical stop-then-start dance for exactly the same
-reason. Multiplexing a real per-screen stream is out of scope for this
-epic; see this task's own write-up for the follow-up.
+**Ownership (`BOT-126`).** `ILiveStreamService` is reference-counted per
+`(symbol, interval)` across owners — this coordinator always identifies
+itself as `_STREAM_OWNER` ("trading"), so `stop()` here only ever releases
+THIS screen's own subscription, never Dev Board's, even if both are live
+on the same or different symbols at once. Stop-then-start on a
+symbol/interval change (`start()`/`stop()` below) is kept for clarity, not
+because it is required — `subscribe()` already replaces this owner's
+prior subscription outright.
 """
 
 from __future__ import annotations
@@ -67,6 +61,11 @@ if TYPE_CHECKING:
 #: which grows with enabled indicator scripts — this screen has none,
 #: EPIC-021I's own scope decision).
 _HISTORY_CANDLE_LIMIT = 500
+
+#: `BOT-126` — this screen's own identity on `ILiveStreamService`. Exactly
+#: one `TradingPresenter`/`ChartCoordinator` is ever alive at once, so a
+#: fixed string is enough (no need for a per-instance id).
+_STREAM_OWNER = "trading"
 
 
 class ChartCoordinator:
@@ -118,8 +117,11 @@ class ChartCoordinator:
     def stop(self) -> None:
         """Fast and synchronous — same as Dev Board's own
         `_on_stop_stream`, which never submits this to the thread pool
-        either."""
-        self._dispatcher.dispatch(StopLiveStreamCommand, StopLiveStreamCommand())
+        either. Owner-scoped (`BOT-126`): releases only this screen's own
+        subscription."""
+        self._dispatcher.dispatch(
+            StopLiveStreamCommand, StopLiveStreamCommand(owner=_STREAM_OWNER)
+        )
 
     def _run(
         self,
@@ -186,7 +188,9 @@ class ChartCoordinator:
 
     def _start_stream(self, symbol: str, interval: TimeFrame) -> None:
         self._emit_log(f"Đang mở luồng trực tiếp cho {symbol}...")
-        cmd = StartLiveStreamCommand(symbols=[symbol], interval=interval)
+        cmd = StartLiveStreamCommand(
+            owner=_STREAM_OWNER, symbols=[symbol], interval=interval
+        )
         response = self._dispatcher.dispatch(StartLiveStreamCommand, cmd)
         if response and getattr(response, "success", True):
             self._emit_stream_started(f"Đang truyền dữ liệu trực tiếp cho {symbol}.")

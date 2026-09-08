@@ -371,11 +371,12 @@ class TradingPresenter(BasePresenter):
 
     def shutdown(self) -> None:
         """Cancels this screen's own chart worker. Deliberately does NOT
-        call `ChartCoordinator.stop()` — `StopLiveStreamCommand` stops the
-        one process-wide stream outright (see that coordinator's own
-        docstring), and Dev Board never auto-stops it either; leaving the
-        last-started stream running on navigation away matches existing
-        behaviour rather than introducing a new one."""
+        call `ChartCoordinator.stop()` — not because it would be unsafe
+        (`BOT-126` made `stop()` owner-scoped, so it would only ever release
+        this screen's own subscription), but because Dev Board never
+        auto-stops on navigation away either; leaving the last-started
+        stream running matches that existing UX choice rather than
+        introducing a new one."""
         if self._shutdown_requested:
             return
         self._shutdown_requested = True
@@ -546,6 +547,13 @@ class TradingPresenter(BasePresenter):
         thread reaches it."""
         md = event.market_data
         if md.symbol != self._active_symbol:
+            return
+        # `BOT-126` — same fault `BUG-085` fixed for `MarketTickEventHandler`,
+        # never applied here: a stream now genuinely can carry more than one
+        # interval for the same symbol at once (Dev Board and this screen
+        # each own their own subscription), so filtering by symbol alone
+        # would let another screen's interval feed this screen's chart.
+        if md.interval != self._active_interval:
             return
         # `EPIC-022E` — closed candles only. A strategy's readings advance
         # on bar close and nowhere else, so redrawing per in-progress tick

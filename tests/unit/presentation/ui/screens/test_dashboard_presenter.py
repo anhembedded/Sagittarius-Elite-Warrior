@@ -1505,3 +1505,66 @@ def test_order_filled_for_a_symbol_with_no_open_chart_is_a_no_op(presenter):
     presenter._on_order_filled(_fill_event("ETHUSDT"))  # must not raise
 
     assert presenter._fill_markers_by_symbol == {}
+
+
+# ---------------------------------------------------------------------------
+# `BOT-126` — market tick interval filtering
+#
+# `_handle_market_tick` used to filter a `MarketTickEvent` by `symbol`
+# alone, exactly the fault `BUG-085` fixed for `MarketTickEventHandler`.
+# Harmless while `ILiveStreamService` was one process-wide stream (no two
+# intervals for the same symbol could ever be live at once); `BOT-126`'s
+# per-owner subscriptions made that possible for real (this screen and
+# Trading each own their own), so this locks the fix: a tick for a symbol
+# this screen has open, at a DIFFERENT interval than `_active_interval`,
+# must never reach the chart.
+# ---------------------------------------------------------------------------
+
+
+def _tick_event(symbol: str = "BTCUSDT", interval: str = "1m"):
+    from datetime import UTC, datetime
+
+    from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
+    from Sagittarius_Elite_Warrior.src.domain.events.market_tick_event import (
+        MarketTickEvent,
+    )
+
+    dt = datetime(2026, 9, 8, tzinfo=UTC)
+    return MarketTickEvent(
+        market_data=MarketData(
+            symbol=symbol,
+            interval=interval,
+            open_time=dt,
+            open_price=100.0,
+            high_price=110.0,
+            low_price=90.0,
+            close_price=105.0,
+            volume=1000.0,
+            close_time=dt,
+            quote_asset_volume=105000.0,
+            number_of_trades=50,
+            taker_buy_base_asset_volume=500.0,
+            taker_buy_quote_asset_volume=52500.0,
+            is_closed=True,
+        )
+    )
+
+
+def test_a_tick_for_an_open_symbol_at_a_different_interval_is_ignored(presenter):
+    mock_card = MagicMock()
+    presenter.active_charts = {"BTCUSDT": mock_card}
+    presenter._active_interval = "1m"
+
+    presenter._handle_market_tick(_tick_event("BTCUSDT", "5m"))
+
+    mock_card.append_closed_candle.assert_not_called()
+
+
+def test_a_tick_for_an_open_symbol_at_the_active_interval_reaches_the_chart(presenter):
+    mock_card = MagicMock()
+    presenter.active_charts = {"BTCUSDT": mock_card}
+    presenter._active_interval = "1m"
+
+    presenter._handle_market_tick(_tick_event("BTCUSDT", "1m"))
+
+    mock_card.append_closed_candle.assert_called_once()
