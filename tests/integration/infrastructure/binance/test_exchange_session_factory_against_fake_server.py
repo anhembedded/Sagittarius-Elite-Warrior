@@ -20,10 +20,14 @@ repository already paid down once.
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
 from binance.client import Client
+from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_credentials import (
+    ExchangeCredentials,
+)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.market_data_venue import (
     MarketDataVenue,
 )
@@ -59,3 +63,29 @@ def test_futures_testnet_client_round_trips_against_the_fake_server():
 
         assert client.client.testnet is True
         assert client.get_available_symbols() == ["BTCUSDT", "ETHUSDT"]
+
+
+def test_create_trading_client_syncs_timestamp_offset_against_the_exchange_clock():
+    """`BUG-111` — a real machine's clock running even slightly fast makes
+    every signed Binance Futures call fail with `-1021` forever, not just
+    once, because `python-binance`'s `Client.timestamp_offset` defaults to
+    `0` and nothing here used to correct it. `futures_routes.py`'s fake
+    `/fapi/v1/time` always answers `serverTime: 0` — the Unix epoch, wildly
+    "behind" any real wall clock — which makes the correction trivially
+    assertable: a correctly-synced client's `timestamp_offset` must be a
+    large NEGATIVE number close to `-(now in ms)`, not the SDK's own `0`
+    default `create_trading_client()` used to leave it at."""
+    with (
+        run_binance_fake_server() as urls,
+        patch.object(Client, "API_TESTNET_URL", urls.spot),
+        patch.object(Client, "FUTURES_TESTNET_URL", urls.futures),
+    ):
+        local_before_ms = int(time.time() * 1000)
+        client = ExchangeSessionFactory(
+            MarketDataVenue.MAINNET_PUBLIC
+        ).create_trading_client(ExchangeCredentials(api_key="k", api_secret="s"))
+        local_after_ms = int(time.time() * 1000)
+
+        # fake serverTime is 0, so the correct offset is `0 - local_time_ms`,
+        # sampled somewhere between local_before_ms and local_after_ms.
+        assert -local_after_ms <= client.timestamp_offset <= -local_before_ms
