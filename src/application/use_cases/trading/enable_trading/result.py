@@ -16,15 +16,6 @@ class EnableTradingBlockReason(str, Enum):
     #: config level (ADR §3), the same gate `ExecuteOrderCommand` also
     #: checks.
     TRADING_VENUE_DISABLED = "trading_venue_disabled"
-    #: `EPIC-022B` — nothing is armed in `LiveStrategySession`, so no tick
-    #: could ever produce a signal and no order could ever be sent.
-    #: Turning trading "on" in that state used to succeed and show a green
-    #: toggle over a system that was structurally incapable of trading —
-    #: a UI lie of exactly the kind `domain-truth-rule.md` forbids. Checked
-    #: FIRST, before the connection round-trips: it costs nothing, and
-    #: making the user wait on the network to be told their configuration
-    #: is incomplete is its own small dishonesty.
-    NO_STRATEGY_ARMED = "no_strategy_armed"
     #: `EPIC-021D`'s connection check did not come back reachable and
     #: fully ready (includes Hedge Mode — `ConnectionFailureKind.
     #: HEDGE_MODE_UNSUPPORTED` already covers "reachable but not usable").

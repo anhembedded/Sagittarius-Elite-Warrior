@@ -271,9 +271,6 @@ _BLOCK_REASON_MESSAGES = EnumLabels(
         EnableTradingBlockReason.CONNECTION_NOT_READY: (
             "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
         ),
-        EnableTradingBlockReason.NO_STRATEGY_ARMED: (
-            'Chưa nạp chiến lược — chọn chiến lược rồi bấm "Nạp chiến lược" trước.'
-        ),
         EnableTradingBlockReason.UNEXPECTED_POSITIONS: (
             "Tài khoản đang có vị thế mở ngoài dự kiến — vui lòng xử lý thủ công "
             "trên sàn trước khi bật giao dịch."

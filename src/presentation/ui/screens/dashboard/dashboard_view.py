@@ -33,6 +33,17 @@ _SUBTITLE = "Kiểm thử chỉ báo & script trên dữ liệu trực tiếp"
 #: constant `TradingView` uses for its own equity chart.
 _EQUITY_CHART_TITLE = "Vốn"
 
+#: An empty `ChartCard`'s own `sizeHint()` is tiny (no candles/toolbar to
+#: size around) — `workspace_layout`'s stretch factors only split space
+#: *beyond* each widget's own minimum, so a near-zero minimum here left
+#: the equity chart squeezed to a sliver rather than sharing fairly in the
+#: split, cramped axis labels and all (user-reported). This floor gives it
+#: a legible baseline; `PageShell.set_workspace()` already wraps the whole
+#: workspace in a `PreferredHeightScrollArea` (`kit/page_shell.py`), so if
+#: this floor plus everything else no longer fits the viewport, the page
+#: scrolls instead of compressing this chart back down.
+_EQUITY_CHART_MINIMUM_HEIGHT = 220
+
 
 class DashboardView(BaseView):
     """
@@ -122,6 +133,7 @@ class DashboardView(BaseView):
         self.equity_chart.set_chart_type("line")
         self.equity_chart.set_volume_visible(False)
         self.equity_chart.toolbar.setVisible(False)
+        self.equity_chart.setMinimumHeight(_EQUITY_CHART_MINIMUM_HEIGHT)
 
         self._workspace = QWidget()
         workspace_layout = QVBoxLayout(self._workspace)

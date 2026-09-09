@@ -509,9 +509,9 @@ class BinanceBotModule(BaseModule):
         # EPIC-022A: unlike `TradingSessionState`, this one IS seeded from
         # config at boot (`_arm_from_config`) — remembering which strategy
         # to run is not the same risk as remembering that trading was on.
-        # Singleton because the tick path, the Arm/Disarm command handlers
-        # and `EnableTradingCommand`'s "is anything armed" check must all
-        # see one instance.
+        # Singleton because the tick path and the Arm/Disarm command
+        # handlers must all see one instance (`EnableTradingCommand`
+        # itself no longer reads this at all — `BUG-112`).
         app.container.singleton(
             LiveStrategyFactory,
             lambda c: LiveStrategyFactory(
