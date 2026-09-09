@@ -5,6 +5,7 @@ test_only_the_session_factory_constructs_binance_client.py`, which scans
 
 from __future__ import annotations
 
+import time
 from typing import cast
 
 from binance.client import Client
@@ -38,6 +39,36 @@ from Sagittarius_Elite_Warrior.src.infrastructure.binance.client import (
 #: well within human patience — but stops treating an occasional slow page as
 #: fatal.
 _DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
+
+
+def _sync_timestamp_offset(client: Client) -> None:
+    """`BUG-111` — `python-binance` signs every request with
+    `int(time.time() * 1000 + self.timestamp_offset)`
+    (`base_client.py::_generate_signature`), and `timestamp_offset` defaults
+    to `0`: an unsynced local clock is used verbatim. Binance's futures API
+    rejects any signed request whose timestamp reads more than 1000ms ahead
+    of the exchange's own clock (`-1021`) — a fixed threshold `recvWindow`
+    does not widen (that parameter only extends how far *behind* is
+    tolerated) — so a machine whose clock merely runs fast, even by a
+    second, makes every signed call fail this way permanently, not
+    intermittently. `FuturesAccountReader.check_connection()` already
+    measures this exact skew via `futures_time()` for its own diagnostic
+    display, but never applied it to a session's actual signing — and every
+    caller here (`FuturesTradingClient`, `FuturesAccountReader`) gets a
+    freshly-constructed client per call anyway, so a correction applied
+    only to caller-local state, or only once, would not help the ones built
+    afterward. Set at the one place every signed session is minted instead.
+    """
+    local_before_ms = int(time.time() * 1000)
+    server_time_ms = int(client.futures_time()["serverTime"])
+    local_after_ms = int(time.time() * 1000)
+    # Midpoint of the round trip is the best available estimate of "local
+    # time at the moment the server actually read its own clock" — cheaper
+    # than it sounds: this is one extra HTTP call per already-freshly-built
+    # signing session, the same cost `Client(...)`'s own construction-time
+    # ping already pays (`BUG-045`).
+    local_at_measurement_ms = (local_before_ms + local_after_ms) // 2
+    client.timestamp_offset = server_time_ms - local_at_measurement_ms
 
 
 class ExchangeSessionFactory(IExchangeSessionFactory, ITradingSessionFactory):
@@ -97,13 +128,20 @@ class ExchangeSessionFactory(IExchangeSessionFactory, ITradingSessionFactory):
         is untyped third-party — see `pyproject.toml`'s mypy override —
         so returning it as-is would fail `no-any-return` against this
         method's own, non-`Any`, declared return type).
+
+        `BUG-111` — every returned session has its `timestamp_offset`
+        synced against the exchange's own clock before use (see
+        `_sync_timestamp_offset()`'s docstring): without it, a signed
+        request from a machine whose local clock runs even slightly fast
+        fails every single time with Binance's `-1021` ("Timestamp for
+        this request was ahead of the server's time"), since that
+        threshold is fixed and not widened by `recvWindow`.
         """
-        return cast(
-            ITradingSessionClient,
-            Client(
-                api_key=credentials.api_key,
-                api_secret=credentials.api_secret,
-                requests_params={"timeout": _DEFAULT_REQUEST_TIMEOUT_SECONDS},
-                testnet=True,
-            ),
+        client = Client(
+            api_key=credentials.api_key,
+            api_secret=credentials.api_secret,
+            requests_params={"timeout": _DEFAULT_REQUEST_TIMEOUT_SECONDS},
+            testnet=True,
         )
+        _sync_timestamp_offset(client)
+        return cast(ITradingSessionClient, client)
