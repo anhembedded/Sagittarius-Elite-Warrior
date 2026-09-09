@@ -2272,3 +2272,274 @@ def test_a_tick_for_an_open_symbol_at_the_active_interval_reaches_the_chart(pres
     presenter._handle_market_tick(_tick_event("BTCUSDT", "1m"))
 
     mock_card.append_closed_candle.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# `EPIC-024B` — manual trading card + per-order cancel. Dispatches through
+# the exact same ExecuteOrderCommand/ExecuteOrderCommandHandler the strategy
+# path uses (`LiveTradingCoordinator`) — no new order-submission path.
+# ---------------------------------------------------------------------------
+
+
+def _live_position(symbol: str, signed_amount: str):
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.domain.trading.live_position import (
+        LivePosition,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_status import (
+        MarginType,
+    )
+
+    return LivePosition(
+        symbol=symbol,
+        position_amt=Decimal(signed_amount),
+        entry_price=Decimal(64000),
+        mark_price=Decimal(64000),
+        unrealized_pnl=Decimal(0),
+        leverage=10,
+        margin_type=MarginType.CROSSED,
+        liquidation_price=None,
+        updated_at=_tick_event().market_data.close_time,
+    )
+
+
+def test_manual_order_requested_submits_background_worker_for_a_market_order(
+    presenter, mock_thread_mgr
+):
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+    from Sagittarius_Elite_Warrior.src.domain.trading.policies.manual_order_intent import (
+        ManualOrderDirection,
+    )
+
+    presenter._active_symbol = "BTCUSDT"
+    presenter._last_price_by_symbol["BTCUSDT"] = Decimal(64000)
+
+    presenter._view_model.requestManualOrder("LONG", 0.01, "MARKET", 0.0)
+
+    mock_thread_mgr.submit.assert_called_once()
+    args = mock_thread_mgr.submit.call_args[0]
+    assert args[0] == presenter._run_manual_order
+    assert args[2] == "BTCUSDT"
+    assert args[3] is ManualOrderDirection.LONG
+    assert args[4] == Decimal("0.01")
+    assert args[5] is OrderType.MARKET
+    assert args[6] == Decimal(64000)
+    assert presenter._view_model.manualOrderBusy is True
+
+
+def test_manual_order_requested_rejects_a_market_order_with_no_known_price(
+    presenter, mock_thread_mgr
+):
+    presenter._active_symbol = "BTCUSDT"
+    presenter._last_price_by_symbol.clear()
+
+    presenter._view_model.requestManualOrder("LONG", 0.01, "MARKET", 0.0)
+
+    mock_thread_mgr.submit.assert_not_called()
+    log_entries = presenter._view_model.log_model.entries
+    assert any("giá thị trường" in entry.message for entry in log_entries)
+
+
+def test_manual_order_requested_blocked_while_already_pending(
+    presenter, mock_thread_mgr
+):
+    presenter._active_symbol = "BTCUSDT"
+    presenter._last_price_by_symbol["BTCUSDT"] = 64000
+    presenter._manual_order_tracker.begin_action("manual_order", None, None)
+
+    presenter._view_model.requestManualOrder("LONG", 0.01, "MARKET", 0.0)
+
+    mock_thread_mgr.submit.assert_not_called()
+
+
+def test_run_manual_order_dispatches_execute_order_with_the_mapped_intent(
+    presenter, mock_dispatcher
+):
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_open_positions import (
+        GetOpenPositionsQuery,
+    )
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.execute_order import (
+        ExecuteOrderCommand,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+    from Sagittarius_Elite_Warrior.src.domain.trading.policies.manual_order_intent import (
+        ManualOrderDirection,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.order_side import (
+        OrderSide,
+    )
+
+    def dispatch_side_effect(command_type, command):
+        if command_type is GetOpenPositionsQuery:
+            return (_live_position("BTCUSDT", "-0.01"),)  # currently SHORT
+        return None
+
+    mock_dispatcher.dispatch.side_effect = dispatch_side_effect
+
+    presenter._run_manual_order(
+        1,
+        "BTCUSDT",
+        ManualOrderDirection.LONG,
+        Decimal("0.01"),
+        OrderType.MARKET,
+        Decimal(64000),
+    )
+
+    execute_calls = [
+        call
+        for call in mock_dispatcher.dispatch.call_args_list
+        if call.args[0] is ExecuteOrderCommand
+    ]
+    assert len(execute_calls) == 1
+    command = execute_calls[0].args[1]
+    assert command.live is True
+    assert command.order_request.symbol == "BTCUSDT"
+    # Currently SHORT + Long click -> BUY, reduce_only=True (closes the
+    # short) — `manual_order_intent_for()`'s own table, row 2.
+    assert command.order_request.side is OrderSide.BUY
+    assert command.order_request.reduce_only is True
+
+
+def test_run_manual_order_hard_blocks_when_strategy_owns_the_symbol_with_a_position(
+    presenter, mock_dispatcher, strategy_session, strategy_registry
+):
+    """`PRO-003` §4.1.2 (user decision) — the hard block."""
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_open_positions import (
+        GetOpenPositionsQuery,
+    )
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.execute_order import (
+        ExecuteOrderCommand,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+    from Sagittarius_Elite_Warrior.src.domain.trading.policies.manual_order_intent import (
+        ManualOrderDirection,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+        LiveStrategyConfig,
+    )
+
+    strategy_session.arm(
+        LiveStrategyConfig(
+            strategy_key="ema_crossover",
+            symbol="BTCUSDT",
+            interval="5m",
+            sizing_percent=20.0,
+            leverage=1.0,
+        )
+    )
+    completed = MagicMock()
+    presenter.manualOrderCompleted.connect(completed)
+    mock_dispatcher.dispatch.side_effect = lambda command_type, command: (
+        (_live_position("BTCUSDT", "0.01"),)
+        if command_type is GetOpenPositionsQuery
+        else None
+    )
+
+    presenter._run_manual_order(
+        1,
+        "BTCUSDT",
+        ManualOrderDirection.SHORT,
+        Decimal("0.01"),
+        OrderType.MARKET,
+        Decimal(64000),
+    )
+
+    assert not any(
+        call.args[0] is ExecuteOrderCommand
+        for call in mock_dispatcher.dispatch.call_args_list
+    )
+    completed.assert_called_once_with((1, None, True, None))
+
+
+def test_run_manual_order_hard_blocks_when_strategy_owns_the_symbol_even_while_flat(
+    presenter, mock_dispatcher, strategy_session, strategy_registry
+):
+    """`PRO-003` §4.1.2, tightened 2026-09-09 (user decision): blocking only
+    "armed + has a position" still let a human's *first* order on a flat,
+    armed symbol through — exactly the race that lets the strategy's next
+    signal (which assumes it started flat) double up on a position it
+    never opened. The block must fire on "armed" alone, with no
+    GetOpenPositionsQuery round-trip needed to decide that."""
+    from decimal import Decimal
+
+    from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+    from Sagittarius_Elite_Warrior.src.domain.trading.policies.manual_order_intent import (
+        ManualOrderDirection,
+    )
+    from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
+        LiveStrategyConfig,
+    )
+
+    strategy_session.arm(
+        LiveStrategyConfig(
+            strategy_key="ema_crossover",
+            symbol="BTCUSDT",
+            interval="5m",
+            sizing_percent=20.0,
+            leverage=1.0,
+        )
+    )
+    completed = MagicMock()
+    presenter.manualOrderCompleted.connect(completed)
+
+    presenter._run_manual_order(
+        1,
+        "BTCUSDT",
+        ManualOrderDirection.LONG,
+        Decimal("0.01"),
+        OrderType.MARKET,
+        Decimal(64000),
+    )
+
+    mock_dispatcher.dispatch.assert_not_called()
+    completed.assert_called_once_with((1, None, True, None))
+
+
+def test_cancel_order_requested_submits_background_worker(presenter, mock_thread_mgr):
+    presenter._on_cancel_order_requested("BTCUSDT", "abc123")
+
+    mock_thread_mgr.submit.assert_called_once_with(
+        presenter._run_cancel_order, "BTCUSDT", "abc123"
+    )
+
+
+def test_run_cancel_order_dispatches_cancel_order_command_for_exactly_that_order(
+    presenter, mock_dispatcher
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.cancel_order import (
+        CancelOrderCommand,
+    )
+
+    completed = MagicMock()
+    presenter.cancelOrderCompleted.connect(completed)
+    mock_dispatcher.dispatch.return_value = None
+
+    presenter._run_cancel_order("BTCUSDT", "abc123")
+
+    mock_dispatcher.dispatch.assert_called_once_with(
+        CancelOrderCommand, CancelOrderCommand("BTCUSDT", "abc123")
+    )
+
+
+def test_cancel_order_completed_removes_the_order_from_the_book(
+    presenter, mock_dispatcher
+):
+    from Sagittarius_Elite_Warrior.src.application.use_cases.trading.cancel_order import (
+        CancelOrderResult,
+    )
+
+    remove_spy = MagicMock()
+    presenter._order_book.on_order_cancelled = remove_spy
+
+    presenter._on_cancel_order_completed(
+        ("BTCUSDT", "abc123", CancelOrderResult(None, None), None)
+    )
+
+    remove_spy.assert_called_once_with("abc123")

@@ -68,8 +68,13 @@ class TradingSessionState:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         #: `EPIC-024B` — see this class's own docstring for why this is a
-        #: second, distinct lock from `self._lock` above.
-        self._live_submission_lock = threading.Lock()
+        #: second, distinct lock from `self._lock` above. `RLock`, not
+        #: `Lock`: nothing today calls back into `ExecuteOrderCommandHandler.
+        #: execute()` while already holding this (re-checked when it was
+        #: added), but a plain `Lock` would deadlock outright if that ever
+        #: changed, instead of failing a test loudly — `RLock` costs nothing
+        #: here (this is not a hot path) and removes that failure mode.
+        self._live_submission_lock = threading.RLock()
         self.enabled = False
         self.orders_sent_this_session = 0
         self.known_open_symbols: set[str] = set()
@@ -82,11 +87,11 @@ class TradingSessionState:
     def generation(self) -> int:
         return self._generation
 
-    def live_submission_guard(self) -> threading.Lock:
+    def live_submission_guard(self) -> threading.RLock:
         """@brief The lock `ExecuteOrderCommandHandler` holds across its
         entire evaluate-limits→submit→record sequence for a live order —
-        see this class's own docstring (`EPIC-024B`) for why. A plain
-        `threading.Lock` is already a context manager
+        see this class's own docstring (`EPIC-024B`) for why. A `threading.
+        RLock` is already a context manager
         (`with state.live_submission_guard():`); returned rather than
         wrapped so callers get the standard `with`/`acquire`/`release`
         surface without this class inventing its own.

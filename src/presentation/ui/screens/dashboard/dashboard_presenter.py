@@ -242,18 +242,20 @@ _EMERGENCY_STOP_ACTION = "emergency_stop"
 #: at a time, never two concurrent Long/Short clicks from the same card.
 _MANUAL_ORDER_ACTION = "manual_order"
 
-#: `PRO-003` §4.1.2 (user decision, 2026-09-09) — the manual form's
-#: Long/Short is hard-blocked, not merely warned, when the target symbol is
-#: both the strategy's currently-armed symbol AND has a real open position:
-#: `order_intent_for()` (the strategy's own side/`reduce_only` mapping) never
-#: re-reads the real position, so a human trade on that exact symbol could
-#: make the strategy's next signal act on a position it no longer correctly
-#: believes it holds.
+#: `PRO-003` §4.1.2 (user decision, tightened 2026-09-09) — the manual
+#: form's Long/Short is hard-blocked, not merely warned, on the strategy's
+#: currently-armed symbol outright — not only once it already holds a
+#: position there. The narrower "armed + has a position" rule this started
+#: as still let a human's *first* order on a flat, armed symbol through:
+#: `order_intent_for()` (the strategy's own side/`reduce_only` mapping)
+#: never re-reads the real position and assumes it started flat, so that
+#: first manual order is exactly what makes the strategy's next signal
+#: double up on a position it never opened itself.
 _STRATEGY_SYMBOL_CONFLICT_MESSAGE = (
-    "Bị chặn: symbol này đang được chiến lược đang armed quản lý và có vị thế "
-    "mở — giao dịch thủ công trên đúng symbol chiến lược đang giữ có thể làm "
-    "chiến lược mất dấu vị thế thật. Dùng Dừng khẩn cấp hoặc gỡ chiến lược "
-    "trước, hoặc giao dịch thủ công trên symbol khác."
+    "Bị chặn: symbol này đang được chiến lược đang armed quản lý — giao dịch "
+    "thủ công trên đúng symbol chiến lược đang canh có thể làm chiến lược "
+    "mất dấu vị thế thật (kể cả khi hiện đang Flat). Dùng Dừng khẩn cấp hoặc "
+    "gỡ chiến lược trước, hoặc giao dịch thủ công trên symbol khác."
 )
 
 #: `EnumLabels`, not a bare dict — same reasoning `TradingPresenter`'s own
@@ -1464,7 +1466,7 @@ class DashboardPresenter(BasePresenter):
         action = self._manual_order_tracker.begin_action(
             _MANUAL_ORDER_ACTION, None, None
         )
-        self._view_model.set_manual_order_state(True, "")
+        self._view_model.set_manual_order_state(True, "Đang gửi lệnh...")
         self._thread_manager.submit(
             self._run_manual_order,
             action.action_id,
@@ -1485,6 +1487,25 @@ class DashboardPresenter(BasePresenter):
         reference_price: Decimal,
     ) -> None:
         try:
+            # `PRO-003` §4.1.2 (user decision, tightened 2026-09-09) — hard
+            # block on the strategy's armed symbol outright, not only once
+            # it already holds a position: blocking only "armed + has a
+            # position" still let a human's *first* manual order on a
+            # flat, armed symbol through — exactly the race that lets the
+            # strategy's next signal (which assumes it started flat) double
+            # up on a position it never opened. No network call needed for
+            # this check, so it runs before `GetOpenPositionsQuery` — a
+            # blocked attempt costs nothing.
+            armed_config = self._strategy_session.config
+            strategy_owns_symbol = (
+                self._strategy_session.is_armed
+                and armed_config is not None
+                and armed_config.symbol == symbol
+            )
+            if strategy_owns_symbol:
+                self.manualOrderCompleted.emit((action_id, None, True, None))
+                return
+
             # `EPIC-024B` §2 — read the REAL current position fresh, every
             # attempt; never guessed, never remembered from a prior click
             # (see `manual_order_intent_for()`'s own docstring).
@@ -1495,18 +1516,6 @@ class DashboardPresenter(BasePresenter):
                 ),
             )
             current_position = next((p for p in positions if p.symbol == symbol), None)
-
-            # `PRO-003` §4.1.2 (user decision) — hard block, not a warning.
-            armed_config = self._strategy_session.config
-            strategy_owns_symbol = (
-                self._strategy_session.is_armed
-                and armed_config is not None
-                and armed_config.symbol == symbol
-            )
-            if strategy_owns_symbol and current_position is not None:
-                self.manualOrderCompleted.emit((action_id, None, True, None))
-                return
-
             intent = manual_order_intent_for(direction, current_position)
             command = ExecuteOrderCommand(
                 order_request=PreviewOrderQuery(
@@ -1538,30 +1547,36 @@ class DashboardPresenter(BasePresenter):
             )
             return
 
-        self._view_model.set_manual_order_state(False, "")
-
         if strategy_conflict:
             self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._view_model.set_manual_order_state(
+                False, _STRATEGY_SYMBOL_CONFLICT_MESSAGE
+            )
             self._append_log(_STRATEGY_SYMBOL_CONFLICT_MESSAGE)
             return
 
         if error is not None or result is None:
             self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
-            self._append_log(f"Lỗi khi đặt lệnh thủ công: {error}")
+            message = f"Lỗi khi đặt lệnh thủ công: {error}"
+            self._view_model.set_manual_order_state(False, message)
+            self._append_log(message)
             return
 
         if result.blocked:
             self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
-            self._append_log(
-                f"Lệnh thủ công bị chặn: {format_execute_order_block_reason(result.blocked_by)}"
+            message = (
+                f"Lệnh thủ công bị chặn: "
+                f"{format_execute_order_block_reason(result.blocked_by)}"
             )
+            self._view_model.set_manual_order_state(False, message)
+            self._append_log(message)
             return
 
         self._manual_order_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
         order = result.submitted_order
-        self._append_log(
-            f"Đã đặt lệnh thủ công: {order.client_order_id if order else '—'}"
-        )
+        message = f"Đã đặt lệnh thủ công: {order.client_order_id if order else '—'}"
+        self._view_model.set_manual_order_state(False, message)
+        self._append_log(message)
         self._refresh_session_stats()
 
     # ================================================================== #
