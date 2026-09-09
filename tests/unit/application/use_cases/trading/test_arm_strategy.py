@@ -173,8 +173,11 @@ def test_disarming_clears_the_session() -> None:
 
 
 def test_refuses_to_disarm_while_trading_is_on() -> None:
-    """The mirror of `NO_STRATEGY_ARMED`: reaching "trading on, nothing
-    armed" from this direction is the same lie."""
+    """Disarming while trading is on would leave any open position with
+    no strategy planning its exit — `DisarmStrategyCommandHandler` still
+    refuses this direction even though `EnableTradingCommand` itself no
+    longer requires an armed strategy to reach "trading on" at all
+    (`BUG-112`)."""
     session, state = _session(), TradingSessionState()
     ArmStrategyCommandHandler(session, state).execute(ArmStrategyCommand(_config()))
     state.enable(set(), expected_generation=state.generation)

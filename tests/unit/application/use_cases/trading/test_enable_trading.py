@@ -61,12 +61,7 @@ def _handler(
     status: ExchangeConnectionStatus | None = None,
     position_payloads: list[dict] | None = None,
     open_order_payloads: list[dict] | None = None,
-    strategy_armed: bool = True,
 ) -> tuple[EnableTradingCommandHandler, TradingSessionState, Mock, Mock]:
-    """@param strategy_armed `EPIC-022B` — every pre-existing test here
-    was written when enabling did not depend on a strategy at all, so the
-    default keeps them describing what they were written to describe. The
-    one test that cares flips it to False."""
     account_reader = Mock()
     account_reader.check_connection.return_value = status or _ready_status()
 
@@ -82,8 +77,6 @@ def _handler(
     metadata_provider = Mock()
     session_state = TradingSessionState()
     user_data_stream = Mock()
-    strategy_session = Mock()
-    strategy_session.is_armed = strategy_armed
 
     return (
         EnableTradingCommandHandler(
@@ -94,7 +87,6 @@ def _handler(
             metadata_provider,
             session_state,
             user_data_stream,
-            strategy_session,
         ),
         session_state,
         user_data_stream,
@@ -217,24 +209,23 @@ def test_refuses_and_does_not_enable_when_unexpected_position_exists() -> None:
     user_data_stream.start.assert_not_called()
 
 
-def test_blocked_when_no_strategy_is_armed_before_touching_the_network() -> None:
-    """`EPIC-022B` — the fix for the state a user actually hit: with
-    `trading.live_strategy_key` empty (the shipped default), enabling used
-    to succeed, paint the toggle green, and run a system that could not
-    produce a single signal.
-
-    The second assertion is the point of the ordering: the check must come
-    before `check_connection()`, so an incomplete configuration is
-    reported instantly instead of after a Binance round-trip that was
-    never going to change the answer."""
-    handler, session_state, user_data_stream, account_reader = _handler(
-        strategy_armed=False
-    )
+def test_enables_without_any_strategy_armed() -> None:
+    """`BUG-112` — `EPIC-022B` originally refused to enable trading with
+    nothing armed ("trading enabled" would describe a system that could
+    never produce a signal). `EPIC-024B` gave `ExecuteOrderCommand` a
+    second, independent caller — a human, via the manual order card — so
+    that premise stopped being true: a user who wants *only* manual
+    trading now has a real reason to enable trading with no strategy
+    armed at all, and used to be forced into arming one just to unlock
+    the switch, then getting immediately blocked from manually trading
+    that exact symbol by the armed-symbol hard block (`PRO-003` §4.1.2) —
+    a genuine deadlock a user hit and reported directly. This is the fix:
+    no strategy required, ordinary reconciliation still runs."""
+    handler, session_state, user_data_stream, _account_reader = _handler()
 
     result = handler.execute(EnableTradingCommand())
 
-    assert result.enabled is False
-    assert result.block_reason is EnableTradingBlockReason.NO_STRATEGY_ARMED
-    account_reader.check_connection.assert_not_called()
-    assert session_state.enabled is False
-    user_data_stream.start.assert_not_called()
+    assert result.enabled is True
+    assert result.block_reason is None
+    assert session_state.enabled is True
+    user_data_stream.start.assert_called_once()

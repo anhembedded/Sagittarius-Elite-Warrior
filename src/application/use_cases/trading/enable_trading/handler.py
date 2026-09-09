@@ -16,9 +16,6 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory i
 from Sagittarius_Elite_Warrior.src.application.ports.i_user_data_stream import (
     IUserDataStream,
 )
-from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
-    LiveStrategySession,
-)
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
 )
@@ -68,6 +65,15 @@ class EnableTradingCommandHandler(
     the exchange's own account of what happens to an order only starts
     flowing once trading is actually turned on, never merely because the
     app booted.
+
+    `BUG-112` — no longer requires an armed strategy (`EPIC-022B`'s
+    original rule): that rule assumed "trading enabled" only ever meant
+    "the automated strategy may act", which stopped being true once
+    `EPIC-024B` gave `ExecuteOrderCommand` a second, independent caller —
+    a human, via the manual order card. Requiring an armed strategy just
+    to unlock manual-only trading forced a user into arming one on some
+    symbol, which then immediately hard-blocked manual trading on that
+    exact symbol (`PRO-003` §4.1.2) — a real deadlock, reported directly.
     """
 
     def __init__(
@@ -79,7 +85,6 @@ class EnableTradingCommandHandler(
         metadata_provider: IMarketMetadataProvider,
         session_state: TradingSessionState,
         user_data_stream: IUserDataStream,
-        strategy_session: LiveStrategySession,
     ) -> None:
         self._trading_venue = trading_venue
         self._account_reader = account_reader
@@ -88,19 +93,12 @@ class EnableTradingCommandHandler(
         self._metadata_provider = metadata_provider
         self._session_state = session_state
         self._user_data_stream = user_data_stream
-        self._strategy_session = strategy_session
 
     def execute(self, command: EnableTradingCommand) -> EnableTradingResult:
         logger.debug("Handling EnableTradingCommand")
 
         if self._trading_venue is not TradingVenue.FUTURES_TESTNET:
             return self._blocked(EnableTradingBlockReason.TRADING_VENUE_DISABLED)
-
-        # `EPIC-022B` — before any network call. With nothing armed, no
-        # tick can produce a signal, so "trading enabled" would describe a
-        # system that cannot trade. See the block reason's own comment.
-        if not self._strategy_session.is_armed:
-            return self._blocked(EnableTradingBlockReason.NO_STRATEGY_ARMED)
 
         # `BUG-088` — read *before* the two network round-trips below, not
         # after: `enable()` only applies if nothing else (a concurrent
