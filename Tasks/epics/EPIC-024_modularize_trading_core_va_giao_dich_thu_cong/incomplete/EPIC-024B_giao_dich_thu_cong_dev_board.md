@@ -97,17 +97,35 @@ mỗi symbol/side đơn thuần. Đây là lý do `PRO-003` xếp việc này r�
 
 ## 4.1. Câu hỏi bắt buộc trả lời trước khi coi task này Done (`PRO-003` §8.2 — không phải giả định)
 
-1. **Đồng thời (concurrency):** Đây là lần đầu `ExecuteOrderCommand` có 2 nơi gọi thật (tick chiến
-   lược + click tay). Phải xác minh (đọc code thật `ExecuteOrderCommandHandler`/`TradingSessionState`,
-   không đoán): 2 lời gọi đồng thời có thể cùng đọc `orders_sent_this_session` TRƯỚC khi cái nào tăng
-   số đó lên không (race check-rồi-tăng) — nếu có, giới hạn `TradingLimitPolicy` có thể bị vượt. Viết
-   1 test cố tình dựng race (2 thread cùng dispatch) để trả lời dứt điểm, không suy luận tĩnh.
-2. **Con người can thiệp vào symbol chiến lược đang giữ vị thế:** quyết định rõ (ghi vào đây khi có
-   câu trả lời) — form thủ công có bị chặn/cảnh báo trên symbol chiến lược đang armed+có vị thế mở
-   không, hay cho tự do? Nếu cho tự do, ghi rõ rủi ro chiến lược có thể "mất dấu" vị thế nó tự mở
-   trong tài liệu chiến lược liên quan (không âm thầm bỏ qua).
+1. **Đồng thời (concurrency) — ĐÃ TRẢ LỜI (2026-09-09).** Đây là lần đầu `ExecuteOrderCommand` có 2
+   nơi gọi thật (tick chiến lược + click tay). Đọc code thật `ExecuteOrderCommandHandler.execute()`
+   xác nhận: **có race thật**, không phải giả định — `orders_sent_this_session` được đọc, đánh giá
+   4 giới hạn, gửi lệnh thật (network call), rồi mới tăng số lên, và **không có lock nào giữ suốt
+   chuỗi đó** — 2 dispatch đồng thời có thể cùng đọc số cũ, cùng qua được `MAX_ORDERS_PER_SESSION`,
+   cùng gửi lệnh thật. Xác nhận bằng test dựng race thật (2 thread, `threading.Barrier`, mock sàn có
+   delay để mở rộng cửa sổ race) — test đó FAIL trên code cũ (2 lệnh thay vì 1 khi
+   `max_orders_per_session=1`), PASS sau khi sửa (mutation-verify đúng `testing-rule.md` §2). **Sửa:**
+   thêm `TradingSessionState.live_submission_guard()` — lock thứ hai, tách biệt lock nội bộ hiện có
+   (lock đó không được giữ qua network call vì sẽ chặn mọi reader khác như UI polling) —
+   `ExecuteOrderCommandHandler` giữ lock này suốt cả chuỗi evaluate→submit→record. Xem chi tiết ở
+   commit "EPIC-024B §4.1.1" và docstring của `TradingSessionState`/`live_submission_guard()`.
+2. **Con người can thiệp vào symbol chiến lược đang giữ vị thế — ĐÃ QUYẾT (2026-09-09, user chọn).**
+   Đọc code thật `signal_action_to_order_intent.py` xác nhận rủi ro là thật, không phải giả thuyết:
+   `order_intent_for()` là bảng ánh xạ TĨNH `SignalAction` → `(side, reduce_only)` — chiến lược tự
+   nhớ nó đang Long/Short/Flat theo lịch sử signal của chính nó, **không** đọc lại vị thế thật từ
+   sàn mỗi tick (khác với form thủ công ở `§2`, buộc phải đọc `get_positions()` trước khi map).
+   Nếu người dùng tay đóng vị thế chiến lược đang giữ, lần chiến lược gửi tiếp lệch hướng thật
+   (thường chỉ bị sàn từ chối — không nguy hiểm); nhưng nếu người dùng tay MỞ vị thế trên symbol
+   chiến lược tưởng đang Flat, lần chiến lược gửi tiếp `reduce_only=False` sẽ **cộng thêm** vào vị
+   thế người dùng vừa mở — vượt khỏi quyết định của chiến lược, đúng rủi ro "mất dấu vị thế" mục này
+   cảnh báo. **Quyết định:** chặn cứng — nút Long/Short trên form thủ công bị disable (kèm lý do
+   hiển thị) khi symbol nhập trùng symbol chiến lược đang `armed` (`LiveStrategySession.is_armed`
+   + symbol khớp) **và** đang có vị thế mở trên đúng symbol đó (đọc `ITradingClient.get_positions()`
+   — cùng lời gọi §2 đã dùng, không thêm lời gọi mạng mới). Symbol khác (chiến lược không đụng tới)
+   vẫn tự do hoàn toàn. An toàn nhất cho lần đầu chứng minh cơ chế — không cần "tự chịu rủi ro" nào
+   thêm.
 
-Không merge task này nếu 2 câu hỏi trên vẫn để trống.
+Cả 2 câu hỏi trên đã có câu trả lời — điều kiện merge của mục này đã đủ.
 
 ## 5. Kiểm thử
 

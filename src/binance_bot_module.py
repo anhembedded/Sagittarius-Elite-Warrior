@@ -136,6 +136,10 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_historical_
     GetHistoricalKlinesQuery,
     GetHistoricalKlinesQueryHandler,
 )
+from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_open_positions import (
+    GetOpenPositionsQuery,
+    GetOpenPositionsQueryHandler,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.list_available_symbols import (
     ListAvailableSymbolsQuery,
     ListAvailableSymbolsQueryHandler,
@@ -167,6 +171,10 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.sync.sync_market_data i
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
     ArmStrategyCommand,
     ArmStrategyCommandHandler,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.cancel_order import (
+    CancelOrderCommand,
+    CancelOrderCommandHandler,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
     DisableTradingCommand,
@@ -541,10 +549,12 @@ class BinanceBotModule(BaseModule):
         app.container.bind(DisableTradingCommand, DisableTradingCommandHandler)
         app.container.bind(ExecuteOrderCommand, ExecuteOrderCommandHandler)
         app.container.bind(EmergencyStopCommand, EmergencyStopCommandHandler)
+        app.container.bind(CancelOrderCommand, CancelOrderCommandHandler)
 
     def _register_queries(self, app: App) -> None:
         """Binds CQRS queries to their respective query handlers."""
         app.container.bind(GetHistoricalKlinesQuery, GetHistoricalKlinesQueryHandler)
+        app.container.bind(GetOpenPositionsQuery, GetOpenPositionsQueryHandler)
         app.container.bind(GetDatabaseStatusQuery, GetDatabaseStatusQueryHandler)
         app.container.bind(GetDatabaseGapsQuery, GetDatabaseGapsQueryHandler)
         app.container.bind(
