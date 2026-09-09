@@ -89,6 +89,15 @@ class LiveOrderBookCoordinator:
         self._positions.pop(symbol, None)
         self._render_positions()
 
+    def on_order_cancelled(self, client_order_id: str) -> None:
+        """`EPIC-024B` §0 — removes one order the exchange just confirmed
+        cancelled. `dict.pop(..., None)` rather than indexing, same
+        reasoning `on_position_closed` above documents: harmless if this
+        table never held the order (e.g. it filled between the click and
+        the cancel actually landing)."""
+        self._open_orders.pop(client_order_id, None)
+        self._render_open_orders()
+
     def on_order_blocked(self, symbol: str, reason: str) -> None:
         """`BUG-084` — the one place a blocked signal-driven order becomes
         visible on the screen itself, not just in a log file nobody is

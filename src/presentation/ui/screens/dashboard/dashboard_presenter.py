@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from decimal import Decimal
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Signal, Slot
 from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
@@ -20,6 +21,16 @@ from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
 )
+from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_open_positions import (
+    GetOpenPositionsQuery,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.queries.preview_order.query import (
+    PreviewOrderQuery,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.cancel_order import (
+    CancelOrderCommand,
+    CancelOrderResult,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
     DisableTradingCommand,
 )
@@ -30,6 +41,12 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.trading.emergency_stop 
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.enable_trading import (
     EnableTradingBlockReason,
     EnableTradingCommand,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.execute_order import (
+    ExecuteOrderCommand,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.execute_order.result import (
+    ExecuteOrderResult,
 )
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
 from Sagittarius_Elite_Warrior.src.domain.events.equity_sampled_event import (
@@ -49,6 +66,12 @@ from Sagittarius_Elite_Warrior.src.domain.events.position_changed_event import (
 )
 from Sagittarius_Elite_Warrior.src.domain.events.position_closed_event import (
     PositionClosedEvent,
+)
+from Sagittarius_Elite_Warrior.src.domain.trading.live_position import LivePosition
+from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+from Sagittarius_Elite_Warrior.src.domain.trading.policies.manual_order_intent import (
+    ManualOrderDirection,
+    manual_order_intent_for,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     SUPPORTED_LIVE_INTERVALS,
@@ -71,6 +94,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_chart_adapter i
     equity_samples_to_candles,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_feed import EquityFeed
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.execute_order_block_reason import (
+    format_execute_order_block_reason,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.health_check_coordinator import (
     HealthCheckCoordinator,
 )
@@ -210,6 +236,25 @@ _ARM_ACTION = "arm_strategy"
 #: toggle/Emergency Stop trackers; again separate instances, so no collision.
 _TOGGLE_ACTION = "toggle_trading"
 _EMERGENCY_STOP_ACTION = "emergency_stop"
+
+#: `EPIC-024B` — manual trading card. One tracker for the whole card (like
+#: `_TOGGLE_ACTION` above): the form represents exactly one pending attempt
+#: at a time, never two concurrent Long/Short clicks from the same card.
+_MANUAL_ORDER_ACTION = "manual_order"
+
+#: `PRO-003` §4.1.2 (user decision, 2026-09-09) — the manual form's
+#: Long/Short is hard-blocked, not merely warned, when the target symbol is
+#: both the strategy's currently-armed symbol AND has a real open position:
+#: `order_intent_for()` (the strategy's own side/`reduce_only` mapping) never
+#: re-reads the real position, so a human trade on that exact symbol could
+#: make the strategy's next signal act on a position it no longer correctly
+#: believes it holds.
+_STRATEGY_SYMBOL_CONFLICT_MESSAGE = (
+    "Bị chặn: symbol này đang được chiến lược đang armed quản lý và có vị thế "
+    "mở — giao dịch thủ công trên đúng symbol chiến lược đang giữ có thể làm "
+    "chiến lược mất dấu vị thế thật. Dùng Dừng khẩn cấp hoặc gỡ chiến lược "
+    "trước, hoặc giao dịch thủ công trên symbol khác."
+)
 
 #: `EnumLabels`, not a bare dict — same reasoning `TradingPresenter`'s own
 #: `_BLOCK_REASON_MESSAGES` documents: construction refuses an incomplete
@@ -460,6 +505,14 @@ class DashboardPresenter(BasePresenter):
     #: `(action_id, EmergencyStopResult | None, error_message | None)`.
     emergencyStopCompleted = Signal(tuple)
 
+    #: `EPIC-024B` — manual trading card + per-order cancel.
+    #: `(action_id, ExecuteOrderResult | None, strategy_conflict: bool,
+    #: error_message | None)`.
+    manualOrderCompleted = Signal(tuple)
+    #: `(symbol, client_order_id, CancelOrderResult | None,
+    #: error_message | None)`.
+    cancelOrderCompleted = Signal(tuple)
+
     INITIAL_STATE = UIMode.IDLE
 
     def __init__(self, view: DashboardView, container: IContainer) -> None:
@@ -620,6 +673,18 @@ class DashboardPresenter(BasePresenter):
         self._emergency_stop_tracker: ActionOwnershipTracker[str, None, None] = (
             ActionOwnershipTracker()
         )
+        # `EPIC-024B` — manual trading card. Own tracker, same reasoning as
+        # the two just above (a manual order attempt must not fence, or be
+        # fenced by, an unrelated toggle/emergency-stop/arm click).
+        self._manual_order_tracker: ActionOwnershipTracker[str, None, None] = (
+            ActionOwnershipTracker()
+        )
+        # `EPIC-024B` — last live close price per symbol, the manual order
+        # card's `reference_price` for a MARKET order (a LIMIT order's own
+        # price field is the reference instead — see `_on_manual_order_requested`).
+        # Updated on every `_on_ui_chart_update` tick; `Decimal`, not the
+        # `float` the tick itself carries — `PreviewOrderQuery` requires it.
+        self._last_price_by_symbol: dict[str, Decimal] = {}
         # Seeds from whatever `TradingSessionState` already says — if
         # Trading enabled it first, opening Dev Board must show "đang BẬT",
         # never a default "TẮT" that contradicts the account's real state.
@@ -999,6 +1064,12 @@ class DashboardPresenter(BasePresenter):
         self.disableTradingCompleted.connect(self._on_disable_trading_completed)
         self.emergencyStopCompleted.connect(self._on_emergency_stop_completed)
 
+        # `EPIC-024B` — manual trading card + per-order cancel.
+        view_model.manualOrderRequested.connect(self._on_manual_order_requested)
+        self.manualOrderCompleted.connect(self._on_manual_order_completed)
+        self.view.cancelOrderRequested.connect(self._on_cancel_order_requested)
+        self.cancelOrderCompleted.connect(self._on_cancel_order_completed)
+
         # Internal signals → view model update slots (all execute on the Qt
         # main thread).
         self.ui_log_signal.connect(self._append_log)
@@ -1345,6 +1416,194 @@ class DashboardPresenter(BasePresenter):
         ):
             mark = "✔" if step.succeeded else "✘"
             self._append_log(f"  {index}. {label} ... {mark} {step.detail}")
+
+    # ================================================================== #
+    # Manual trading card (`EPIC-024B`) — the first UI path that dispatches
+    # `ExecuteOrderCommand` from a human click rather than a strategy tick
+    # (`LiveTradingCoordinator`). Deliberately reuses that exact command/
+    # handler — see `PRO-003`/`EPIC-024B` §4: this task exists to prove the
+    # mechanism generalizes to a second caller, not to build a second path.
+    # ================================================================== #
+
+    @Slot(str, float, str, float)
+    @safe_ui_action
+    def _on_manual_order_requested(
+        self, direction_text: str, quantity: float, order_type_text: str, price: float
+    ) -> None:
+        if self._manual_order_tracker.active_outcome is ActionOutcome.PENDING:
+            self._append_log("Đang xử lý lệnh thủ công trước — vui lòng đợi.")
+            return
+        try:
+            direction = ManualOrderDirection(direction_text)
+            order_type = OrderType[order_type_text]
+        except (ValueError, KeyError):
+            self._append_log(
+                f"Tham số lệnh thủ công không hợp lệ: {direction_text}/{order_type_text}"
+            )
+            return
+        quantity_decimal = Decimal(str(quantity))
+        if quantity_decimal <= 0:
+            self._append_log("Khối lượng lệnh thủ công phải lớn hơn 0.")
+            return
+
+        symbol = self._active_symbol
+        if order_type is OrderType.LIMIT:
+            reference_price = Decimal(str(price))
+            if reference_price <= 0:
+                self._append_log("Giá lệnh Limit phải lớn hơn 0.")
+                return
+        else:
+            reference_price = self._last_price_by_symbol.get(symbol)
+            if reference_price is None:
+                self._append_log(
+                    "Chưa có giá thị trường cho symbol này — chờ dữ liệu live "
+                    "rồi thử lại."
+                )
+                return
+
+        action = self._manual_order_tracker.begin_action(
+            _MANUAL_ORDER_ACTION, None, None
+        )
+        self._view_model.set_manual_order_state(True, "")
+        self._thread_manager.submit(
+            self._run_manual_order,
+            action.action_id,
+            symbol,
+            direction,
+            quantity_decimal,
+            order_type,
+            reference_price,
+        )
+
+    def _run_manual_order(
+        self,
+        action_id: int,
+        symbol: str,
+        direction: ManualOrderDirection,
+        quantity: Decimal,
+        order_type: OrderType,
+        reference_price: Decimal,
+    ) -> None:
+        try:
+            # `EPIC-024B` §2 — read the REAL current position fresh, every
+            # attempt; never guessed, never remembered from a prior click
+            # (see `manual_order_intent_for()`'s own docstring).
+            positions = cast(
+                tuple[LivePosition, ...],
+                self.dispatcher.dispatch(
+                    GetOpenPositionsQuery, GetOpenPositionsQuery()
+                ),
+            )
+            current_position = next((p for p in positions if p.symbol == symbol), None)
+
+            # `PRO-003` §4.1.2 (user decision) — hard block, not a warning.
+            armed_config = self._strategy_session.config
+            strategy_owns_symbol = (
+                self._strategy_session.is_armed
+                and armed_config is not None
+                and armed_config.symbol == symbol
+            )
+            if strategy_owns_symbol and current_position is not None:
+                self.manualOrderCompleted.emit((action_id, None, True, None))
+                return
+
+            intent = manual_order_intent_for(direction, current_position)
+            command = ExecuteOrderCommand(
+                order_request=PreviewOrderQuery(
+                    symbol=symbol,
+                    side=intent.side,
+                    order_type=order_type,
+                    quantity=quantity,
+                    reference_price=reference_price,
+                    reduce_only=intent.reduce_only,
+                ),
+                live=True,
+            )
+            result = cast(
+                ExecuteOrderResult,
+                self.dispatcher.dispatch(ExecuteOrderCommand, command),
+            )
+            self.manualOrderCompleted.emit((action_id, result, False, None))
+        except Exception as exc:  # noqa: BLE001 - worker boundary: report the real failure instead of losing it to a background-thread traceback
+            self.manualOrderCompleted.emit((action_id, None, False, str(exc)))
+
+    @Slot(tuple)
+    def _on_manual_order_completed(self, payload: tuple) -> None:
+        action_id, result, strategy_conflict, error = payload
+        if not self._manual_order_tracker.is_current_pending(
+            action_id, _MANUAL_ORDER_ACTION
+        ):
+            self._manual_order_tracker.log_stale_callback(
+                "manual_order", action_id, _MANUAL_ORDER_ACTION
+            )
+            return
+
+        self._view_model.set_manual_order_state(False, "")
+
+        if strategy_conflict:
+            self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._append_log(_STRATEGY_SYMBOL_CONFLICT_MESSAGE)
+            return
+
+        if error is not None or result is None:
+            self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._append_log(f"Lỗi khi đặt lệnh thủ công: {error}")
+            return
+
+        if result.blocked:
+            self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
+            self._append_log(
+                f"Lệnh thủ công bị chặn: {format_execute_order_block_reason(result.blocked_by)}"
+            )
+            return
+
+        self._manual_order_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
+        order = result.submitted_order
+        self._append_log(
+            f"Đã đặt lệnh thủ công: {order.client_order_id if order else '—'}"
+        )
+        self._refresh_session_stats()
+
+    # ================================================================== #
+    # Per-order cancel (`EPIC-024B` §0) — the Open Orders table's "Huỷ"
+    # button. No `ActionOwnershipTracker`: unlike the manual order card
+    # (one card, one pending attempt at a time), cancelling order A and
+    # cancelling a different order B on another row are genuinely
+    # independent actions — fencing them through one tracker would let a
+    # second row's cancel wrongly invalidate the first row's.
+    # ================================================================== #
+
+    @Slot(str, str)
+    @safe_ui_action
+    def _on_cancel_order_requested(self, symbol: str, client_order_id: str) -> None:
+        self._append_log(f"Đang huỷ lệnh {client_order_id} ({symbol})...")
+        self._thread_manager.submit(self._run_cancel_order, symbol, client_order_id)
+
+    def _run_cancel_order(self, symbol: str, client_order_id: str) -> None:
+        try:
+            result = cast(
+                CancelOrderResult,
+                self.dispatcher.dispatch(
+                    CancelOrderCommand, CancelOrderCommand(symbol, client_order_id)
+                ),
+            )
+            self.cancelOrderCompleted.emit((symbol, client_order_id, result, None))
+        except Exception as exc:  # noqa: BLE001 - worker boundary
+            self.cancelOrderCompleted.emit((symbol, client_order_id, None, str(exc)))
+
+    @Slot(tuple)
+    def _on_cancel_order_completed(self, payload: tuple) -> None:
+        symbol, client_order_id, result, error = payload
+        if error is not None or result is None:
+            self._append_log(f"Lỗi khi huỷ lệnh {client_order_id}: {error}")
+            return
+        if result.blocked:
+            self._append_log(
+                f"Huỷ lệnh bị chặn: {format_execute_order_block_reason(result.blocked_by)}"
+            )
+            return
+        self._order_book.on_order_cancelled(client_order_id)
+        self._append_log(f"Đã huỷ lệnh {client_order_id} ({symbol}).")
 
     # ================================================================== #
     # Strategy card (`EPIC-023C`) — the button handlers live in
@@ -1703,6 +1962,8 @@ class DashboardPresenter(BasePresenter):
         is_bullish = c >= o
         price_color = BULL_COLOR if is_bullish else BEAR_COLOR
         self._view_model.set_price_ticker(f"{symbol}  {c:,.2f}", price_color)
+        # `EPIC-024B` — manual order card's MARKET reference price.
+        self._last_price_by_symbol[symbol] = Decimal(str(c))
 
         card = self.active_charts.get(symbol)
         if card:

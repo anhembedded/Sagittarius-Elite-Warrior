@@ -1,3 +1,4 @@
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card import (
     ChartCard,
@@ -54,6 +55,10 @@ class DashboardView(BaseView):
     the chart-card column, reusing `TradingView`'s own construction recipe.
     """
 
+    #: `EPIC-024B` §0 — re-exposes `OpenOrdersPanel.cancelRequested`, same
+    #: layered re-export the panel itself does for `OpenOrdersVM`'s signal.
+    cancelOrderRequested = Signal(str, str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._view_model = None
@@ -85,6 +90,7 @@ class DashboardView(BaseView):
         self._positions_panel.setObjectName("positionsPanel")
         self._open_orders_panel = OpenOrdersPanel()
         self._open_orders_panel.setObjectName("openOrdersPanel")
+        self._open_orders_panel.cancelRequested.connect(self.cancelOrderRequested)
 
         tables_row = QWidget()
         tables_layout = QHBoxLayout(tables_row)

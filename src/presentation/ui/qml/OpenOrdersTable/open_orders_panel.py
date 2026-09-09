@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QUrl
+from PySide6.QtCore import QObject, Qt, QUrl, Signal
 from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import Panel
@@ -32,6 +32,11 @@ _QML = Path(__file__).resolve().parent / "OpenOrdersTable.qml"
 class OpenOrdersPanel(Panel):
     """The Open Orders table, embedded (not modal)."""
 
+    #: `EPIC-024B` §0 — re-exposes `OpenOrdersVM.cancelRequested`, same
+    #: shape `DatabaseStatusPanel.rowActionRequested` re-exposes for its
+    #: own per-row buttons.
+    cancelRequested = Signal(str, str)
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         ensure_qml_style()
@@ -39,6 +44,7 @@ class OpenOrdersPanel(Panel):
         self.body_layout.setSpacing(8)
 
         self._vm = OpenOrdersVM(parent=self)
+        self._vm.cancelRequested.connect(self.cancelRequested)
 
         self._quick = QQuickWidget()
         self._quick.setObjectName("openOrdersTableQuick")

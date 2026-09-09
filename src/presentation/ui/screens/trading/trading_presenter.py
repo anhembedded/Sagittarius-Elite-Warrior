@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Signal, Slot
 from Sagittarius_Elite_Warrior.src.application.services.equity_curve_recorder import (
@@ -14,6 +14,10 @@ from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import
 )
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.cancel_order import (
+    CancelOrderCommand,
+    CancelOrderResult,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
     DisableTradingCommand,
@@ -61,6 +65,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_chart_adapter i
     equity_samples_to_candles,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.equity_feed import EquityFeed
+from Sagittarius_Elite_Warrior.src.presentation.ui.common.execute_order_block_reason import (
+    format_execute_order_block_reason,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.live_order_book_coordinator import (
     LiveOrderBookCoordinator,
 )
@@ -218,6 +225,10 @@ class TradingPresenter(BasePresenter):
     disableTradingCompleted = Signal(tuple)
     #: `(action_id, EmergencyStopResult | None, error_message | None)`.
     emergencyStopCompleted = Signal(tuple)
+    #: `EPIC-024B` §0 — per-order cancel, same shape Dev Board's identical
+    #: signal uses. `(symbol, client_order_id, CancelOrderResult | None,
+    #: error_message | None)`.
+    cancelOrderCompleted = Signal(tuple)
 
     def __init__(self, view: TradingView, container: IContainer) -> None:
         super().__init__(view, container)
@@ -399,6 +410,10 @@ class TradingPresenter(BasePresenter):
         self.enableTradingCompleted.connect(self._on_enable_trading_completed)
         self.disableTradingCompleted.connect(self._on_disable_trading_completed)
         self.emergencyStopCompleted.connect(self._on_emergency_stop_completed)
+
+        # `EPIC-024B` §0 — per-order cancel (Open Orders table's "Huỷ").
+        self.view.cancelOrderRequested.connect(self._on_cancel_order_requested)
+        self.cancelOrderCompleted.connect(self._on_cancel_order_completed)
 
     def _connect_engine_events(self) -> None:
         # `MarketTickEvent` goes through `MarketTickFeed` — one place hears
@@ -887,6 +902,45 @@ class TradingPresenter(BasePresenter):
             self._session_state.orders_sent_this_session,
             len(self._session_state.known_open_symbols),
         )
+
+    # ================================================================== #
+    # Per-order cancel (`EPIC-024B` §0) — the Open Orders table's "Huỷ"
+    # button, shared with Dev Board (`OpenOrdersTable`/`OpenOrdersPanel`
+    # are the same component both screens embed). No `ActionOwnershipTracker`
+    # — see `DashboardPresenter`'s identical block for why.
+    # ================================================================== #
+
+    @Slot(str, str)
+    @safe_ui_action
+    def _on_cancel_order_requested(self, symbol: str, client_order_id: str) -> None:
+        self._append_log(f"Đang huỷ lệnh {client_order_id} ({symbol})...")
+        self._thread_manager.submit(self._run_cancel_order, symbol, client_order_id)
+
+    def _run_cancel_order(self, symbol: str, client_order_id: str) -> None:
+        try:
+            result = cast(
+                CancelOrderResult,
+                self.dispatcher.dispatch(
+                    CancelOrderCommand, CancelOrderCommand(symbol, client_order_id)
+                ),
+            )
+            self.cancelOrderCompleted.emit((symbol, client_order_id, result, None))
+        except Exception as exc:  # noqa: BLE001 - worker boundary
+            self.cancelOrderCompleted.emit((symbol, client_order_id, None, str(exc)))
+
+    @Slot(tuple)
+    def _on_cancel_order_completed(self, payload: tuple) -> None:
+        symbol, client_order_id, result, error = payload
+        if error is not None or result is None:
+            self._append_log(f"Lỗi khi huỷ lệnh {client_order_id}: {error}")
+            return
+        if result.blocked:
+            self._append_log(
+                f"Huỷ lệnh bị chặn: {format_execute_order_block_reason(result.blocked_by)}"
+            )
+            return
+        self._order_book.on_order_cancelled(client_order_id)
+        self._append_log(f"Đã huỷ lệnh {client_order_id} ({symbol}).")
 
     # ================================================================== #
     # Live fill markers (`EPIC-021K` §2.3) — chart-only, per symbol; never

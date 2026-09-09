@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -101,6 +101,10 @@ class TradingView(BaseView):
     ViewModel slot, and each ViewModel `*Changed` signal back to the
     widget's setter.
     """
+
+    #: `EPIC-024B` §0 — re-exposes `OpenOrdersPanel.cancelRequested`, same
+    #: layered re-export `DashboardView` does for its own identical panel.
+    cancelOrderRequested = Signal(str, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -425,6 +429,7 @@ class TradingView(BaseView):
         self._positions_panel.setObjectName("positionsPanel")
         self._open_orders_panel = OpenOrdersPanel()
         self._open_orders_panel.setObjectName("openOrdersPanel")
+        self._open_orders_panel.cancelRequested.connect(self.cancelOrderRequested)
         tables_layout.addWidget(self._positions_panel, 1)
         tables_layout.addWidget(self._open_orders_panel, 1)
 

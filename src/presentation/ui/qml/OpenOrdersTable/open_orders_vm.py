@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from PySide6.QtCore import Property, QObject, Signal
+from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from .open_order_row import OpenOrderRow, open_order_rows_to_qml
 
@@ -15,6 +15,10 @@ class OpenOrdersVM(QObject):
     """@brief The full set of currently pending orders, as QML-facing rows."""
 
     stateChanged = Signal()
+    #: `EPIC-024B` §0 — the "Huỷ" button on each row. `(symbol,
+    #: clientOrderId)`, same shape `DatabaseStatusVM.rowActionRequested`
+    #: uses for its own per-row buttons.
+    cancelRequested = Signal(str, str)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -27,3 +31,7 @@ class OpenOrdersVM(QObject):
     def set_rows(self, rows: Sequence[OpenOrderRow]) -> None:
         self._rows = open_order_rows_to_qml(list(rows))
         self.stateChanged.emit()
+
+    @Slot(str, str)
+    def requestCancel(self, symbol: str, client_order_id: str) -> None:
+        self.cancelRequested.emit(symbol, client_order_id)
