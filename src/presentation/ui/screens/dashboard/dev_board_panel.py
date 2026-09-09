@@ -42,6 +42,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+from Sagittarius_Elite_Warrior.src.domain.trading.policies.manual_order_intent import (
+    ManualOrderDirection,
+)
 from Sagittarius_Elite_Warrior.src.domain.value_objects.live_strategy_config import (
     MAX_LEVERAGE,
     MAX_SIZING_PERCENT,
@@ -112,6 +116,13 @@ _TOGGLE_ON_TEXT = "Tắt giao dịch"
 _TOGGLE_OFF_TEXT = "Bật giao dịch"
 _TOGGLE_BUSY_TEXT = "Đang xử lý..."
 _EMERGENCY_STOP_TEXT = "DỪNG KHẨN CẤP"
+
+# --- `EPIC-024B` manual trading card. No leverage/margin-mode field here —
+# `PRO-003` §8.1 confirmed `ITradingClient` has no way to change either on
+# the real exchange, so drawing that control would be a UI that lies
+# (`domain-truth-rule.md`). ---
+_MANUAL_ORDER_LONG_TEXT = "LONG"
+_MANUAL_ORDER_SHORT_TEXT = "SHORT"
 
 
 def _field_style() -> str:
@@ -194,6 +205,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         scroll_layout.addWidget(self._build_strategy_card())
         scroll_layout.addWidget(self._build_last_signal_card())
         scroll_layout.addWidget(self._build_session_card())
+        scroll_layout.addWidget(self._build_manual_order_card())
         scroll_layout.addWidget(self._build_indicators())
         scroll_layout.addStretch(1)
         scroll.setWidget(scroll_body)
@@ -573,6 +585,112 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         # `tradingStateChanged` connection documents.
         self._sync_armed_summary()
 
+    # ------------------------------------------------------------------ #
+    # Manual trading card (`EPIC-024B`) — Long/Short submit directly, no
+    # separate "submit" button: each is its own dispatch, same simplification
+    # this task's own file allows ("combo Long/Short (hoặc 2 nút tab)").
+    # ------------------------------------------------------------------ #
+
+    def _build_manual_order_card(self) -> Panel:
+        card = Panel()
+        card.setObjectName("devBoardManualOrderCard")
+        layout = card.body_layout
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+        layout.addLayout(_section_row("Đặt lệnh thủ công"))
+
+        self._cbo_manual_order_type = QComboBox()
+        self._cbo_manual_order_type.setObjectName("cboManualOrderType")
+        self._cbo_manual_order_type.addItem("Market", OrderType.MARKET.name)
+        self._cbo_manual_order_type.addItem("Limit", OrderType.LIMIT.name)
+        self._cbo_manual_order_type.setFixedHeight(32)
+        self._cbo_manual_order_type.setStyleSheet(_field_style())
+        self._cbo_manual_order_type.currentIndexChanged.connect(
+            self._sync_manual_order_price_visibility
+        )
+        layout.addWidget(self._field_row("Loại lệnh", self._cbo_manual_order_type))
+
+        self._spn_manual_quantity = QDoubleSpinBox()
+        self._spn_manual_quantity.setObjectName("spnManualQuantity")
+        self._spn_manual_quantity.setDecimals(6)
+        self._spn_manual_quantity.setRange(0.0, 1_000_000.0)
+        self._spn_manual_quantity.setFixedHeight(32)
+        self._spn_manual_quantity.setStyleSheet(_field_style())
+        layout.addWidget(self._field_row("Khối lượng", self._spn_manual_quantity))
+
+        self._spn_manual_price = QDoubleSpinBox()
+        self._spn_manual_price.setObjectName("spnManualPrice")
+        self._spn_manual_price.setDecimals(2)
+        self._spn_manual_price.setRange(0.0, 10_000_000.0)
+        self._spn_manual_price.setFixedHeight(32)
+        self._spn_manual_price.setStyleSheet(_field_style())
+        self._row_manual_price = self._field_row("Giá (Limit)", self._spn_manual_price)
+        layout.addWidget(self._row_manual_price)
+
+        actions = QWidget()
+        actions_row = QHBoxLayout(actions)
+        actions_row.setContentsMargins(0, 0, 0, 0)
+        actions_row.setSpacing(10)
+        self._btn_manual_long = StyledButton(
+            _MANUAL_ORDER_LONG_TEXT, role=StyleRole.PRIMARY_BUTTON
+        )
+        self._btn_manual_long.setObjectName("btnManualLong")
+        self._btn_manual_long.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_manual_long.clicked.connect(
+            lambda: self._on_manual_order_clicked(ManualOrderDirection.LONG)
+        )
+        self._btn_manual_short = StyledButton(
+            _MANUAL_ORDER_SHORT_TEXT, role=StyleRole.DANGER_BUTTON
+        )
+        self._btn_manual_short.setObjectName("btnManualShort")
+        self._btn_manual_short.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_manual_short.clicked.connect(
+            lambda: self._on_manual_order_clicked(ManualOrderDirection.SHORT)
+        )
+        actions_row.addWidget(self._btn_manual_long)
+        actions_row.addWidget(self._btn_manual_short)
+        layout.addWidget(actions)
+
+        self._lbl_manual_order_status = QLabel("")
+        self._lbl_manual_order_status.setObjectName("lblManualOrderStatus")
+        self._lbl_manual_order_status.setWordWrap(True)
+        self._lbl_manual_order_status.setStyleSheet(
+            f"color: {Palette.MUTED}; font-size: 11px;"
+        )
+        layout.addWidget(self._lbl_manual_order_status)
+
+        #: Disabled together while a manual order attempt is in flight —
+        #: same "editable gate" idiom `_strategy_controls`/`_sync_armed_
+        #: summary` uses above.
+        self._manual_order_controls: tuple[QWidget, ...] = (
+            self._cbo_manual_order_type,
+            self._spn_manual_quantity,
+            self._spn_manual_price,
+            self._btn_manual_long,
+            self._btn_manual_short,
+        )
+        self._sync_manual_order_price_visibility()
+        self._sync_manual_order_state()
+        return card
+
+    def _sync_manual_order_price_visibility(self) -> None:
+        order_type = OrderType[self._cbo_manual_order_type.currentData()]
+        self._row_manual_price.setVisible(order_type is OrderType.LIMIT)
+
+    def _sync_manual_order_state(self) -> None:
+        vm = self._view_model
+        for widget in self._manual_order_controls:
+            widget.setEnabled(not vm.manualOrderBusy)
+        self._lbl_manual_order_status.setText(vm.manualOrderMessage)
+
+    def _on_manual_order_clicked(self, direction: ManualOrderDirection) -> None:
+        order_type = OrderType[self._cbo_manual_order_type.currentData()]
+        quantity = self._spn_manual_quantity.value()
+        price = self._spn_manual_price.value() if order_type is OrderType.LIMIT else 0.0
+        self._view_model.requestManualOrder(
+            direction.value, quantity, order_type.name, price
+        )
+
     def _open_strategy_params_dialog(self) -> None:
         """Built fresh per opening — same reasoning `TradingView`'s own
         method documents. Imported lazily for the same reason: the dialog
@@ -788,6 +906,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         vm.symbolChanged.connect(self._sync_symbol)
         vm.tradingStateChanged.connect(self._sync_trading_state)
         vm.sessionStatsChanged.connect(self._sync_session_stats)
+        vm.manualOrderChanged.connect(self._sync_manual_order_state)
 
     def _on_start_date_edited(self, text: str) -> None:
         self._view_model.startDate = text

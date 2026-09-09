@@ -47,6 +47,9 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_trading_account_reader im
 from Sagittarius_Elite_Warrior.src.application.ports.i_trading_client import (
     ITradingClient,
 )
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionFactory,
+)
 from Sagittarius_Elite_Warrior.src.application.ports.i_user_data_stream import (
     IUserDataStream,
 )
@@ -133,6 +136,10 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_historical_
     GetHistoricalKlinesQuery,
     GetHistoricalKlinesQueryHandler,
 )
+from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_open_positions import (
+    GetOpenPositionsQuery,
+    GetOpenPositionsQueryHandler,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.list_available_symbols import (
     ListAvailableSymbolsQuery,
     ListAvailableSymbolsQueryHandler,
@@ -164,6 +171,10 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.sync.sync_market_data i
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
     ArmStrategyCommand,
     ArmStrategyCommandHandler,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.cancel_order import (
+    CancelOrderCommand,
+    CancelOrderCommandHandler,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disable_trading import (
     DisableTradingCommand,
@@ -354,6 +365,12 @@ class BinanceBotModule(BaseModule):
         app.container.singleton(MarketDataVenue, market_data_venue)
         session_factory = ExchangeSessionFactory(market_data_venue)
         app.container.singleton(IExchangeSessionFactory, session_factory)
+        # EPIC-024A: ExecuteOrderCommandHandler/EnableTradingCommandHandler/
+        # EmergencyStopCommandHandler depend on this port, not the concrete
+        # ExchangeSessionFactory, so they auto-wire to this same shared
+        # instance rather than the container silently constructing each of
+        # them a throwaway one.
+        app.container.singleton(ITradingSessionFactory, session_factory)
         # Lazy — Client()'s own constructor pings the network (BUG-045), so
         # this must only run when something actually resolves IExchangeClient,
         # not unconditionally on every app boot.
@@ -532,10 +549,12 @@ class BinanceBotModule(BaseModule):
         app.container.bind(DisableTradingCommand, DisableTradingCommandHandler)
         app.container.bind(ExecuteOrderCommand, ExecuteOrderCommandHandler)
         app.container.bind(EmergencyStopCommand, EmergencyStopCommandHandler)
+        app.container.bind(CancelOrderCommand, CancelOrderCommandHandler)
 
     def _register_queries(self, app: App) -> None:
         """Binds CQRS queries to their respective query handlers."""
         app.container.bind(GetHistoricalKlinesQuery, GetHistoricalKlinesQueryHandler)
+        app.container.bind(GetOpenPositionsQuery, GetOpenPositionsQueryHandler)
         app.container.bind(GetDatabaseStatusQuery, GetDatabaseStatusQueryHandler)
         app.container.bind(GetDatabaseGapsQuery, GetDatabaseGapsQueryHandler)
         app.container.bind(

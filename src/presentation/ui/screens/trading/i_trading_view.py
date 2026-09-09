@@ -27,6 +27,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from PySide6.QtCore import SignalInstance
+
 from ...components.chart_card import ChartCard
 from ...qml.OpenOrdersTable.open_order_row import OpenOrderRow
 from ...qml.PositionsTable.positions_row import PositionRow
@@ -39,7 +41,7 @@ DEFAULT_VIEW_MODEL_CONTEXT_NAME = "viewModel"
 
 @runtime_checkable
 class ITradingView(Protocol):
-    """@brief The Trading screen's Presenter<->View contract — 5 members."""
+    """@brief The Trading screen's Presenter<->View contract — 6 members."""
 
     #: The single live chart this screen shows. `TradingPresenter` renders
     #: historical candles and live ticks onto it directly, on the main
@@ -77,3 +79,10 @@ class ITradingView(Protocol):
         """Replaces the Open Orders table's rows entirely — see
         `set_positions`."""
         ...
+
+    #: `EPIC-024B` §0 — the Open Orders table's per-row "Huỷ" button,
+    #: re-exposed from the shared `OpenOrdersPanel`/`OpenOrdersVM`
+    #: (`(symbol, client_order_id)`). Not on `TradingViewModel` — this is a
+    #: signal from a QML-embedding widget the View owns directly, the same
+    #: split `chart`/`equity_chart` above document.
+    cancelOrderRequested: SignalInstance

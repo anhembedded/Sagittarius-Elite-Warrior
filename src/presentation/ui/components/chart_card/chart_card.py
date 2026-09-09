@@ -587,11 +587,27 @@ class ChartCard(Card):
         One line per anomaly, not per range change (`logging-rule.md` §4):
         pan and zoom fire this signal continuously. The flag resets when the
         view recovers, so a second, different occurrence is still reported.
+
+        `BUG-110` (2026-09-09) reopened this diagnostic's own blind spot:
+        `BUG-034`'s fix (`ignoreBounds=True` on every overlay) closed the
+        "another item stole the axis" mechanism, confirmed by this exact log
+        naming no culprit but the candlestick itself — yet the band still
+        squashed. `price_bounds` below is `dataBounds(1)` called with NO
+        `orthoRange`, which only ever returns the FULL-history fallback
+        (`candlestick_item.py`'s own branching) — never what pyqtgraph's real
+        `updateAutoRange()` actually asked the item for, since that call
+        always passes `orthoRange=<current X window>` (`setAutoVisible(y=True)`
+        on this plot, see `plot_layout.py`). A real settle that used a
+        windowed price band *wider* than the full-history one, or one that
+        landed while a live candle was still forming, would be invisible in
+        the log until this line was added — so it stays, unconditionally,
+        every time this warning fires, until a live reproduction confirms or
+        rules out either.
         """
         if not self._raw_history:
             return
         view_box = self.plot_layout.main_plot.vb
-        (_, (min_y, max_y)) = view_box.viewRange()
+        (min_x, max_x), (min_y, max_y) = view_box.viewRange()
         view_height = max_y - min_y
         price_bounds = self.candlestick.dataBounds(1)
         if view_height <= 0 or price_bounds is None or price_bounds[0] is None:
@@ -613,10 +629,12 @@ class ChartCard(Card):
         if self._price_band_anomaly_reported:
             return
         self._price_band_anomaly_reported = True
+        windowed_bounds = self.candlestick.dataBounds(1, orthoRange=(min_x, max_x))
         logger.warning(
             "[chart-range] ChartCard(%s): price band [%.4f, %.4f] fills only "
             "%.2f%% of y-range [%.4f, %.4f] — candles are unreadable. "
-            "Y bounds each item on the main plot claims: %s",
+            "Y bounds each item on the main plot claims: %s | windowed price "
+            "band (x=[%.1f, %.1f]): %s | live candle forming: %s",
             self.symbol,
             price_bounds[0],
             price_bounds[1],
@@ -624,6 +642,10 @@ class ChartCard(Card):
             min_y,
             max_y,
             self._main_plot_y_bounds(),
+            min_x,
+            max_x,
+            windowed_bounds,
+            self.candlestick.live_candle is not None,
         )
 
     def _main_plot_y_bounds(self) -> str:

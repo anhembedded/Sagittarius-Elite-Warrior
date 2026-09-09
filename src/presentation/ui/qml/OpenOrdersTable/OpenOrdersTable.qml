@@ -15,6 +15,7 @@ ColumnLayout {
     readonly property int typeColumnWidth: 130
     readonly property int quantityColumnWidth: 120
     readonly property int priceColumnWidth: 130
+    readonly property int cancelColumnWidth: 70
 
     DataTable {
         Layout.fillWidth: true
@@ -31,6 +32,7 @@ ColumnLayout {
             { key: "quantity", label: "KHỐI LƯỢNG", width: root.quantityColumnWidth, align: "right" },
             { key: "price", label: "GIÁ", width: root.priceColumnWidth, align: "right" },
             { key: "status", label: "TRẠNG THÁI", fillWidth: true, align: "right" },
+            { key: "cancel", label: "", width: root.cancelColumnWidth, align: "right" },
         ]
         rowsModel: vm ? vm.rows : null
         isEmpty: vm ? vm.rows.length === 0 : false
@@ -44,6 +46,7 @@ ColumnLayout {
                 typeWidth: root.typeColumnWidth
                 quantityWidth: root.quantityColumnWidth
                 priceWidth: root.priceColumnWidth
+                cancelWidth: root.cancelColumnWidth
             }
         }
     }

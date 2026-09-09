@@ -1,8 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import "../kit"
 
 // One row of `OpenOrdersTable.qml` — renders a pre-formatted dict from
-// `open_order_row.open_order_row_to_qml`.
+// `open_order_row.open_order_row_to_qml`. The "Huỷ" button
+// (`EPIC-024B` §0) calls `vm.requestCancel(...)` directly — wired to the
+// real screen Presenter at the composition-root level (`OpenOrdersPanel`
+// re-exposes `OpenOrdersVM.cancelRequested`).
 RowLayout {
     id: root
     objectName: "openOrderRow_" + (index + 1)
@@ -15,6 +19,7 @@ RowLayout {
     property int typeWidth: 130
     property int quantityWidth: 120
     property int priceWidth: 130
+    property int cancelWidth: 70
 
     Text {
         objectName: "openOrderTime_" + (index + 1)
@@ -81,5 +86,13 @@ RowLayout {
         textFormat: Text.PlainText
         color: Theme.muted
         font.pixelSize: 12
+    }
+
+    Button {
+        objectName: "btnOpenOrderCancel_" + (index + 1)
+        Layout.preferredWidth: root.cancelWidth
+        text: "Huỷ"
+        role: "danger"
+        onClicked: if (vm) vm.requestCancel(modelData.symbol, modelData.clientOrderId)
     }
 }
