@@ -24,6 +24,7 @@ problem that has nothing to do with the order's content.
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import NoReturn
 
@@ -60,6 +61,8 @@ from Sagittarius_Elite_Warrior.src.infrastructure.binance.futures_order_payload_
     map_futures_position_payload_to_live_position,
     map_order_to_futures_params,
 )
+
+logger = logging.getLogger("App.TradingClient")
 
 
 class FuturesTradingClient(ITradingClient):
@@ -147,11 +150,31 @@ class FuturesTradingClient(ITradingClient):
             payloads = client.futures_position_information(**request_kwargs)
         except BinanceAPIException as exc:
             _raise_rejection(exc)
-        return [
-            map_futures_position_payload_to_live_position(payload)
-            for payload in payloads
-            if Decimal(str(payload.get("positionAmt", "0"))) != 0
-        ]
+        results = []
+        for payload in payloads:
+            if Decimal(str(payload.get("positionAmt", "0"))) == 0:
+                continue
+            try:
+                results.append(map_futures_position_payload_to_live_position(payload))
+            except KeyError:
+                # BUG-114-TMP — diagnostic only, remove once the real
+                # `/fapi/v3/positionRisk` field for this is confirmed:
+                # `map_futures_position_payload_to_live_position` assumes
+                # `payload["leverage"]` always exists (unverified against a
+                # live call — egress to `*.binance.*` is policy-blocked in
+                # this sandbox, per `futures_account_reader.py`'s own
+                # disclosure), and a real Testnet account just proved that
+                # assumption wrong. Logging the exact raw payload here
+                # captures the real evidence needed to fix this correctly
+                # instead of guessing a replacement field/default that
+                # could misreport real leverage (`domain-truth-rule.md`).
+                logger.error(
+                    "map_futures_position_payload_to_live_position failed on a "
+                    "real payload — raw payload for BUG-114 diagnosis: %r",
+                    payload,
+                )
+                raise
+        return results
 
     def _resolve_client(self) -> ITradingSessionClient:
         resolution = self._credentials_provider.resolve()
