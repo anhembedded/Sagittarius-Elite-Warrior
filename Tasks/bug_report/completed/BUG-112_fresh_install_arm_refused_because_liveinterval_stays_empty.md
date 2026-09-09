@@ -1,4 +1,4 @@
-# BUG-111 — Cài mới (fresh install): combo khung thời gian trông như đã chọn, nhưng `liveInterval` rỗng khiến "Nạp chiến lược" bị từ chối câm lặng ở lần bấm đầu tiên
+# BUG-112 — Cài mới (fresh install): combo khung thời gian trông như đã chọn, nhưng `liveInterval` rỗng khiến "Nạp chiến lược" bị từ chối câm lặng ở lần bấm đầu tiên
 
 **Reported date:** 2026-09-09
 **Fixed date:** 2026-09-09
