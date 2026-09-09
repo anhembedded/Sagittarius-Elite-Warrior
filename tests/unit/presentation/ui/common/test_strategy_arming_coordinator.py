@@ -148,6 +148,25 @@ def test_restore_leaves_nothing_armed(view_model, dispatcher, strategy_registry)
     assert view_model.armedSummary == ""
 
 
+def test_a_fresh_unsaved_store_falls_back_to_the_first_interval(
+    view_model, dispatcher, strategy_registry
+):
+    """`LiveStrategyConfigStore.load()` on a fresh install returns
+    `interval=""`. The interval combo still visually shows its first entry
+    selected (`QComboBox.addItems()` auto-selects index 0), so
+    `liveInterval` must match that — otherwise `build_config()` hands
+    `ArmStrategyCommand` an empty interval and the user's very first "Nạp
+    chiến lược" click is silently refused with
+    `MISSING_SYMBOL_OR_INTERVAL`."""
+    coordinator = _coordinator(view_model, dispatcher, strategy_registry)
+
+    coordinator.restore_into_view_model(_INTERVALS)
+
+    assert view_model.liveInterval == _INTERVALS[0]
+    assert coordinator.build_config().interval == _INTERVALS[0]
+    dispatcher.dispatch.assert_not_called()
+
+
 def test_a_saved_key_that_no_longer_exists_falls_back_without_arming(
     view_model, dispatcher, strategy_registry
 ):

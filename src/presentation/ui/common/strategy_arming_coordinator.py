@@ -206,9 +206,20 @@ class StrategyArmingCoordinator:
             # nothing is armed either way, so the fallback can only ever
             # become live if the user presses "Nạp chiến lược" on it.
             saved_key = available[0] if available else ""
+        saved_interval = saved.interval
+        if not saved_interval and interval_options:
+            # A fresh install has never persisted an interval, but the
+            # combo box already auto-selects its first entry the moment
+            # `set_strategy_options()` populates it (Qt's
+            # `QComboBox.addItems()` behaviour) — silently, since that
+            # populate step runs under `blockSignals`. Matching that here
+            # keeps `liveInterval` truthful to what the card visually
+            # shows, so `build_config()` does not hand `ArmStrategyCommand`
+            # an empty interval and refuse the user's very first click.
+            saved_interval = interval_options[0]
         self._params = dict(saved.strategy_params)
         self._view_model.set_strategy_selection(
-            saved_key, saved.interval, saved.sizing_percent, saved.leverage
+            saved_key, saved_interval, saved.sizing_percent, saved.leverage
         )
         self.refresh_params_rows()
 
