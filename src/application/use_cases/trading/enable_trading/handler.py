@@ -10,6 +10,9 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_market_metadata_provider 
 from Sagittarius_Elite_Warrior.src.application.ports.i_trading_account_reader import (
     ITradingAccountReader,
 )
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionFactory,
+)
 from Sagittarius_Elite_Warrior.src.application.ports.i_user_data_stream import (
     IUserDataStream,
 )
@@ -31,9 +34,6 @@ from Sagittarius_Elite_Warrior.src.domain.trading.order_submission_mode import (
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.trading_venue import (
     TradingVenue,
-)
-from Sagittarius_Elite_Warrior.src.infrastructure.binance.exchange_session_factory import (
-    ExchangeSessionFactory,
 )
 from Sagittarius_Elite_Warrior.src.infrastructure.binance.futures_trading_client import (
     FuturesTradingClient,
@@ -74,7 +74,7 @@ class EnableTradingCommandHandler(
         self,
         trading_venue: TradingVenue,
         account_reader: ITradingAccountReader,
-        session_factory: ExchangeSessionFactory,
+        session_factory: ITradingSessionFactory,
         credentials_provider: IExchangeCredentialsProvider,
         metadata_provider: IMarketMetadataProvider,
         session_state: TradingSessionState,

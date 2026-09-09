@@ -1,6 +1,6 @@
 # EPIC-024 — Giao dịch thủ công trên Dev Board + Modularize Trading Core
 
-- **Trạng thái:** 🔴 Chưa bắt đầu (0/3 task con)
+- **Trạng thái:** 🟡 Đang làm (1/3 task con — A đã xong)
 - **Repo:** Elite
 - **Nguồn gốc:** [`PRO-003`](../../proposal/PRO-003.md) — đề xuất kiến trúc đã được duyệt thành epic
   này. Đọc `PRO-003` trước khi làm bất kỳ task con nào — epic này chỉ tóm tắt quyết định, không lặp
@@ -41,7 +41,7 @@ giới Market Connector/Market Order/Strategy Engine phải được đặt tên
 
 | # | Task | Chặn bởi | Trạng thái |
 | :-: | :--- | :--- | :---: |
-| **A** | [Sửa vi phạm: handler dùng port thay vì class cụ thể](incomplete/EPIC-024A_sua_vi_pham_kien_truc_port.md) | — | 🔴 |
+| **A** | [Sửa vi phạm: handler dùng port thay vì class cụ thể](completed/EPIC-024A_sua_vi_pham_kien_truc_port.md) | — | ✅ |
 | **B** | [Giao dịch thủ công trên Dev Board](incomplete/EPIC-024B_giao_dich_thu_cong_dev_board.md) | — | 🔴 |
 | **C** | [Modularize Market Connector / Market Order / Strategy Engine](incomplete/EPIC-024C_modularize_trading_core.md) | B (phạm vi chốt sau khi B xong) | 🔴 |
 

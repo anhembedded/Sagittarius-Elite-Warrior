@@ -34,6 +34,9 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_market_metadata_provider 
 from Sagittarius_Elite_Warrior.src.application.ports.i_trading_client import (
     ITradingClient,
 )
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionFactory,
+)
 from Sagittarius_Elite_Warrior.src.application.ports.i_user_data_stream import (
     IUserDataStream,
 )
@@ -59,9 +62,6 @@ from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
 from Sagittarius_Elite_Warrior.src.domain.value_objects.order_side import OrderSide
 from Sagittarius_Elite_Warrior.src.domain.value_objects.position_side import (
     PositionSide,
-)
-from Sagittarius_Elite_Warrior.src.infrastructure.binance.exchange_session_factory import (
-    ExchangeSessionFactory,
 )
 from Sagittarius_Elite_Warrior.src.infrastructure.binance.futures_trading_client import (
     FuturesTradingClient,
@@ -98,7 +98,7 @@ class EmergencyStopCommandHandler(
         self,
         session_state: TradingSessionState,
         user_data_stream: IUserDataStream,
-        session_factory: ExchangeSessionFactory,
+        session_factory: ITradingSessionFactory,
         credentials_provider: IExchangeCredentialsProvider,
         metadata_provider: IMarketMetadataProvider,
     ) -> None:

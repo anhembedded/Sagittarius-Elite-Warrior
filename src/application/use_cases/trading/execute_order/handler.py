@@ -19,6 +19,9 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_market_metadata_provider 
 from Sagittarius_Elite_Warrior.src.application.ports.i_trading_account_reader import (
     ITradingAccountReader,
 )
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionFactory,
+)
 from Sagittarius_Elite_Warrior.src.application.services.trading_session_state import (
     TradingSessionState,
 )
@@ -46,9 +49,6 @@ from Sagittarius_Elite_Warrior.src.domain.trading.policies.trading_limit_policy 
 from Sagittarius_Elite_Warrior.src.domain.value_objects.trading_venue import (
     TradingVenue,
 )
-from Sagittarius_Elite_Warrior.src.infrastructure.binance.exchange_session_factory import (
-    ExchangeSessionFactory,
-)
 from Sagittarius_Elite_Warrior.src.infrastructure.binance.futures_trading_client import (
     FuturesTradingClient,
 )
@@ -66,7 +66,7 @@ class ExecuteOrderCommandHandler(
         account_reader: ITradingAccountReader,
         preview_handler: PreviewOrderQueryHandler,
         limits_policy: TradingLimitPolicy,
-        session_factory: ExchangeSessionFactory,
+        session_factory: ITradingSessionFactory,
         credentials_provider: IExchangeCredentialsProvider,
         metadata_provider: IMarketMetadataProvider,
     ) -> None:

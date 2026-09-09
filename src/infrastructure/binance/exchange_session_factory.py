@@ -5,12 +5,18 @@ test_only_the_session_factory_constructs_binance_client.py`, which scans
 
 from __future__ import annotations
 
+from typing import cast
+
 from binance.client import Client
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_client import (
     IExchangeClient,
 )
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_session_factory import (
     IExchangeSessionFactory,
+)
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionClient,
+    ITradingSessionFactory,
 )
 from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_credentials import (
     ExchangeCredentials,
@@ -34,7 +40,7 @@ from Sagittarius_Elite_Warrior.src.infrastructure.binance.client import (
 _DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
 
 
-class ExchangeSessionFactory(IExchangeSessionFactory):
+class ExchangeSessionFactory(IExchangeSessionFactory, ITradingSessionFactory):
     """@brief Builds `IExchangeClient` sessions for one configured
     `MarketDataVenue` (`EPIC-021A`).
     @details No key is attached for `MAINNET_PUBLIC` — kline/exchangeInfo
@@ -76,19 +82,28 @@ class ExchangeSessionFactory(IExchangeSessionFactory):
             testnet=True,
         )
 
-    def create_trading_client(self, credentials: ExchangeCredentials) -> Client:
+    def create_trading_client(
+        self, credentials: ExchangeCredentials
+    ) -> ITradingSessionClient:
         """@brief A raw `python-binance` `Client`, always Futures Testnet,
         signing with `credentials` (`EPIC-021D`).
         @details The one client instance in the app allowed to sign a
         request (ADR §2.1). Always `testnet=True`: `TradingVenue` has no
-        `MAINNET` member (ADR §3), so this is never ambiguous. Raw `Client`
-        for the same reason as `create_futures_metadata_client()` — this is
-        consumed only by other infrastructure (`FuturesAccountReader`
-        today; `EPIC-021F`'s trading adapter next), never `application/`.
+        `MAINNET` member (ADR §3), so this is never ambiguous. Declared as
+        returning `ITradingSessionClient` (`EPIC-024A`) rather than the raw
+        `Client` — the object handed back is still the same `Client`
+        instance, which satisfies that structural port without this class
+        needing to name it; the `cast` below only tells mypy so (`Client`
+        is untyped third-party — see `pyproject.toml`'s mypy override —
+        so returning it as-is would fail `no-any-return` against this
+        method's own, non-`Any`, declared return type).
         """
-        return Client(
-            api_key=credentials.api_key,
-            api_secret=credentials.api_secret,
-            requests_params={"timeout": _DEFAULT_REQUEST_TIMEOUT_SECONDS},
-            testnet=True,
+        return cast(
+            ITradingSessionClient,
+            Client(
+                api_key=credentials.api_key,
+                api_secret=credentials.api_secret,
+                requests_params={"timeout": _DEFAULT_REQUEST_TIMEOUT_SECONDS},
+                testnet=True,
+            ),
         )

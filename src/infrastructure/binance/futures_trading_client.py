@@ -27,7 +27,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import NoReturn
 
-from binance.client import Client
 from binance.exceptions import BinanceAPIException
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_credentials_provider import (
     IExchangeCredentialsProvider,
@@ -37,6 +36,10 @@ from Sagittarius_Elite_Warrior.src.application.ports.i_market_metadata_provider 
 )
 from Sagittarius_Elite_Warrior.src.application.ports.i_trading_client import (
     ITradingClient,
+)
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionClient,
+    ITradingSessionFactory,
 )
 from Sagittarius_Elite_Warrior.src.domain.entities.futures_symbol_metadata import (
     FuturesSymbolMetadata,
@@ -51,9 +54,6 @@ from Sagittarius_Elite_Warrior.src.domain.trading.order_submission_mode import (
 )
 from Sagittarius_Elite_Warrior.src.infrastructure.binance.binance_error_translator import (
     translate_binance_error,
-)
-from Sagittarius_Elite_Warrior.src.infrastructure.binance.exchange_session_factory import (
-    ExchangeSessionFactory,
 )
 from Sagittarius_Elite_Warrior.src.infrastructure.binance.futures_order_payload_mapper import (
     map_futures_order_payload_to_order,
@@ -70,7 +70,7 @@ class FuturesTradingClient(ITradingClient):
 
     def __init__(
         self,
-        session_factory: ExchangeSessionFactory,
+        session_factory: ITradingSessionFactory,
         credentials_provider: IExchangeCredentialsProvider,
         metadata_provider: IMarketMetadataProvider,
         submission_mode: OrderSubmissionMode,
@@ -153,7 +153,7 @@ class FuturesTradingClient(ITradingClient):
             if Decimal(str(payload.get("positionAmt", "0"))) != 0
         ]
 
-    def _resolve_client(self) -> Client:
+    def _resolve_client(self) -> ITradingSessionClient:
         resolution = self._credentials_provider.resolve()
         if resolution.credentials is None:
             raise ValueError(

@@ -15,9 +15,10 @@ Your run closes **one** typing or documentation gap, or nothing.
 **`[tool.mypy]` in `pyproject.toml` is your standing brief.** `EPIC-002` opened
 the `mypy` gate at the exact baseline it measured, not at zero: the block lists
 the files whose pre-existing errors are frozen as debt.
-[`Tasks/epics/EPIC-002_static_type_checking_in_local_ci/incomplete/EPIC-002D_incremental_strictness_rollout.md`](../../Tasks/epics/EPIC-002_static_type_checking_in_local_ci/incomplete/EPIC-002D_incremental_strictness_rollout.md)
-is the open sub-task whose entire job is to **shrink that list** — one file at a
-time is exactly the size of your run.
+[`Tasks/epics/EPIC-002_static_type_checking_in_local_ci/completed/EPIC-002D_incremental_strictness_rollout.md`](../../Tasks/epics/EPIC-002_static_type_checking_in_local_ci/completed/EPIC-002D_incremental_strictness_rollout.md)
+was the sub-task that drove that list down (closed 2026-09-08 — `presentation/`
+deliberately left out, see its own §8); shrinking whatever is still on the list
+today is still exactly the size of your run.
 
 ```bash
 grep -n 'tool.mypy' -A 80 pyproject.toml     # the debt list, always current
