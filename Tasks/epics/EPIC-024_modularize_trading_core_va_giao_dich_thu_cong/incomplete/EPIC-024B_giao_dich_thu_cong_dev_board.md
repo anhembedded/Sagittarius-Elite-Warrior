@@ -148,17 +148,21 @@ Cả 2 câu hỏi trên đã có câu trả lời — điều kiện merge của
 - ✅ Unit: `_on_manual_order_requested`/`_run_manual_order` dispatch đúng `ExecuteOrderCommand` với
   `PreviewOrderQuery` đúng tham số, và chặn cứng đúng cả 2 trường hợp (armed+có vị thế, armed+Flat)
   — mock dispatcher, `test_dashboard_presenter.py`.
-- ⚠️ **Integration — đã đổi kế hoạch, tự quyết, chưa hỏi ý kiến trước khi làm:** bản gốc yêu cầu bấm
-  nút Long/Short thật qua widget Qt thật (giống
-  `test_dev_board_known_gaps.py::test_strategy_dropdown_arms_the_selected_strategy`, dùng
-  `navigate()` mở app thật + dispatcher thật). Thay vào đó đã viết
-  `tests/integration/application/test_manual_order_pipeline_against_fake_server.py`: dựng lại đúng
-  logic `_run_manual_order` bằng tay, gọi `ExecuteOrderCommandHandler`/`GetOpenPositionsQueryHandler`
-  THẬT, xuyên qua **fake Binance HTTP server thật** (`tests/sanity/fake_exchange/`) — chứng minh
-  được lệnh Long/Short thật sự lên tới "sàn" đúng `side`/`reduceOnly`, nhưng KHÔNG chứng minh việc
-  bấm nút Qt thật → ViewModel → Presenter thật hoạt động đúng (phần đó chỉ có unit test mock
-  dispatcher, chưa có integration test thật xuyên suốt UI). Còn thiếu nếu muốn đủ như bản gốc yêu
-  cầu.
+- ✅ **Integration — bấm nút Qt thật (đúng bản gốc yêu cầu, làm bổ sung 2026-09-09):**
+  `tests/integration/presentation/ui/test_dev_board_manual_order_qt_click.py`, cùng khung với
+  `test_dev_board_known_gaps.py::test_strategy_dropdown_arms_the_selected_strategy` — `navigate()`
+  mở app thật, `qtbot.mouseClick()` bấm thật `panel._btn_manual_long`/`_btn_manual_short`. Hai case:
+  (1) armed đúng symbol → bấm LONG bị chặn cứng, xác minh **không** dispatch bất kỳ command nào (spy
+  bọc `presenter.dispatcher.dispatch`, mutation-verify: tắt điều kiện chặn thì test fail đúng như kỳ
+  vọng, khôi phục lại thì pass); (2) không armed → bấm SHORT xuyên tới `GetOpenPositionsQuery` rồi
+  `ExecuteOrderCommand` **thật** (không phải giả), nhận đúng message `TRADING_VENUE_DISABLED` từ
+  chính `ExecuteOrderCommandHandler` thật (app test luôn boot với `TradingVenue.DISABLED` —
+  `src/config/app_config.json` — nên không đụng mạng). `conftest.py`'s `mock_dispatch` mở rộng thêm
+  2 case này, cùng kiểu đặc cách container-resolve thật `ArmStrategyCommandHandler`/
+  `DisarmStrategyCommandHandler` đã có sẵn.
+  `tests/integration/application/test_manual_order_pipeline_against_fake_server.py` (đã làm trước
+  đó) vẫn giữ — chứng minh lệnh thật lên "sàn" đúng `side`/`reduceOnly` qua fake HTTP server, một
+  lớp bằng chứng khác (network thật, không qua UI) mà test Qt-click này không thay thế.
 - ⛔ **Testnet tier** (opt-in, chỉ chạy được nơi có credentials thật) — không làm được trong môi
   trường sandbox hiện tại (đã ghi từ đầu file). Chưa có bằng chứng khớp lệnh thật trên Testnet cho
   đường thủ công.
