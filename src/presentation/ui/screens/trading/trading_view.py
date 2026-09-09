@@ -66,6 +66,18 @@ _TOGGLE_BUSY_TEXT = "Đang xử lý..."
 #: real trading symbol, just what `Card`'s header shows.
 _EQUITY_CHART_TITLE = "Vốn"
 
+#: An empty `ChartCard`'s own `sizeHint()` is tiny (no candles/toolbar to
+#: size around) — `_build_workspace()`'s stretch factors only split space
+#: *beyond* each widget's own minimum, so a near-zero minimum here left
+#: the equity chart squeezed to a sliver rather than sharing fairly in the
+#: split (same defect user-reported and fixed on `DashboardView`'s mirror
+#: of this exact construction). This floor gives it a legible baseline;
+#: `PageShell.set_workspace()` already wraps the whole workspace in a
+#: `PreferredHeightScrollArea` (`kit/page_shell.py`), so if this floor plus
+#: everything else no longer fits the viewport, the page scrolls instead of
+#: compressing this chart back down.
+_EQUITY_CHART_MINIMUM_HEIGHT = 220
+
 # --- `EPIC-022D` strategy card ---------------------------------------- #
 #: Domain terminology fixed by `ui-presentation-rule.md`: strategy
 #: parameters are "Thông số Chiến lược", never the general Bot settings.
@@ -126,6 +138,7 @@ class TradingView(BaseView):
         card.set_chart_type("line")
         card.set_volume_visible(False)
         card.toolbar.setVisible(False)
+        card.setMinimumHeight(_EQUITY_CHART_MINIMUM_HEIGHT)
         return card
 
     def set_view_model(
