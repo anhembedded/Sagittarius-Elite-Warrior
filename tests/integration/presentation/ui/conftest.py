@@ -9,6 +9,18 @@ from PySide6.QtWidgets import QApplication
 # Force offscreen rendering for headless CI environments
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_credentials_provider import (
+    IExchangeCredentialsProvider,
+)
+from Sagittarius_Elite_Warrior.src.application.ports.i_market_metadata_provider import (
+    IMarketMetadataProvider,
+)
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_account_reader import (
+    ITradingAccountReader,
+)
+from Sagittarius_Elite_Warrior.src.application.ports.i_trading_session_factory import (
+    ITradingSessionFactory,
+)
 from Sagittarius_Elite_Warrior.src.application.services.backtest_range_coverage import (
     BacktestRangeCoverage,
 )
@@ -24,13 +36,29 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_backtest_ra
 from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_historical_klines.query import (
     GetHistoricalKlinesQuery,
 )
+from Sagittarius_Elite_Warrior.src.application.use_cases.queries.get_open_positions import (
+    GetOpenPositionsQuery,
+)
+from Sagittarius_Elite_Warrior.src.application.use_cases.queries.preview_order.handler import (
+    PreviewOrderQueryHandler,
+)
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.arm_strategy import (
     ArmStrategyCommandHandler,
 )
 from Sagittarius_Elite_Warrior.src.application.use_cases.trading.disarm_strategy import (
     DisarmStrategyCommandHandler,
 )
+from Sagittarius_Elite_Warrior.src.application.use_cases.trading.execute_order import (
+    ExecuteOrderCommand,
+    ExecuteOrderCommandHandler,
+)
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
+from Sagittarius_Elite_Warrior.src.domain.trading.policies.trading_limit_policy import (
+    TradingLimitPolicy,
+)
+from Sagittarius_Elite_Warrior.src.domain.value_objects.trading_venue import (
+    TradingVenue,
+)
 from Sagittarius_Elite_Warrior.src.main import create_app
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.sidebar import Sidebar
 from Sagittarius_Elite_Warrior.src.presentation.ui.main_window import MainWindow
@@ -210,6 +238,43 @@ def app_engine(request, monkeypatch, tmp_path):
                 engine.context.container.resolve(TradingSessionState),
             )
             return handler.execute(command_obj)
+        if command_type is ExecuteOrderCommand:
+            # `EPIC-024B` — the manual order card's real-Qt-click test needs
+            # the REAL `ExecuteOrderCommandHandler`, same reasoning as the
+            # two branches above: a fabricated `ExecuteOrderResult` would
+            # report success/failure without ever exercising the safety
+            # gates the click is supposed to prove reachable. Every
+            # collaborator below is unconditionally container-registered
+            # (see `binance_bot_module.py` / `EPIC-024A`), so this never
+            # touches the network — this test suite's app config always
+            # boots with `TradingVenue.DISABLED` (`src/config/app_config.json`),
+            # which `_first_blocked_safety_gate()` trips before any of the
+            # network-touching collaborators (`account_reader`,
+            # `preview_handler`, the exchange session) are ever called.
+            handler = ExecuteOrderCommandHandler(
+                engine.context.container.resolve(TradingVenue),
+                engine.context.container.resolve(TradingSessionState),
+                engine.context.container.resolve(ITradingAccountReader),
+                engine.context.container.resolve(PreviewOrderQueryHandler),
+                engine.context.container.resolve(TradingLimitPolicy),
+                engine.context.container.resolve(ITradingSessionFactory),
+                engine.context.container.resolve(IExchangeCredentialsProvider),
+                engine.context.container.resolve(IMarketMetadataProvider),
+            )
+            return handler.execute(command_obj)
+        if command_type is GetOpenPositionsQuery:
+            # `GetOpenPositionsQueryHandler` itself builds a real
+            # `FuturesTradingClient` and hits the network
+            # (`get_positions()`) unconditionally — safe to do against a
+            # real exchange/fake server (see
+            # `test_manual_order_pipeline_against_fake_server.py`), but not
+            # something this offscreen Qt suite's shared engine should do on
+            # every manual-order click. `DashboardPresenter._run_manual_order`
+            # only wants a real tuple shape back (it iterates `positions`
+            # directly), not a network round trip, so a flat empty tuple —
+            # "no open position for any symbol" — is the correct fixture
+            # answer here, same spirit as the `_FakeResponse` branches below.
+            return ()
 
         response = _FakeResponse()
         if command_type is GetHistoricalKlinesQuery:
