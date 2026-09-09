@@ -102,37 +102,45 @@ class ExecuteOrderCommandHandler(
             )
 
         symbol = command.order_request.symbol
-        now = datetime.now(UTC)
-        context = TradingLimitContext(
-            orders_sent_this_session=self._session_state.orders_sent_this_session,
-            order_notional=preview.estimated_notional,
-            open_position_count_for_symbol=self._session_state.open_position_count(
-                symbol
-            ),
-            time_since_last_order_for_symbol=self._session_state.time_since_last_order(
-                symbol, now
-            ),
-        )
-        checks = self._limits_policy.evaluate(context)
-        violation = next((c.violation for c in checks if not c.passed), None)
-        if violation is not None:
-            return ExecuteOrderResult(violation, preview, checks, None, context)
+        # `EPIC-024B` — held for the whole evaluate→submit→record sequence,
+        # network call included, not just the state mutations: a second
+        # real caller of this command now exists (a human, via the manual
+        # trading form, alongside the strategy's own tick), so two
+        # dispatches reading `orders_sent_this_session` before either one's
+        # order lands is a real race, not a hypothetical one. See
+        # `TradingSessionState.live_submission_guard()`'s own docstring.
+        with self._session_state.live_submission_guard():
+            now = datetime.now(UTC)
+            context = TradingLimitContext(
+                orders_sent_this_session=self._session_state.orders_sent_this_session,
+                order_notional=preview.estimated_notional,
+                open_position_count_for_symbol=self._session_state.open_position_count(
+                    symbol
+                ),
+                time_since_last_order_for_symbol=self._session_state.time_since_last_order(
+                    symbol, now
+                ),
+            )
+            checks = self._limits_policy.evaluate(context)
+            violation = next((c.violation for c in checks if not c.passed), None)
+            if violation is not None:
+                return ExecuteOrderResult(violation, preview, checks, None, context)
 
-        if not command.live:
-            return ExecuteOrderResult(None, preview, checks, None, context)
+            if not command.live:
+                return ExecuteOrderResult(None, preview, checks, None, context)
 
-        trading_client = FuturesTradingClient(
-            self._session_factory,
-            self._credentials_provider,
-            self._metadata_provider,
-            OrderSubmissionMode.LIVE,
-        )
-        submitted_order = trading_client.place_order(preview.order)
-        self._session_state.record_order_sent(symbol, now)
-        logger.info(
-            "Live order submitted: %s %s", symbol, submitted_order.client_order_id
-        )
-        return ExecuteOrderResult(None, preview, checks, submitted_order, context)
+            trading_client = FuturesTradingClient(
+                self._session_factory,
+                self._credentials_provider,
+                self._metadata_provider,
+                OrderSubmissionMode.LIVE,
+            )
+            submitted_order = trading_client.place_order(preview.order)
+            self._session_state.record_order_sent(symbol, now)
+            logger.info(
+                "Live order submitted: %s %s", symbol, submitted_order.client_order_id
+            )
+            return ExecuteOrderResult(None, preview, checks, submitted_order, context)
 
     def _first_blocked_safety_gate(self) -> ExecuteOrderSafetyGate | None:
         if self._trading_venue is not TradingVenue.FUTURES_TESTNET:

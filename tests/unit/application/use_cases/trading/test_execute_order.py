@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import Mock
@@ -123,6 +125,7 @@ def _handler(
     status: ExchangeConnectionStatus | None = None,
     session_state: TradingSessionState | None = None,
     raw_client: Mock | None = None,
+    limits: TradingLimits | None = None,
 ) -> tuple[ExecuteOrderCommandHandler, TradingSessionState]:
     state = session_state or TradingSessionState()
     if enabled and not state.enabled:
@@ -145,7 +148,7 @@ def _handler(
         state,
         account_reader,
         preview_handler,
-        TradingLimitPolicy(_LIMITS),
+        TradingLimitPolicy(limits or _LIMITS),
         session_factory,
         credentials_provider,
         metadata_provider,
@@ -305,3 +308,62 @@ class TestLiveSubmission:
                 )
             )
         raw_client.futures_create_order.assert_not_called()
+
+
+class TestConcurrentDispatch:
+    """`PRO-003` §8.2 / `EPIC-024B` §4.1.1 — this task adds a second real
+    caller of `ExecuteOrderCommand` (a human, via the manual trading form,
+    alongside the strategy's own tick). Answering "can two concurrent
+    dispatches both pass a limit check that only one of them should" had
+    to be settled by actually racing two threads, not by reading the code
+    and reasoning about it — this is that test."""
+
+    def test_two_concurrent_dispatches_never_exceed_the_session_order_cap(
+        self,
+    ) -> None:
+        """`max_orders_per_session=1`: only one of two simultaneous
+        dispatches may ever place a real order. A `threading.Barrier`
+        lines both threads up to call `handler.execute()` as close to
+        together as possible; the mock exchange call sleeps briefly so a
+        pre-`EPIC-024B` build (evaluate outside any lock spanning the
+        network call) has a real window to let both through."""
+        tight_limits = TradingLimits(
+            max_orders_per_session=1,
+            max_notional_per_order=Decimal(500),
+            max_positions_per_symbol=1,
+            min_order_interval=timedelta(seconds=60),
+        )
+        raw_client = Mock()
+
+        def _slow_create_order(**_kwargs: object) -> dict[str, object]:
+            time.sleep(0.05)
+            return {}
+
+        raw_client.futures_create_order.side_effect = _slow_create_order
+        handler, state = _handler(raw_client=raw_client, limits=tight_limits)
+
+        barrier = threading.Barrier(2)
+        results: list[object] = [None, None]
+
+        def _dispatch(index: int) -> None:
+            barrier.wait(timeout=5)
+            results[index] = handler.execute(
+                ExecuteOrderCommand(order_request=_order_request(), live=True)
+            )
+
+        threads = [
+            threading.Thread(target=_dispatch, args=(0,)),
+            threading.Thread(target=_dispatch, args=(1,)),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+
+        assert raw_client.futures_create_order.call_count == 1
+        assert state.orders_sent_this_session == 1
+        blocked = [r for r in results if r.blocked_by is not None]  # type: ignore[attr-defined]
+        submitted = [r for r in results if r.submitted_order is not None]  # type: ignore[attr-defined]
+        assert len(submitted) == 1
+        assert len(blocked) == 1
+        assert blocked[0].blocked_by is TradingLimitViolation.MAX_ORDERS_PER_SESSION  # type: ignore[attr-defined]

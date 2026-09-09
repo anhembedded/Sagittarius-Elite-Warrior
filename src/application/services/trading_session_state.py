@@ -32,6 +32,26 @@ blindly turning trading back on — reconciliation succeeding doesn't mean
 nothing else happened while it ran. `enable()`'s `expected_generation`
 closes that: a caller reads `self.generation` before starting its own
 network calls, then only applies if nothing else mutated state meanwhile.
+
+`EPIC-024B` — `live_submission_guard()` is a **second**, separate lock.
+`PRO-003` §8.2 asked directly: with a second real caller of
+`ExecuteOrderCommand` now possible (a human clicking Long/Short on the
+manual trading form, alongside the strategy's own tick), can two concurrent
+dispatches both read `orders_sent_this_session` before either one's order
+actually lands and its increment applies — letting both through when only
+one slot was free? Reading `ExecuteOrderCommandHandler.execute()` before
+this epic confirmed yes: evaluate-then-submit-then-record spanned a real
+network call with no lock held across it at all. `self._lock` above cannot
+be reused to fix this — every accessor here takes and releases it almost
+immediately by design (`open_position_count()`, `time_since_last_order()`),
+and holding it across a network call would block those for unrelated
+readers (UI polling) for the duration of an order. `live_submission_guard()`
+exists for callers that specifically need the opposite: the whole
+evaluate→submit→record sequence serialized against every other live
+dispatch, network call included. Order submission is inherently rare
+(bounded by `TradingLimits.min_order_interval` already) and the realistic
+contention here is at most two callers, so serializing them is the correct
+trade-off, not a bottleneck.
 """
 
 from __future__ import annotations
@@ -47,6 +67,9 @@ class TradingSessionState:
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
+        #: `EPIC-024B` — see this class's own docstring for why this is a
+        #: second, distinct lock from `self._lock` above.
+        self._live_submission_lock = threading.Lock()
         self.enabled = False
         self.orders_sent_this_session = 0
         self.known_open_symbols: set[str] = set()
@@ -58,6 +81,17 @@ class TradingSessionState:
     @property
     def generation(self) -> int:
         return self._generation
+
+    def live_submission_guard(self) -> threading.Lock:
+        """@brief The lock `ExecuteOrderCommandHandler` holds across its
+        entire evaluate-limits→submit→record sequence for a live order —
+        see this class's own docstring (`EPIC-024B`) for why. A plain
+        `threading.Lock` is already a context manager
+        (`with state.live_submission_guard():`); returned rather than
+        wrapped so callers get the standard `with`/`acquire`/`release`
+        surface without this class inventing its own.
+        """
+        return self._live_submission_lock
 
     def enable(
         self, open_symbols: set[str], *, expected_generation: int | None = None
