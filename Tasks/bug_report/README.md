@@ -58,15 +58,17 @@ từng file lên đọc. Bảng này là câu trả lời cho câu hỏi đó.
 
 | Trạng thái | Số lượng |
 | :--- | :--- |
-| 🔴 **Đang mở** | 0 |
+| 🔴 **Đang mở** | 1 |
 | ✅ **Đã sửa / đã đóng** | 106 |
-| 📈 **Tổng** | **106** |
+| 📈 **Tổng** | **107** |
 
 ---
 
 ## 🔴 Đang mở (Open)
 
-**Không có bug nào đang mở** (2026-09-08).
+| ID | Tiêu đề | Mức độ | Ngày báo |
+| :--- | :--- | :---: | :---: |
+| **[BUG-110](incomplete/BUG-110_chart_range_warning_tai_xuat_hien_sau_khi_BUG-034_da_sua.md)** | Cảnh báo `[chart-range]` (nến bị ép dẹp) tái xuất hiện trên màn Giao dịch (ETHUSDT), sau khi `BUG-034` đã sửa — log không nêu tên item thủ phạm nào khác ngoài nến, nên gần như chắc chắn là cơ chế khác, chưa root-cause | 🟡 P3 | 2026-09-09 |
 
 > Hai hồ sơ cuối đóng cùng ngày theo hai đường khác hẳn nhau, và cặp đó đáng nhớ:
 > `BUG-068` đóng dạng **không tái hiện được từ môi trường hiện có** (cảnh báo Qt chỉ tồn tại trên
@@ -74,7 +76,9 @@ từng file lên đọc. Bảng này là câu trả lời cho câu hỏi đó.
 > **mở lại và sửa thật** ngay trong ngày: lượt điều tra thứ 5 phát hiện 4 lượt trước đo
 > `viewRange()` trước khi pyqtgraph kịp chốt auto-range. Bài học: "không tái hiện được" đôi khi chỉ
 > cách bằng chứng đúng một lượt đo cho đúng thời điểm — nên đóng dạng đó là **tạm dừng**, không
-> phải kết luận.
+> phải kết luận. `BUG-110` (ngay hôm sau) là ví dụ tiếp theo: cùng dòng cảnh báo `BUG-034` cấy vào
+> code để bắt lại triệu chứng, bắt được thật — nhưng log lần này không nêu tên thủ phạm, nên nhiều
+> khả năng là một cơ chế khác đứng sau cùng một triệu chứng, không phải `BUG-034` tái phát.
 
 ---
 
