@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -240,6 +241,53 @@ async def test_process_socket_message_unwraps_multiplex_envelope_and_emits():
     emitted_event = event_bus.emit.call_args[0][0]
     assert emitted_event.market_data.symbol == "BTCUSDT"
     assert emitted_event.market_data.is_closed is True
+
+
+@pytest.mark.asyncio
+async def test_kline_tick_logs_at_debug_not_info(caplog) -> None:
+    """`BUG-113` (`BUG-042`/`BUG-095` regression) — every kline WebSocket
+    message fires this line, several times a second on an active symbol;
+    at `INFO` it is exactly the per-event flood `logging-rule.md` §4/§6
+    forbid at that level and `BUG-042` once froze the UI with, reported
+    directly by a user reading their own real session log."""
+    event_bus = Mock()
+    service = BinanceWebsocketService(event_bus, Mock())
+    tscm = Mock()
+
+    async def mock_recv():
+        return {
+            "e": "kline",
+            "k": {
+                "s": "BTCUSDT",
+                "i": "1m",
+                "t": 0,
+                "T": 0,
+                "o": "1",
+                "h": "1",
+                "l": "1",
+                "c": "1",
+                "v": "1",
+                "q": "1",
+                "n": 1,
+                "V": "1",
+                "Q": "1",
+                "x": False,
+            },
+        }
+
+    tscm.recv = mock_recv
+
+    with caplog.at_level(logging.DEBUG, logger="App.LiveStream"):
+        await service._process_socket_message(tscm)
+
+    assert any(
+        "[Live Stream]" in record.message and record.levelno == logging.DEBUG
+        for record in caplog.records
+    )
+    assert not any(
+        "[Live Stream]" in record.message and record.levelno >= logging.INFO
+        for record in caplog.records
+    )
 
 
 def test_parse_kline():
