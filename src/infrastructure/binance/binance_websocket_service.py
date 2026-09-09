@@ -238,11 +238,18 @@ class BinanceWebsocketService(ILiveStreamService):
         if res.get("e") == "kline":
             try:
                 market_data = self._parse_kline(res)
-                logger.info(
-                    f"[Live Stream] {market_data.symbol}"
-                    f" | Price: {market_data.close_price}"
-                    f" | Vol: {market_data.volume}"
-                    f" | Closed: {market_data.is_closed}"
+                # `BUG-113` (`BUG-042`/`BUG-095` regression) — fires per
+                # kline tick, several times a second on an active symbol;
+                # `logging-rule.md` §4/§6 puts per-event detail at DEBUG,
+                # never INFO (`SignalLogHandler`'s queued-signal UI mirror
+                # is exactly what `BUG-042` once froze on 838 per-event
+                # INFO lines).
+                logger.debug(
+                    "[Live Stream] %s | Price: %s | Vol: %s | Closed: %s",
+                    market_data.symbol,
+                    market_data.close_price,
+                    market_data.volume,
+                    market_data.is_closed,
                 )
                 self._event_bus.emit(MarketTickEvent(market_data=market_data))
             except (KeyError, ValueError, TypeError) as e:
