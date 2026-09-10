@@ -567,7 +567,7 @@ class DataManagementPresenter(BasePresenter):
         self._gap_coordinator.cancel()
         if self.fsm and self.fsm.current_state in (UIMode.SYNCING, UIMode.SCANNING):
             self.fsm.transition_to(UIMode.CANCELLING)
-            self.ui_log_signal.emit("Đang gửi yêu cầu hủy tác vụ...")
+            self.ui_log_signal.emit("Sending cancellation request...")
 
     @Slot()
     @safe_ui_action

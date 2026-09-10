@@ -82,7 +82,7 @@ def test_the_subtitle_reads_the_real_symbol_interval_and_count(qapp, dialog):
 
     subtitle = find_qml_item(dialog.root_object, "lblKlineInspectorSubtitle")
     assert subtitle is not None
-    assert subtitle.property("text") == "BTCUSDT (1m)  •  2 nến"
+    assert subtitle.property("text") == "BTCUSDT (1m)  •  2 candles"
 
 
 def test_a_later_inspection_replaces_the_table_contents(qapp, dialog, view_model):
@@ -96,7 +96,7 @@ def test_a_later_inspection_replaces_the_table_contents(qapp, dialog, view_model
     rows = find_all_named(dialog.root_object, "klineClose_")
     assert len(rows) == 1
     subtitle = find_qml_item(dialog.root_object, "lblKlineInspectorSubtitle")
-    assert subtitle.property("text") == "ETHUSDT (5m)  •  1 nến"
+    assert subtitle.property("text") == "ETHUSDT (5m)  •  1 candles"
 
 
 def test_the_outer_chrome_carries_no_duplicate_title(qapp, dialog):

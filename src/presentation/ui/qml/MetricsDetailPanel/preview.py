@@ -27,7 +27,7 @@ _CARDS = (
     StatCardData("Gross Profit", "1,148.19", _NEUTRAL, "USD", "", _NEUTRAL),
     StatCardData("Gross Loss", "-9,341.72", _NEUTRAL, "USD", "", _NEUTRAL),
     StatCardData("Avg Trade", "-9.20", Tone.NEGATIVE, "USD", "", _NEUTRAL),
-    StatCardData("Total Closed Trades", "891", _NEUTRAL, "lệnh", "", _NEUTRAL),
+    StatCardData("Total Closed Trades", "891", _NEUTRAL, "trades", "", _NEUTRAL),
     StatCardData("Avg Winning Trade", "12.48", Tone.POSITIVE, "USD", "", _NEUTRAL),
     StatCardData("Avg Losing Trade", "-11.69", Tone.NEGATIVE, "USD", "", _NEUTRAL),
     StatCardData("Largest Winning Trade", "124.48", Tone.POSITIVE, "USD", "", _NEUTRAL),
@@ -36,8 +36,8 @@ _CARDS = (
     StatCardData("Sortino Ratio", "-84.59", _NEUTRAL, "", "", _NEUTRAL),
     StatCardData("Calmar Ratio", "-1.22", _NEUTRAL, "", "", _NEUTRAL),
     StatCardData("Max Drawdown Duration", "48368", _NEUTRAL, "bars", "", _NEUTRAL),
-    StatCardData("Max Consecutive Wins", "4", Tone.POSITIVE, "lệnh", "", _NEUTRAL),
-    StatCardData("Max Consecutive Losses", "46", _NEUTRAL, "lệnh", "", _NEUTRAL),
+    StatCardData("Max Consecutive Wins", "4", Tone.POSITIVE, "trades", "", _NEUTRAL),
+    StatCardData("Max Consecutive Losses", "46", _NEUTRAL, "trades", "", _NEUTRAL),
 )
 
 

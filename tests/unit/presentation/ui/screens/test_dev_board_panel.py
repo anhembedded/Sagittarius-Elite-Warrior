@@ -252,12 +252,12 @@ def test_progress_banner_hidden_until_a_sync_is_visible(qapp, panel, view_model)
 
 
 def test_progress_banner_reflects_the_view_model(qapp, panel, view_model):
-    view_model.set_progress(25, 100, True, "Đang đồng bộ ETHUSDT 5m (25/100 nến)")
+    view_model.set_progress(25, 100, True, "Syncing ETHUSDT 5m (25/100 candles)")
     qapp.processEvents()
 
     assert panel._progress_banner.isVisible() is True
     root = panel._progress_banner.root_object
-    assert root.property("statusText") == "Đang đồng bộ ETHUSDT 5m (25/100 nến)"
+    assert root.property("statusText") == "Syncing ETHUSDT 5m (25/100 candles)"
     assert root.property("percent") == pytest.approx(25.0)
 
     view_model.hide_progress()
@@ -279,7 +279,7 @@ def test_clicking_the_progress_banners_cancel_button_requests_stop(
     why `LOCKED` needed a way to cancel at all) — it must drive the exact
     same `stopStreamRequested` request the top-level Stop button does, not a
     second, separate cancellation path."""
-    view_model.set_progress(0, 0, True, "Đang đồng bộ dữ liệu từ Binance...")
+    view_model.set_progress(0, 0, True, "Syncing data from Binance...")
     qapp.processEvents()
 
     stopped = []

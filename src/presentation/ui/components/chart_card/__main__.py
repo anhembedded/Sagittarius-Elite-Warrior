@@ -29,7 +29,7 @@ card = ChartCard("BTCUSDT")
 card.resize(1000, 700)
 card.show()
 
-print("⏳ Tự động sinh 5,000 nến lịch sử và 2 Indicators (SMA, RSI)...")
+print("⏳ Auto-generating 5,000 historical candles and 2 indicators (SMA, RSI)...")
 now = time.time()
 history = []
 sma_x, sma_y = [], []
@@ -68,7 +68,7 @@ for i in range(5000):
 card.render_historical_data(history)
 card.update_indicator_data("SMA_20", sma_x, sma_y)
 card.update_indicator_data("RSI_14", rsi_x, rsi_y)
-print("✅ Đã load xong bộ khung Main Chart & Subplots.")
+print("✅ Main Chart & Subplots frame loaded.")
 
 # 3. MOCK LIVE TICK
 live_t = now + 60

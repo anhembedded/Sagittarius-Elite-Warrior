@@ -244,7 +244,7 @@ def test_real_button_click_reaches_the_presenter_and_locks_the_widget(
 
     mock_thread_manager.submit.assert_called_once()
     assert button.isEnabled() is False
-    assert button.text() == "Đang kiểm tra..."
+    assert button.text() == "Checking..."
 
 
 def test_a_result_renders_on_the_real_label(presenter, qapp, mock_dispatcher):
@@ -260,4 +260,4 @@ def test_a_result_renders_on_the_real_label(presenter, qapp, mock_dispatcher):
     button = presenter.view.findChild(QPushButton, "btnCheckConnection")
     assert "FUTURES_TESTNET" in label.text()
     assert button.isEnabled() is True
-    assert button.text() == "Kiểm tra kết nối"
+    assert button.text() == "Check Connection"

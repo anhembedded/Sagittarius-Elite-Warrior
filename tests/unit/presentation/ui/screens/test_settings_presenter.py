@@ -195,7 +195,7 @@ def test_an_env_var_locks_the_field_and_wins_over_the_file(
     assert view_model.apiKey == "env-key"
     assert view_model.apiSecret == "env-secret"
     assert view_model.credentialsLocked is True
-    assert "biến môi trường" in view_model.credentialsSourceLabel
+    assert "environment variable" in view_model.credentialsSourceLabel
 
 
 def test_missing_config_keys_load_safely(
@@ -459,7 +459,7 @@ def test_env_locked_credentials_disable_the_input_fields(
     assert view.findChild(QLineEdit, "txtApiKey").isReadOnly() is True
     assert view.findChild(QLineEdit, "txtApiSecret").isReadOnly() is True
     label = view.findChild(QLabel, "lblCredentialsSource")
-    assert "biến môi trường" in label.text()
+    assert "environment variable" in label.text()
 
 
 def test_save_button_click_writes_config(presenter, qapp, mock_config):

@@ -89,7 +89,7 @@ class EmaTrendPullbackStrategy(BaseStrategy):
             label="EMA_LONG_NUM",
             minval=10,
             maxval=500,
-            group="Xu hướng dài hạn",
+            group="Long-Term Trend",
         )
         self._tick_confirm = self.input_int(
             "tick_confirm",
@@ -97,28 +97,28 @@ class EmaTrendPullbackStrategy(BaseStrategy):
             label="TICK_NUM",
             minval=1,
             maxval=20,
-            group="Xu hướng dài hạn",
+            group="Long-Term Trend",
         )
         self._touch_sensitivity = self.input_float(
             "touch_sensitivity",
             _DEFAULT_TOUCH_SENSITIVITY,
-            label="Độ nhạy chạm EMA (%)",
+            label="EMA touch sensitivity (%)",
             minval=0.0,
             maxval=5.0,
             step=0.1,
-            group="Xu hướng dài hạn",
+            group="Long-Term Trend",
         )
         self._enable_touch_reset = self.input_bool(
             "enable_touch_reset",
             _DEFAULT_ENABLE_TOUCH_RESET,
-            label="Reset bộ đếm khi chạm EMA",
-            group="Xu hướng dài hạn",
+            label="Reset counter on EMA touch",
+            group="Long-Term Trend",
         )
         self._enable_touch_exit = self.input_bool(
             "enable_touch_exit",
             _DEFAULT_ENABLE_TOUCH_EXIT,
-            label="Thoát lệnh khi chạm EMA",
-            group="Xu hướng dài hạn",
+            label="Exit on EMA touch",
+            group="Long-Term Trend",
         )
         self._ema_entry_len = self.input_int(
             "ema_entry_len",
@@ -131,7 +131,7 @@ class EmaTrendPullbackStrategy(BaseStrategy):
         self._pullback_sensitivity = self.input_float(
             "pullback_sensitivity",
             _DEFAULT_PULLBACK_SENSITIVITY,
-            label="Độ nhạy pullback (%)",
+            label="Pullback sensitivity (%)",
             minval=0.1,
             maxval=3.0,
             step=0.1,
@@ -140,7 +140,7 @@ class EmaTrendPullbackStrategy(BaseStrategy):
         self._candle_confirm_entry = self.input_bool(
             "candle_confirm_entry",
             _DEFAULT_CANDLE_CONFIRM_ENTRY,
-            label="Chờ nến đóng xác nhận bật lại",
+            label="Wait for a confirming closed candle bounce",
             group="Entry",
         )
         self._take_profit_percent = self.input_float(
@@ -150,13 +150,13 @@ class EmaTrendPullbackStrategy(BaseStrategy):
             minval=0.5,
             maxval=20.0,
             step=0.5,
-            group="Chốt lời",
+            group="Take Profit",
         )
         self._enable_alerts = self.input_bool(
             "enable_alerts",
             _DEFAULT_ENABLE_ALERTS,
-            label="Gửi thông báo",
-            group="Cảnh báo",
+            label="Send alerts",
+            group="Alerts",
         )
 
     def build_indicators(self) -> dict[str, IIndicator[IndicatorValue]]:

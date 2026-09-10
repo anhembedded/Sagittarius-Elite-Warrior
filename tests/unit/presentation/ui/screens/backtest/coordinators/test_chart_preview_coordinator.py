@@ -47,7 +47,7 @@ def _build(
         dispatcher=dispatcher or SimpleNamespace(dispatch=lambda *a: None),
         thread_manager=SimpleNamespace(submit=lambda *a: calls.previews.append(a)),
         log_dev_trace=lambda *a, **k: None,
-        format_coverage_message=lambda _c: "thiếu dữ liệu",
+        format_coverage_message=lambda _c: "missing data",
         get_current_config=lambda: SimpleNamespace(
             start_time=start_time,
             end_time=end_time,
@@ -96,7 +96,7 @@ def test_incomplete_coverage_asks_for_a_sync_with_a_reason() -> None:
         5, SimpleNamespace(is_fully_covered=False), [1], [2], None
     )
 
-    assert ctx.vm.coverage == [(False, "thiếu dữ liệu")]
+    assert ctx.vm.coverage == [(False, "missing data")]
     assert ctx.vm.needs_sync == [True]
 
 

@@ -49,7 +49,7 @@ def test_repair_data_gap_success():
 
     assert result.success is True
     assert result.repaired_candles == 1
-    assert "1 nến" in result.message
+    assert "1 candles" in result.message
     repo.save_klines.assert_called_once_with([dummy_kline])
 
 
@@ -70,5 +70,5 @@ def test_repair_data_gap_cancelled():
 
     assert result.success is False
     assert result.repaired_candles == 0
-    assert "hủy" in result.message
+    assert "cancelled" in result.message
     repo.save_klines.assert_not_called()

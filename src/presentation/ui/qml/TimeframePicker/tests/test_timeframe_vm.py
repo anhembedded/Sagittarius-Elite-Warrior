@@ -9,6 +9,7 @@ from __future__ import annotations
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.timeframe_picker import (
     GROUP_CAPTIONS,
     GROUP_LABELS,
+    TimeframeGroup,
     all_options,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeframePicker.timeframe_vm import (
@@ -47,7 +48,9 @@ def test_refresh_builds_groups_with_labels_and_captions():
 
     assert [group["label"] for group in vm.groups] == list(GROUP_LABELS.values())
     assert [group["caption"] for group in vm.groups] == list(GROUP_CAPTIONS.values())
-    minutes_group = next(g for g in vm.groups if g["label"] == "PHÚT")
+    minutes_group = next(
+        g for g in vm.groups if g["label"] == GROUP_LABELS[TimeframeGroup.MINUTES]
+    )
     assert [row["code"] for row in minutes_group["rows"]] == [
         "1m",
         "3m",
@@ -64,7 +67,9 @@ def test_seconds_group_has_exactly_one_card_today():
     make this test fail, not a VM bug."""
     vm, _ = _vm()
 
-    seconds_group = next(g for g in vm.groups if g["label"] == "GIÂY")
+    seconds_group = next(
+        g for g in vm.groups if g["label"] == GROUP_LABELS[TimeframeGroup.SECONDS]
+    )
     assert [row["code"] for row in seconds_group["rows"]] == ["1s"]
 
 
@@ -161,7 +166,9 @@ def test_pinning_is_reflected_in_the_groups_view_too():
 
     vm.togglePinned("4h")
 
-    hours_group = next(g for g in vm.groups if g["label"] == "GIỜ")
+    hours_group = next(
+        g for g in vm.groups if g["label"] == GROUP_LABELS[TimeframeGroup.HOURS]
+    )
     row = next(r for r in hours_group["rows"] if r["code"] == "4h")
     assert row["pinned"] is True
     assert any(pin["code"] == "4h" for pin in vm.pinnedRows)

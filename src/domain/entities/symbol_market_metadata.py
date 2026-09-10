@@ -28,16 +28,16 @@ class PriceFilter:
 
     def validate_price(self, price: float) -> str | None:
         if not math.isfinite(price) or price <= 0:
-            return "Giá đặt lệnh phải là số dương hữu hạn."
+            return "Order price must be a finite positive number."
         if price < self.min_price:
-            return f"Giá {price:,.4f} nhỏ hơn giá tối thiểu cho phép ({self.min_price:,.4f})."
+            return f"Price {price:,.4f} is below the allowed minimum ({self.min_price:,.4f})."
         if price > self.max_price:
-            return f"Giá {price:,.4f} vượt quá giá tối đa cho phép ({self.max_price:,.4f})."
+            return f"Price {price:,.4f} exceeds the allowed maximum ({self.max_price:,.4f})."
         if self.tick_size > 0:
             steps = round((price - self.min_price) / self.tick_size)
             expected_price = self.min_price + steps * self.tick_size
             if not math.isclose(price, expected_price, abs_tol=1e-8):
-                return f"Giá {price:,.8f} không khớp bước giá tick size ({self.tick_size:,.8f})."
+                return f"Price {price:,.8f} does not match the tick size step ({self.tick_size:,.8f})."
         return None
 
 
@@ -51,16 +51,16 @@ class LotSizeFilter:
 
     def validate_quantity(self, quantity: float) -> str | None:
         if not math.isfinite(quantity) or quantity <= 0:
-            return "Khối lượng đặt lệnh phải là số dương hữu hạn."
+            return "Order quantity must be a finite positive number."
         if quantity < self.min_qty:
-            return f"Khối lượng {quantity:,.4f} nhỏ hơn khối lượng tối thiểu ({self.min_qty:,.4f})."
+            return f"Quantity {quantity:,.4f} is below the minimum quantity ({self.min_qty:,.4f})."
         if quantity > self.max_qty:
-            return f"Khối lượng {quantity:,.4f} vượt quá khối lượng tối đa ({self.max_qty:,.4f})."
+            return f"Quantity {quantity:,.4f} exceeds the maximum quantity ({self.max_qty:,.4f})."
         if self.step_size > 0:
             steps = round((quantity - self.min_qty) / self.step_size)
             expected_qty = self.min_qty + steps * self.step_size
             if not math.isclose(quantity, expected_qty, abs_tol=1e-8):
-                return f"Khối lượng {quantity:,.8f} không khớp bước nhảy lot size ({self.step_size:,.8f})."
+                return f"Quantity {quantity:,.8f} does not match the lot size step ({self.step_size:,.8f})."
         return None
 
 
@@ -73,11 +73,11 @@ class NotionalFilter:
 
     def validate_notional(self, notional: float) -> str | None:
         if not math.isfinite(notional) or notional <= 0:
-            return "Giá trị danh nghĩa (notional) phải là số dương hữu hạn."
+            return "Notional value must be a finite positive number."
         if notional < self.min_notional:
             return (
-                f"Giá trị lệnh {notional:,.2f} nhỏ hơn giá trị tối thiểu sàn yêu cầu "
-                f"({self.min_notional:,.2f})."
+                f"Order value {notional:,.2f} is below the exchange's minimum "
+                f"required value ({self.min_notional:,.2f})."
             )
         return None
 
@@ -144,7 +144,7 @@ def validate_order_intent(
             is_valid=True,
             issues=(),
             metadata=None,
-            explanation="Chưa xác minh theo quy tắc sàn (chưa có metadata cho cặp giao dịch).",
+            explanation="Not verified against exchange rules (no metadata for this trading pair yet).",
         )
 
     if metadata.is_stale(max_age_seconds=max_age_seconds, now=now):
@@ -154,7 +154,7 @@ def validate_order_intent(
             issues=(),
             metadata=metadata,
             explanation=(
-                f"Chưa xác minh theo quy tắc sàn (metadata đã cũ, lấy từ "
+                f"Not verified against exchange rules (metadata is stale, fetched at "
                 f"{metadata.fetched_at.strftime('%Y-%m-%d %H:%M:%S UTC')})."
             ),
         )
@@ -176,12 +176,12 @@ def validate_order_intent(
     is_valid = len(issues) == 0
     if is_valid:
         explanation = (
-            f"Đã xác minh theo quy tắc sàn Binance (Min notional: {metadata.notional_filter.min_notional} "
+            f"Verified against Binance exchange rules (Min notional: {metadata.notional_filter.min_notional} "
             f"{metadata.quote_asset}, Step: {metadata.lot_size_filter.step_size}, "
             f"Tick: {metadata.price_filter.tick_size})."
         )
     else:
-        explanation = "Không đạt quy tắc đặt lệnh của sàn: " + "; ".join(issues)
+        explanation = "Does not meet the exchange's order rules: " + "; ".join(issues)
 
     return OrderIntentValidationResult(
         status=MetadataVerificationStatus.VERIFIED,

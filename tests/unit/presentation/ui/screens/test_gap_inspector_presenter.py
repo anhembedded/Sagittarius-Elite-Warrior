@@ -156,7 +156,7 @@ def test_on_repair_gap_submits_worker(presenter, view_model, mock_thread_mgr):
 
 def test_run_repair_gap_dispatches_command(presenter, view_model, mock_dispatcher):
     mock_dispatcher.dispatch.return_value = RepairDataGapResult(
-        success=True, repaired_candles=60, message="Đã vá thành công 60 nến."
+        success=True, repaired_candles=60, message="Successfully repaired 60 candles."
     )
 
     presenter.fsm.transition_to(UIMode.SYNCING)

@@ -41,8 +41,8 @@ def test_the_month_code_is_not_confused_with_the_minute_code():
     """`1m` and `1M` differ only in case, and `to_seconds()` switches on that
     same character — a case-insensitive lookup here would make one of them
     render as the other."""
-    assert describe("1m").label == "1 phút"
-    assert describe("1M").label == "1 tháng"
+    assert describe("1m").label == "1 minute"
+    assert describe("1M").label == "1 month"
     assert describe("1m").group is TimeframeGroup.MINUTES
     assert describe("1M").group is TimeframeGroup.DAYS
 

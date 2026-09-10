@@ -38,7 +38,7 @@ def test_refresh_seeds_the_range_and_builds_the_summary():
 
     assert vm.fromText == "2026-07-06 06:56"
     assert vm.toText == "2026-08-26 06:56"
-    assert vm.summaryText == "51 ngày · 2026-07-06 → 2026-08-26   ≈ 14,688 nến 5m"
+    assert vm.summaryText == "51 days · 2026-07-06 → 2026-08-26   ≈ 14,688 candles 5m"
     assert vm.canApply is True
     assert [p["id"] for p in vm.presets] == [
         "today",
@@ -56,7 +56,7 @@ def test_refresh_falls_back_to_a_week_when_seed_text_is_unparseable():
     vm = _vm(from_text="garbage", to_text="also garbage")
 
     assert vm.toText == _NOW.strftime("%Y-%m-%d %H:%M")
-    assert "7 ngày" in vm.summaryText
+    assert "7 days" in vm.summaryText
 
 
 def test_fixed_length_preset_resolves_relative_to_now():
@@ -82,7 +82,7 @@ def test_all_history_preset_clears_both_bounds():
 
     assert vm.fromText == ""
     assert vm.toText == ""
-    assert vm.summaryText == "Toàn bộ lịch sử · không giới hạn"
+    assert vm.summaryText == "All history · unlimited"
     assert vm.canApply is True
 
 
@@ -124,13 +124,13 @@ def test_left_and_right_calendar_are_consecutive_months_of_six_weeks():
 
 def test_page_months_wraps_the_year():
     vm = _vm(from_text="2026-12-15 00:00", to_text="2026-12-20 00:00")
-    assert vm.leftMonthLabel == "Tháng 12 2026"
+    assert vm.leftMonthLabel == "Month 12 2026"
 
     vm.pageMonths(1)
-    assert vm.leftMonthLabel == "Tháng 1 2027"
+    assert vm.leftMonthLabel == "Month 1 2027"
 
     vm.pageMonths(-1)
-    assert vm.leftMonthLabel == "Tháng 12 2026"
+    assert vm.leftMonthLabel == "Month 12 2026"
 
 
 def test_typed_from_and_to_text_update_the_range_and_preset():
@@ -138,7 +138,7 @@ def test_typed_from_and_to_text_update_the_range_and_preset():
     vm.setFromText("2026-08-01 00:00")
     vm.setToText("2026-08-10 00:00")
 
-    assert vm.summaryText.startswith("9 ngày")
+    assert vm.summaryText.startswith("9 days")
     assert next(p for p in vm.presets if p["id"] == "custom")["selected"] is True
 
 
@@ -148,15 +148,15 @@ def test_unparseable_typed_text_clears_that_bound_and_blocks_apply():
 
     assert vm.fromText == ""
     assert vm.canApply is False
-    assert vm.summaryText == "Chọn ngày bắt đầu"
+    assert vm.summaryText == "Select a start date"
 
 
 def test_candle_estimate_uses_the_injected_timeframe():
     one_minute = _vm(timeframe_seconds=60, timeframe_label="1m")
     five_minute = _vm(timeframe_seconds=300, timeframe_label="5m")
 
-    assert "nến 1m" in one_minute.summaryText
-    assert "nến 5m" in five_minute.summaryText
+    assert "candles 1m" in one_minute.summaryText
+    assert "candles 5m" in five_minute.summaryText
     # 51 days: 1m gives 5x as many candles as 5m.
     assert "73,440" in one_minute.summaryText
     assert "14,688" in five_minute.summaryText

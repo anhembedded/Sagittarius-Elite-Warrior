@@ -93,8 +93,8 @@ class ExecutionCoordinator:
         exactly the "two runs look identical with different meanings" trap
         that requirement exists to prevent."""
         if config.execution_mode == BacktestExecutionMode.HISTORICAL_TICK:
-            return f"Chế độ: Realtime (tick {config.tick_resolution.value})"
-        return "Chế độ: Static (theo nến đóng)"
+            return f"Mode: Realtime (tick {config.tick_resolution.value})"
+        return "Mode: Static (closed candles)"
 
     @staticmethod
     def effective_data_interval(config: BacktestRunConfig) -> TimeFrame:
@@ -155,9 +155,9 @@ class ExecutionCoordinator:
             self._log_dev_trace("worker_no_data")
             self._emit_empty(
                 resolved_action_id,
-                f"Không có dữ liệu lịch sử cho {self._state.symbol} "
+                f"No historical data for {self._state.symbol} "
                 f"({self.effective_data_interval(config).value}). "
-                "Hãy sync dữ liệu trước.",
+                "Please sync data first.",
                 config,
             )
             return

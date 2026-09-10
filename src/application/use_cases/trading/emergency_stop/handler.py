@@ -146,9 +146,9 @@ class EmergencyStopCommandHandler(
         try:
             self._session_state.disable()
             self._user_data_stream.stop()
-            return EmergencyStopStepResult(True, "Giao dịch đã tắt.")
+            return EmergencyStopStepResult(True, "Trading disabled.")
         except Exception as exc:  # noqa: BLE001 - report every failure, never let one abort the remaining steps
-            return EmergencyStopStepResult(False, f"Lỗi khi tắt giao dịch: {exc}")
+            return EmergencyStopStepResult(False, f"Error disabling trading: {exc}")
 
     def _cancel_all_orders(
         self, trading_client: ITradingClient
@@ -156,9 +156,9 @@ class EmergencyStopCommandHandler(
         try:
             open_orders = trading_client.get_open_orders()
         except Exception as exc:  # noqa: BLE001
-            return EmergencyStopStepResult(False, f"Lỗi khi đọc lệnh chờ: {exc}")
+            return EmergencyStopStepResult(False, f"Error reading open orders: {exc}")
         if not open_orders:
-            return EmergencyStopStepResult(True, "Không có lệnh chờ nào.")
+            return EmergencyStopStepResult(True, "No open orders.")
 
         symbols = sorted({order.symbol for order in open_orders})
         cancelled_count = 0
@@ -169,10 +169,12 @@ class EmergencyStopCommandHandler(
                 remaining = len(open_orders) - cancelled_count
                 return EmergencyStopStepResult(
                     False,
-                    f"Đã huỷ {cancelled_count}/{len(open_orders)} lệnh chờ — "
-                    f"lỗi ở {symbol}: {exc}. Còn {remaining} lệnh chưa huỷ.",
+                    f"Cancelled {cancelled_count}/{len(open_orders)} open orders — "
+                    f"error on {symbol}: {exc}. {remaining} orders still not cancelled.",
                 )
-        return EmergencyStopStepResult(True, f"Đã huỷ {cancelled_count} lệnh chờ.")
+        return EmergencyStopStepResult(
+            True, f"Cancelled {cancelled_count} open orders."
+        )
 
     def _close_all_positions(
         self, trading_client: ITradingClient
@@ -180,9 +182,9 @@ class EmergencyStopCommandHandler(
         try:
             positions = trading_client.get_positions()
         except Exception as exc:  # noqa: BLE001
-            return EmergencyStopStepResult(False, f"Lỗi khi đọc vị thế: {exc}")
+            return EmergencyStopStepResult(False, f"Error reading positions: {exc}")
         if not positions:
-            return EmergencyStopStepResult(True, "Không có vị thế nào đang mở.")
+            return EmergencyStopStepResult(True, "No open positions.")
 
         closed_count = 0
         for position in positions:
@@ -204,10 +206,10 @@ class EmergencyStopCommandHandler(
                 remaining = len(positions) - closed_count
                 return EmergencyStopStepResult(
                     False,
-                    f"Đã đóng {closed_count}/{len(positions)} vị thế — lỗi ở "
-                    f"{position.symbol}: {exc}. Còn {remaining} vị thế chưa đóng.",
+                    f"Closed {closed_count}/{len(positions)} positions — error on "
+                    f"{position.symbol}: {exc}. {remaining} positions still open.",
                 )
-        return EmergencyStopStepResult(True, f"Đã đóng {closed_count} vị thế.")
+        return EmergencyStopStepResult(True, f"Closed {closed_count} positions.")
 
     def _read_final_state(
         self, trading_client: ITradingClient

@@ -63,7 +63,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.strategy_params im
 
 logger = logging.getLogger("App.TradingStrategyArming")
 
-#: Vietnamese copy for each refusal. Every branch of
+#: English copy for each refusal. Every branch of
 #: `ArmStrategyBlockReason` has a line here — a missing one would surface
 #: as a silent no-op button, which is the failure mode this whole epic
 #: exists to remove.
@@ -71,18 +71,20 @@ ARM_BLOCK_MESSAGES = EnumLabels(
     ArmStrategyBlockReason,
     {
         ArmStrategyBlockReason.TRADING_IS_ENABLED: (
-            "Đang giao dịch — hãy tắt giao dịch trước khi đổi chiến lược."
+            "Trading is active — turn off trading before changing strategy."
         ),
         ArmStrategyBlockReason.STRATEGY_NOT_FOUND: (
-            "Không tìm thấy chiến lược này trong danh sách đã đăng ký."
+            "This strategy was not found in the registered list."
         ),
-        ArmStrategyBlockReason.INVALID_PARAMS: "Thông số Chiến lược không hợp lệ.",
+        ArmStrategyBlockReason.INVALID_PARAMS: "Strategy Parameters are invalid.",
         ArmStrategyBlockReason.MISSING_SYMBOL_OR_INTERVAL: (
-            "Cần chọn cả symbol và khung thời gian giao dịch."
+            "Both symbol and trading timeframe must be selected."
         ),
     },
 )
-DISARM_BLOCKED_MESSAGE = "Đang giao dịch — hãy tắt giao dịch trước khi gỡ chiến lược."
+DISARM_BLOCKED_MESSAGE = (
+    "Trading is active — turn off trading before removing the strategy."
+)
 
 
 class CommandDispatcher(Protocol):
@@ -194,7 +196,7 @@ class StrategyArmingCoordinator:
             # A saved config the domain rejects (leverage 0, an interval
             # live trading does not support) must not blank the card or
             # crash the screen — show the defaults and say why.
-            logger.warning("Cấu hình chiến lược đã lưu không hợp lệ: %s", exc)
+            logger.warning("Saved strategy configuration is invalid: %s", exc)
             saved = LiveStrategyConfig(strategy_key="", symbol="", interval="")
             self._view_model.set_bot_params_error(str(exc))
 
@@ -284,7 +286,7 @@ class StrategyArmingCoordinator:
         except Exception as exc:  # noqa: BLE001 - reported, never swallowed
             self._tracker.finish_action(action.action_id, ActionOutcome.FAILED)
             self._report_state(busy=False)
-            self._set_status(f"Lỗi khi nạp chiến lược: {exc}", True)
+            self._set_status(f"Error arming strategy: {exc}", True)
             return
 
         self._tracker.finish_action(
@@ -294,8 +296,8 @@ class StrategyArmingCoordinator:
         self._report_state(busy=False)
         if result.armed:
             summary = self.armed_summary(self._get_armed_config())
-            self._set_status(f"Đã nạp chiến lược: {summary}", False)
-            self._append_log(f"Đã nạp chiến lược: {summary}")
+            self._set_status(f"Strategy armed: {summary}", False)
+            self._append_log(f"Strategy armed: {summary}")
             return
 
         # A total mapping — `result.block_reason` is non-None on this
@@ -310,11 +312,11 @@ class StrategyArmingCoordinator:
         try:
             result = self.disarm()
         except Exception as exc:  # noqa: BLE001 - reported, never swallowed
-            self._set_status(f"Lỗi khi gỡ chiến lược: {exc}", True)
+            self._set_status(f"Error removing strategy: {exc}", True)
             return
         self._report_state(busy=False)
         if result.disarmed:
-            self._set_status("Đã gỡ chiến lược.", False)
+            self._set_status("Strategy removed.", False)
         else:
             self._set_status(DISARM_BLOCKED_MESSAGE, True)
 
@@ -377,7 +379,7 @@ class StrategyArmingCoordinator:
         parts = [
             humanize_strategy_key(config.strategy_key),
             f"{config.symbol} {config.interval}",
-            f"{config.sizing_percent:g}%/lệnh",
+            f"{config.sizing_percent:g}%/order",
             f"{config.leverage:g}x",
         ]
         if config.strategy_params:

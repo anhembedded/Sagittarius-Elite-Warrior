@@ -212,7 +212,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             "btnBacktestTimezone", "clock", Palette.ACCENT, min_width=130
         )
         self._btn_timezone.setToolTip(
-            "Chỉ đổi giờ hiển thị. Dữ liệu và Backtest luôn tính theo UTC."
+            "Only changes the displayed time zone. Data and backtests are always computed in UTC."
         )
         self._btn_timezone.clicked.connect(self._vm.requestOpenTimezonePicker)
         row.addWidget(self._btn_timezone)
@@ -228,7 +228,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         self._btn_order_exec = _pill_button("btnBacktestOrderExecution", min_width=95)
         self._btn_order_exec.setStyleSheet(self._field_button_style())
         self._btn_order_exec.setLayout(
-            self._icon_label_row("briefcase", Palette.ACCENT, "Tập lệnh")
+            self._icon_label_row("briefcase", Palette.ACCENT, "Execution")
         )
         self._btn_order_exec.clicked.connect(
             lambda: self._vm.requestOpenOrderExecution(
@@ -242,7 +242,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         )
         self._btn_indicator_picker.setStyleSheet(self._field_button_style())
         self._btn_indicator_picker.setLayout(
-            self._icon_label_row("sliders", Palette.ACCENT, "Chỉ báo")
+            self._icon_label_row("sliders", Palette.ACCENT, "Indicators")
         )
         self._btn_indicator_picker.clicked.connect(
             lambda: self._vm.requestOpenIndicatorPicker(
@@ -261,7 +261,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             f"QPushButton:hover {{ background-color: {Palette.STATE_HOVER_BG}; }}"
         )
         self._btn_bot_params.setLayout(
-            self._icon_label_row("sliders", Palette.ACCENT, "Thông số Chiến lược")
+            self._icon_label_row("sliders", Palette.ACCENT, "Strategy Parameters")
         )
         self._btn_bot_params.clicked.connect(
             lambda: self._vm.requestOpenBotParams(
@@ -401,8 +401,8 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
 
     def _build_preview_banner(self) -> Banner:
         banner = Banner(
-            'Đồ thị xem trước — chưa chạy Backtest. Nhấn "CHẠY BACKTEST" để xem '
-            "kết quả thật.",
+            'Preview chart — backtest not run yet. Click "RUN BACKTEST" to see '
+            "actual results.",
             severity=Severity.INFO,
         )
         banner.setObjectName("backtestChartPreviewBanner")
@@ -414,7 +414,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         return self._tighten(banner)
 
     def _build_stale_banner(self) -> Banner:
-        banner = Banner(severity=Severity.WARN, action_text="Chạy lại ngay")
+        banner = Banner(severity=Severity.WARN, action_text="Run now")
         banner.setObjectName("backtestStaleWarningBanner")
         self._set_banner_icon(banner, "triangle-alert", Palette.WARNING)
         banner.action_button.clicked.connect(self._vm.requestRun)
@@ -462,7 +462,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             f"background-color: {Palette.ACCENT}; border-radius: 2px; border: none;"
         )
         title_row.addWidget(bar)
-        title = QLabel("CHỈ SỐ HIỆU SUẤT BACKTEST")
+        title = QLabel("BACKTEST PERFORMANCE METRICS")
         title.setStyleSheet(
             f"color: {Palette.TEXT_PRIMARY}; font-size: 12px; font-weight: bold; "
             f"letter-spacing: 0.8px; background: transparent; border: none;"
@@ -476,7 +476,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         self._btn_limitations.setIcon(
             get_icon_loader().get_icon("info", Palette.MUTED, 13)
         )
-        self._btn_limitations.setToolTip("Xem giới hạn của lần chạy này")
+        self._btn_limitations.setToolTip("View this run's limitations")
         self._btn_limitations.setStyleSheet(
             "QPushButton { background: transparent; border: none; }"
         )
@@ -486,7 +486,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
 
         row.addStretch(1)
 
-        self._btn_expand_metrics = QPushButton("Mở rộng")
+        self._btn_expand_metrics = QPushButton("Expand")
         self._btn_expand_metrics.setObjectName("lnkExpandMetrics")
         self._btn_expand_metrics.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_expand_metrics.setFixedHeight(26)
@@ -644,15 +644,15 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             get_icon_loader().get_icon(icon_name, Palette.BG, 13).pixmap(13, 13)
         )
         if mode == "CANCELLING":
-            text = "ĐANG HỦY..."
+            text = "CANCELLING..."
         elif mode == "RUNNING":
-            text = "HỦY BACKTEST"
+            text = "CANCEL BACKTEST"
         elif mode == "SYNCING":
-            text = "HỦY ĐỒNG BỘ"
+            text = "CANCEL SYNC"
         elif vm.isConfigDirty:
-            text = "CẬP NHẬT LẠI"
+            text = "UPDATE"
         else:
-            text = "CHẠY BACKTEST"
+            text = "RUN BACKTEST"
         self._run_text_label.setText(text)
 
     def _on_run_clicked(self) -> None:
@@ -671,7 +671,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
             cancelling = mode == "CANCELLING"
             self._progress_banner_widget.set_cancelling(cancelling)
             if cancelling:
-                self._progress_banner_widget.set_status_text("Đang hủy an toàn...")
+                self._progress_banner_widget.set_status_text("Cancelling safely...")
                 self._progress_banner_widget.set_indeterminate(True)
             elif mode == "SYNCING":
                 self._progress_banner_widget.set_indeterminate(False)
@@ -695,8 +695,8 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         self._stale_banner.setVisible(bool(vm.isConfigDirty))
         if vm.isConfigDirty:
             self._stale_banner.message = (
-                f"Cấu hình đã thay đổi ({vm.configDiffSummary}). "
-                f"Kết quả bên dưới chưa được cập nhật."
+                f"Configuration changed ({vm.configDiffSummary}). "
+                f"The results below have not been updated."
             )
 
         coverage_visible = (
@@ -738,7 +738,7 @@ class BackTestTopPanel(QWidget):  # base-exempt: screen region on app bg
         )
         self._btn_request_sync.setVisible(bool(vm.run_result.needsDataSync))
         self._btn_request_sync.setEnabled(vm.uiMode != "SYNCING")
-        text = "Đang đồng bộ..." if vm.uiMode == "SYNCING" else "Đồng bộ dữ liệu ngay"
+        text = "Syncing..." if vm.uiMode == "SYNCING" else "Sync data now"
         self._btn_request_sync.setText(text)
         self._btn_request_sync.setStyleSheet(
             f"background-color: {Palette.ACCENT if self._btn_request_sync.isEnabled() else Palette.STATE_NAV_BORDER}; "

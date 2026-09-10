@@ -25,8 +25,16 @@ _FIRST_WEEKDAY = 0
 _WEEK_ROWS = 6
 _MONTHS_IN_YEAR = 12
 _FALLBACK_DAYS = 7
-_DEFAULT_WEEKDAY_LABELS: tuple[str, ...] = ("T2", "T3", "T4", "T5", "T6", "T7", "CN")
-_DEFAULT_MONTH_LABEL = "Tháng {month} {year}"
+_DEFAULT_WEEKDAY_LABELS: tuple[str, ...] = (
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun",
+)
+_DEFAULT_MONTH_LABEL = "Month {month} {year}"
 
 
 class _PresetKind(str, Enum):
@@ -50,13 +58,13 @@ _PRESET_ORDER: tuple[_PresetKind, ...] = (
 )
 
 _PRESET_LABELS: dict[_PresetKind, str] = {
-    _PresetKind.TODAY: "Hôm nay",
-    _PresetKind.LAST_7_DAYS: "7 ngày qua",
-    _PresetKind.LAST_30_DAYS: "30 ngày qua",
-    _PresetKind.LAST_90_DAYS: "90 ngày qua",
-    _PresetKind.LAST_365_DAYS: "365 ngày qua",
-    _PresetKind.ALL_HISTORY: "Toàn bộ lịch sử",
-    _PresetKind.CUSTOM: "Tuỳ chỉnh",
+    _PresetKind.TODAY: "Today",
+    _PresetKind.LAST_7_DAYS: "Last 7 days",
+    _PresetKind.LAST_30_DAYS: "Last 30 days",
+    _PresetKind.LAST_90_DAYS: "Last 90 days",
+    _PresetKind.LAST_365_DAYS: "Last 365 days",
+    _PresetKind.ALL_HISTORY: "All history",
+    _PresetKind.CUSTOM: "Custom",
 }
 
 #: Only the fixed-length presets need a day count — ALL_HISTORY resolves to
@@ -326,16 +334,16 @@ class TimeRangePickerVM(QObject):
 
     def _build_summary(self) -> str:
         if self._start is None and self._end is None:
-            return "Toàn bộ lịch sử · không giới hạn"
+            return "All history · unlimited"
         if self._start is None:
-            return "Chọn ngày bắt đầu"
+            return "Select a start date"
         if self._end is None:
-            return "Chọn ngày kết thúc"
+            return "Select an end date"
         days = max((self._end.date() - self._start.date()).days, 0)
         seconds = max(int(self._get_timeframe_seconds()), 1)
         candles = int(days * 86400 / seconds)
         label = self._get_timeframe_label()
         return (
-            f"{days} ngày · {self._start.date()} → {self._end.date()}"
-            f"   ≈ {candles:,} nến {label}"
+            f"{days} days · {self._start.date()} → {self._end.date()}"
+            f"   ≈ {candles:,} candles {label}"
         )

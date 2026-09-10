@@ -21,7 +21,7 @@ def test_a_card_is_shaped_for_qml():
     vm = StatCardRowVM(
         get_cards=lambda: [
             {
-                "title": "Tổng Lãi/Lỗ (Net PnL)",
+                "title": "Net PnL",
                 "value": "+1,148.19",
                 "valueTone": Tone.POSITIVE,
                 "suffix": "USD",
@@ -34,7 +34,7 @@ def test_a_card_is_shaped_for_qml():
 
     assert vm.cards == [
         {
-            "title": "Tổng Lãi/Lỗ (Net PnL)",
+            "title": "Net PnL",
             "value": "+1,148.19",
             "suffix": "USD",
             "tone": "positive",

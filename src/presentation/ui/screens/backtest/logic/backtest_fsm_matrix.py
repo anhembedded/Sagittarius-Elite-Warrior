@@ -239,42 +239,38 @@ class BacktestRunConfig:
 
         if self.timeframe != other.timeframe:
             diffs.append(
-                f"Khung thời gian ({self.timeframe.value} → {other.timeframe.value})"
+                f"Timeframe ({self.timeframe.value} → {other.timeframe.value})"
             )
 
         if self.strategy_key != other.strategy_key:
-            diffs.append(f"Chiến lược ({self.strategy_key} → {other.strategy_key})")
+            diffs.append(f"Strategy ({self.strategy_key} → {other.strategy_key})")
 
         if (
             abs(self.initial_balance - other.initial_balance)
             > _BALANCE_COMPARISON_TOLERANCE
         ):
             diffs.append(
-                f"Vốn ({self.initial_balance:,.0f} → {other.initial_balance:,.0f})"
+                f"Capital ({self.initial_balance:,.0f} → {other.initial_balance:,.0f})"
             )
 
         if self.currency != other.currency:
-            diffs.append(f"Tiền tệ ({self.currency.value} → {other.currency.value})")
+            diffs.append(f"Currency ({self.currency.value} → {other.currency.value})")
 
         if self.start_time != other.start_time or self.end_time != other.end_time:
             self_start = (
-                self.start_time.strftime("%Y-%m-%d") if self.start_time else "Đầu"
+                self.start_time.strftime("%Y-%m-%d") if self.start_time else "Start"
             )
-            self_end = (
-                self.end_time.strftime("%Y-%m-%d") if self.end_time else "Hiện tại"
-            )
+            self_end = self.end_time.strftime("%Y-%m-%d") if self.end_time else "Now"
             other_start = (
-                other.start_time.strftime("%Y-%m-%d") if other.start_time else "Đầu"
+                other.start_time.strftime("%Y-%m-%d") if other.start_time else "Start"
             )
-            other_end = (
-                other.end_time.strftime("%Y-%m-%d") if other.end_time else "Hiện tại"
-            )
+            other_end = other.end_time.strftime("%Y-%m-%d") if other.end_time else "Now"
             diffs.append(
-                f"Khoảng thời gian ({self_start}..{self_end} → {other_start}..{other_end})"
+                f"Time range ({self_start}..{self_end} → {other_start}..{other_end})"
             )
 
         if self.strategy_params != other.strategy_params:
-            diffs.append("Thông số Chiến lược")
+            diffs.append("Strategy Parameters")
 
         if self.position_sizing != other.position_sizing:
             s_unit = (
@@ -288,17 +284,17 @@ class BacktestRunConfig:
                 else " USD"
             )
             diffs.append(
-                f"Kích thước lệnh ({self.position_sizing.value}{s_unit} → {other.position_sizing.value}{o_unit})"
+                f"Order size ({self.position_sizing.value}{s_unit} → {other.position_sizing.value}{o_unit})"
             )
 
         if self.broker_config.pyramiding != other.broker_config.pyramiding:
             diffs.append(
-                f"Kim tự tháp ({self.broker_config.pyramiding} → {other.broker_config.pyramiding})"
+                f"Pyramiding ({self.broker_config.pyramiding} → {other.broker_config.pyramiding})"
             )
 
         if self.broker_config.slippage_ticks != other.broker_config.slippage_ticks:
             diffs.append(
-                f"Trượt giá ({self.broker_config.slippage_ticks} → {other.broker_config.slippage_ticks} ticks)"
+                f"Slippage ({self.broker_config.slippage_ticks} → {other.broker_config.slippage_ticks} ticks)"
             )
 
         if (
@@ -306,7 +302,7 @@ class BacktestRunConfig:
             or self.broker_config.short_leverage != other.broker_config.short_leverage
         ):
             diffs.append(
-                f"Đòn bẩy (Long {self.broker_config.long_leverage}x/Short "
+                f"Leverage (Long {self.broker_config.long_leverage}x/Short "
                 f"{self.broker_config.short_leverage}x → Long "
                 f"{other.broker_config.long_leverage}x/Short "
                 f"{other.broker_config.short_leverage}x)"
@@ -317,12 +313,12 @@ class BacktestRunConfig:
             or self.broker_config.commission_type != other.broker_config.commission_type
         ):
             diffs.append(
-                f"Phí hoa hồng ({self.broker_config.commission_value} → {other.broker_config.commission_value})"
+                f"Commission ({self.broker_config.commission_value} → {other.broker_config.commission_value})"
             )
 
         if self.execution_mode != other.execution_mode:
             diffs.append(
-                f"Chế độ thực thi ({self.execution_mode.value} → "
+                f"Execution mode ({self.execution_mode.value} → "
                 f"{other.execution_mode.value})"
             )
         elif (
@@ -330,12 +326,12 @@ class BacktestRunConfig:
             and self.tick_resolution != other.tick_resolution
         ):
             diffs.append(
-                f"Độ phân giải tick ({self.tick_resolution.value} → "
+                f"Tick resolution ({self.tick_resolution.value} → "
                 f"{other.tick_resolution.value})"
             )
 
         if not diffs:
-            return "Cấu hình đã thay đổi"
+            return "Configuration changed"
 
         return ", ".join(diffs)
 
@@ -343,7 +339,7 @@ class BacktestRunConfig:
         """
         @brief Generate a concise single-line summary of the executed run.
         """
-        return f"{self.symbol} | {self.timeframe.value} | {self.strategy_key} | Vốn: {self.initial_balance:,.0f} {self.currency.value}"
+        return f"{self.symbol} | {self.timeframe.value} | {self.strategy_key} | Capital: {self.initial_balance:,.0f} {self.currency.value}"
 
 
 BacktestActionContext = ActionContext[

@@ -42,7 +42,7 @@ def _trade_log_rows(count: int) -> list[dict[str, str]]:
     return [
         {
             "index": str(i + 1),
-            "positionLabel": "vị thế mua",
+            "positionLabel": "long position",
             "entryTimeText": "2026-08-01 10:00",
             "entryPriceText": "1000.00",
             "exitPriceText": "1010.00",
@@ -114,12 +114,12 @@ def test_top_panel_result_warning_line_does_not_affect_stat_cards_visibility(
     vm.run_result.set_stat_cards(_stat_cards(4), [])
     qapp.processEvents()
 
-    vm.run_result.set_result_warning_text("⚠ Phí giao dịch chiếm phần lớn kết quả.")
+    vm.run_result.set_result_warning_text("⚠ Trading fees make up most of the result.")
     qapp.processEvents()
 
     assert v.top_widget._stat_cards_row.isVisible() is True
     assert v.top_widget._result_warning_label.text() == (
-        "⚠ Phí giao dịch chiếm phần lớn kết quả."
+        "⚠ Trading fees make up most of the result."
     )
 
 
@@ -127,7 +127,7 @@ def test_progress_banner_is_visible_while_backtest_runs(view, qapp):
     v, vm = view
     assert v.top_widget._progress_banner.isVisible() is False
 
-    vm.run_progress.set_backtest_progress(42.0, "Chạy toàn bộ dữ liệu: 42% · ETA ~8s")
+    vm.run_progress.set_backtest_progress(42.0, "Running full dataset: 42% · ETA ~8s")
     vm.set_ui_mode("RUNNING")
     qapp.processEvents()
 
@@ -137,9 +137,9 @@ def test_progress_banner_is_visible_while_backtest_runs(view, qapp):
 def test_sync_progress_and_coverage_warning_are_visible(view, qapp):
     v, vm = view
 
-    vm.run_result.set_data_coverage(False, "Thiếu nến từ 2026-01-01 00:00 UTC.")
+    vm.run_result.set_data_coverage(False, "Missing candles from 2026-01-01 00:00 UTC.")
     vm.run_result.set_needs_data_sync(True)
-    vm.run_progress.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
+    vm.run_progress.set_sync_progress(45.0, "Syncing candles: 45/100 (45%)")
     vm.set_ui_mode("SYNCING")
     qapp.processEvents()
 

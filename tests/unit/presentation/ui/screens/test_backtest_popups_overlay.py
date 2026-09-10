@@ -150,7 +150,7 @@ def test_extended_metrics_popup_opens_with_the_extended_stat_cards(
     # (see the `.qml` — nothing distinguishes one card's Rectangle from
     # another in the widget tree), so the real assertion is on the VM's own
     # grouped data, the same source the `.qml`'s Repeaters bind to.
-    group = next(g for g in dialog._widget_vm.groups if g["label"] == "LÃI & LỖ")
+    group = next(g for g in dialog._widget_vm.groups if g["label"] == "PROFIT & LOSS")
     assert {row["title"] for row in group["rows"]} == {"GROSS PROFIT", "GROSS LOSS"}
 
 

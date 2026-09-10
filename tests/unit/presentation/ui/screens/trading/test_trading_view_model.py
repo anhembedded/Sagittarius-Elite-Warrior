@@ -86,9 +86,9 @@ def test_set_trading_state_updates_both_fields_together(qapp) -> None:
 def test_set_status_updates_message_and_error_flag(qapp) -> None:
     vm = TradingViewModel()
 
-    vm.set_status("Đã bật giao dịch.", False)
+    vm.set_status("Trading enabled.", False)
 
-    assert vm.statusMessage == "Đã bật giao dịch."
+    assert vm.statusMessage == "Trading enabled."
     assert vm.statusIsError is False
 
 

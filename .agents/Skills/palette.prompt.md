@@ -75,7 +75,7 @@ Re-derive the list each run; never work from a list written into a prompt.
    widget whose visual state (disabled, selected, hovered) is expressed by hand
    instead of through a role.
 
-Text shown to a user is **Vietnamese**. Match the tone already in the screen you
+Text shown to a user is **English**. Match the tone already in the screen you
 are editing rather than inventing a new register.
 
 ## Standards

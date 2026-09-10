@@ -72,48 +72,48 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
         self._baseline_bars = self.input_int(
             "baseline_bars",
             _DEFAULT_BASELINE_BARS,
-            label="Số nến tính volume nền",
+            label="Baseline volume window (bars)",
             minval=5,
             maxval=500,
-            group="Tín hiệu Volume",
+            group="Volume Signal",
         )
         self._volume_spike_mult = self.input_float(
             "volume_spike_mult",
             _DEFAULT_VOLUME_SPIKE_MULT,
-            label="Volume gấp bao nhiêu lần nền",
+            label="Volume multiple of baseline",
             minval=1.0,
             maxval=50.0,
             step=0.5,
-            group="Tín hiệu Volume",
+            group="Volume Signal",
         )
         self._delta_imbalance = self.input_float(
             "delta_imbalance",
             _DEFAULT_DELTA_IMBALANCE,
-            label="Độ lệch mua/bán tối thiểu",
+            label="Minimum buy/sell imbalance",
             minval=0.0,
             maxval=1.0,
             step=0.05,
-            group="Tín hiệu Volume",
+            group="Volume Signal",
         )
         self._fade_mode = self.input_bool(
             "fade_mode",
             False,
-            label="Đánh ngược cú nổ volume",
-            group="Tín hiệu Volume",
+            label="Fade the volume spike",
+            group="Volume Signal",
         )
         self._use_trend_filter = self.input_bool(
             "use_trend_filter",
             True,
-            label="Chỉ vào lệnh thuận EMA xu hướng",
-            group="Bộ lọc Xu hướng",
+            label="Only trade in the trend EMA's direction",
+            group="Trend Filter",
         )
         self._trend_ema_period = self.input_int(
             "trend_ema_period",
             _DEFAULT_TREND_EMA_PERIOD,
-            label="Chu kỳ EMA Xu hướng",
+            label="Trend EMA period",
             minval=5,
             maxval=500,
-            group="Bộ lọc Xu hướng",
+            group="Trend Filter",
         )
         self._trailing_stop_pct = self.input_float(
             "trailing_stop_pct",
@@ -122,7 +122,7 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
             minval=0.05,
             maxval=20.0,
             step=0.05,
-            group="Quy tắc Thoát lệnh",
+            group="Exit Rules",
         )
 
         #: Best price reached since the current position opened — the anchor the
@@ -152,17 +152,17 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
         # sizing and pyramiding are the broker's concern (BOT-050 §3), and a
         # strategy that re-fires here would fight whatever it is configured to.
         if context.current_position_side is not None:
-            return self.hold("đang giữ vị thế")
+            return self.hold("already holding a position")
 
         if baseline is None:
-            return self.hold("chưa đủ dữ liệu volume nền")
+            return self.hold("not enough baseline volume data yet")
 
         if baseline <= _EPSILON or candle.volume < baseline * self._volume_spike_mult:
             return self.hold()
 
         delta = self._order_flow_delta(context)
         if abs(delta) < self._delta_imbalance:
-            return self.hold("volume nổ nhưng mua/bán cân bằng")
+            return self.hold("volume spiked but buy/sell flow is balanced")
 
         # Read here rather than inside `_enter()` so the key-alignment guard
         # (test_strategy_key_alignment.py) can see it: that test static-analyses
@@ -226,9 +226,9 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
 
         if self._use_trend_filter:
             if go_long and candle.close_price <= trend_ema:
-                return self.hold("tín hiệu mua nhưng giá dưới EMA xu hướng")
+                return self.hold("buy signal but price is below the trend EMA")
             if not go_long and candle.close_price >= trend_ema:
-                return self.hold("tín hiệu bán nhưng giá trên EMA xu hướng")
+                return self.hold("sell signal but price is above the trend EMA")
 
         ratio = candle.volume / baseline if baseline > _EPSILON else 0.0
         metadata = {
@@ -241,10 +241,10 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
         # our favour must still have a stop, measured from where it began.
         self._best_price = candle.close_price
 
-        direction = "mua" if delta > 0.0 else "bán"
+        direction = "buy" if delta > 0.0 else "sell"
         reason = (
-            f"Volume x{ratio:.1f} nền, lệch {direction} {abs(delta):.0%}"
-            f"{' (đánh ngược)' if self._fade_mode else ''}"
+            f"Volume x{ratio:.1f} of baseline, {direction} imbalance {abs(delta):.0%}"
+            f"{' (faded)' if self._fade_mode else ''}"
         )
         return (
             self.buy(reason, **metadata) if go_long else self.short(reason, **metadata)
@@ -277,8 +277,8 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
             stop_price = self._best_price * (1.0 - threshold)
             if close_price <= stop_price:
                 return self.sell(
-                    f"Trailing stop: rơi {self._trailing_stop_pct:.2f}% "
-                    f"từ đỉnh {self._best_price:.2f}",
+                    f"Trailing stop: dropped {self._trailing_stop_pct:.2f}% "
+                    f"from peak {self._best_price:.2f}",
                     best_price=self._best_price,
                     stop_price=stop_price,
                 )
@@ -288,8 +288,8 @@ class VolumeSpikeFlowStrategy(BaseStrategy):
         stop_price = self._best_price * (1.0 + threshold)
         if close_price >= stop_price:
             return self.cover(
-                f"Trailing stop: bật {self._trailing_stop_pct:.2f}% "
-                f"từ đáy {self._best_price:.2f}",
+                f"Trailing stop: bounced {self._trailing_stop_pct:.2f}% "
+                f"from trough {self._best_price:.2f}",
                 best_price=self._best_price,
                 stop_price=stop_price,
             )

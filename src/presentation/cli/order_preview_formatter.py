@@ -19,7 +19,7 @@ def _quantity_line(preview: OrderPreview) -> str:
         return f"{order.order_type.name} / {order.quantity}"
     return (
         f"{order.order_type.name} / {order.quantity}  "
-        f"(làm tròn xuống từ {preview.raw_quantity}, step {preview.step_size})"
+        f"(rounded down from {preview.raw_quantity}, step {preview.step_size})"
     )
 
 
@@ -30,7 +30,7 @@ def format_order_preview(preview: OrderPreview) -> str:
     mark = "✔" if is_sufficient else "✘"
 
     lines = [
-        "Order đã chuẩn hoá",
+        "Normalized order",
         f"  client_order_id : {order.client_order_id}",
         (
             f"  symbol/side     : {order.symbol} / {order.side.value}   "
@@ -38,18 +38,18 @@ def format_order_preview(preview: OrderPreview) -> str:
         ),
         f"  type/quantity   : {_quantity_line(preview)}",
         (
-            f"  notional ước tính: {preview.estimated_notional:,.2f} USDT     "
+            f"  estimated notional: {preview.estimated_notional:,.2f} USDT     "
             f"{comparator} minNotional {preview.min_notional:,.2f} {mark}"
         ),
     ]
 
     if is_sufficient:
         lines.append(
-            "Trạng thái: SẴN SÀNG GỬI  (chưa gửi — task này không có đường ra mạng)"
+            "Status: READY TO SEND  (not sent — this task has no network egress)"
         )
     else:
         lines.append(
-            "Trạng thái: TỪ CHỐI  MIN_NOTIONAL — "
+            "Status: REJECTED  MIN_NOTIONAL — "
             f"{preview.estimated_notional:,.2f} USDT < {preview.min_notional:,.2f} USDT"
         )
 

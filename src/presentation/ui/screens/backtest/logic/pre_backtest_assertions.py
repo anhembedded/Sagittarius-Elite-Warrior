@@ -10,20 +10,16 @@ from typing import Protocol
 
 from Sagittarius_Elite_Warrior.src.presentation.ui.constants import DATETIME_FORMAT
 
-_INVALID_CAPITAL_TEMPLATE = "Vốn ban đầu không hợp lệ: {value!r}"
-_NON_POSITIVE_CAPITAL_MESSAGE = "Vốn ban đầu phải lớn hơn 0."
-_INVALID_CUSTOM_START_MESSAGE = (
-    f"Ngày bắt đầu không hợp lệ — định dạng {DATETIME_FORMAT}."
-)
-_INVALID_CUSTOM_END_MESSAGE = (
-    f"Ngày kết thúc không hợp lệ — định dạng {DATETIME_FORMAT}."
-)
-_INVALID_CUSTOM_RANGE_MESSAGE = "Ngày bắt đầu phải trước ngày kết thúc."
+_INVALID_CAPITAL_TEMPLATE = "Invalid initial capital: {value!r}"
+_NON_POSITIVE_CAPITAL_MESSAGE = "Initial capital must be greater than 0."
+_INVALID_CUSTOM_START_MESSAGE = f"Invalid start date — format {DATETIME_FORMAT}."
+_INVALID_CUSTOM_END_MESSAGE = f"Invalid end date — format {DATETIME_FORMAT}."
+_INVALID_CUSTOM_RANGE_MESSAGE = "Start date must be before end date."
 _TICK_MODE_REQUIRES_BOUNDED_RANGE_MESSAGE = (
-    'Chế độ Realtime (theo tick) không hỗ trợ "Toàn bộ lịch sử" — hãy chọn '
-    "một khoảng thời gian có giới hạn. Kiểm tra phạm vi dữ liệu ở độ phân "
-    "giải tick (giây) không có điểm bắt đầu khiến việc xác minh dữ liệu "
-    "chậm dần theo mỗi lần thử và không bao giờ bắt kịp."
+    'Realtime mode (tick-based) does not support "All History" — please '
+    "choose a bounded time range. Checking data coverage at tick (second) "
+    "resolution with no start point makes verification slower with every "
+    "retry and it never catches up."
 )
 #: `BUG-109` — `Tasks/reports/tick_data_feasibility.md` §3.2/§3.3 measured
 #: a single 7-day/1s coverage probe (query + handler) at ~17s and concluded
@@ -39,10 +35,10 @@ _TICK_MODE_REQUIRES_BOUNDED_RANGE_MESSAGE = (
 #: already established for the unbounded case.
 _MAX_TICK_MODE_RANGE_DAYS = 7
 _TICK_MODE_RANGE_TOO_WIDE_MESSAGE = (
-    "Chế độ Realtime (theo tick) chỉ hỗ trợ tối đa "
-    f"{_MAX_TICK_MODE_RANGE_DAYS} ngày mỗi lần chạy — khoảng đã chọn quá "
-    "rộng. Kiểm tra dữ liệu ở độ phân giải tick (giây) trên một phạm vi "
-    "rộng sẽ treo giao diện nhiều phút mà không có thanh tiến trình nào."
+    "Realtime mode (tick-based) supports at most "
+    f"{_MAX_TICK_MODE_RANGE_DAYS} days per run — the selected range is too "
+    "wide. Checking data at tick (second) resolution over a wide range "
+    "will freeze the UI for minutes with no progress bar."
 )
 
 

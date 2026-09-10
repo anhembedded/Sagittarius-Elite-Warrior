@@ -2074,7 +2074,7 @@ def test_refused_enable_shows_the_block_reason_and_seeds_positions(
 
     assert presenter._view_model.enabled is False
     log_entries = presenter._view_model.log_model.entries
-    assert any("vị thế mở ngoài dự kiến" in entry.message for entry in log_entries)
+    assert any("unexpected open positions" in entry.message for entry in log_entries)
     positions_spy.assert_called_once_with([build_position_row(position)])
 
 
@@ -2158,7 +2158,7 @@ def test_emergency_stop_success_reconciles_the_tables_and_logs(
     positions_spy.assert_called_once_with([])
     open_orders_spy.assert_called_once_with([])
     log_entries = presenter._view_model.log_model.entries
-    assert any("DỪNG KHẨN CẤP" in entry.message for entry in log_entries)
+    assert any("EMERGENCY STOP" in entry.message for entry in log_entries)
 
 
 def test_emergency_stop_partial_failure_is_reported(presenter, mock_dispatcher):
@@ -2171,7 +2171,7 @@ def test_emergency_stop_partial_failure_is_reported(presenter, mock_dispatcher):
     presenter._run_emergency_stop(action_id)
 
     log_entries = presenter._view_model.log_model.entries
-    assert any("THẤT BẠI MỘT PHẦN" in entry.message for entry in log_entries)
+    assert any("PARTIALLY FAILED" in entry.message for entry in log_entries)
 
 
 def test_emergency_stop_with_unconfirmed_final_state_does_not_touch_the_tables(
@@ -2340,7 +2340,7 @@ def test_manual_order_requested_rejects_a_market_order_with_no_known_price(
 
     mock_thread_mgr.submit.assert_not_called()
     log_entries = presenter._view_model.log_model.entries
-    assert any("giá thị trường" in entry.message for entry in log_entries)
+    assert any("market price" in entry.message for entry in log_entries)
 
 
 def test_manual_order_requested_blocked_while_already_pending(

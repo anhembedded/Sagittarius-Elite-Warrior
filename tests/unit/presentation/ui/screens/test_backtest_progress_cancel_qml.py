@@ -115,7 +115,7 @@ def test_progress_banner_cancel_button_in_running_and_syncing_modes(
     button = cancel_button()
     assert button.property("enabled") is True
     label = qml_item(button, "buttonLabel")
-    assert label.property("text") == "Hủy"
+    assert label.property("text") == "Cancel"
 
     # Click Cancel on progress banner
     cancel_signal_called = False
@@ -130,7 +130,7 @@ def test_progress_banner_cancel_button_in_running_and_syncing_modes(
 
     assert cancel_signal_called is True
 
-    # 3. In CANCELLING mode, button is disabled and text is "Đang hủy..."
+    # 3. In CANCELLING mode, button is disabled and text is "Cancelling..."
     view_model.set_ui_mode("CANCELLING")
     qapp.processEvents()
 
@@ -138,9 +138,9 @@ def test_progress_banner_cancel_button_in_running_and_syncing_modes(
     button = cancel_button()
     assert button.property("enabled") is False
     label = qml_item(button, "buttonLabel")
-    assert label.property("text") == "Đang hủy..."
+    assert label.property("text") == "Cancelling..."
 
-    # 4. In RUNNING mode, button is enabled and text is "Hủy"
+    # 4. In RUNNING mode, button is enabled and text is "Cancel"
     view_model.set_ui_mode("RUNNING")
     qapp.processEvents()
 
@@ -148,7 +148,7 @@ def test_progress_banner_cancel_button_in_running_and_syncing_modes(
     button = cancel_button()
     assert button.property("enabled") is True
     label = qml_item(button, "buttonLabel")
-    assert label.property("text") == "Hủy"
+    assert label.property("text") == "Cancel"
 
 
 def test_progress_banner_status_text_and_percent_are_wired(
@@ -162,23 +162,23 @@ def test_progress_banner_status_text_and_percent_are_wired(
     progress_widget = view.top_widget._progress_banner_widget
     view_model = presenter._view_model
 
-    view_model.run_progress.set_sync_progress(45.0, "Đang đồng bộ nến: 45/100 (45%)")
+    view_model.run_progress.set_sync_progress(45.0, "Syncing candles: 45/100 (45%)")
     view_model.set_ui_mode("SYNCING")
     qapp.processEvents()
 
     status = qml_item(progress_widget.root_object, "progressBannerStatusText")
     percent = qml_item(progress_widget.root_object, "progressBannerPercentText")
-    assert status.property("text") == "Đang đồng bộ nến: 45/100 (45%)"
+    assert status.property("text") == "Syncing candles: 45/100 (45%)"
     assert percent.property("text") == "45%"
 
     view_model.set_ui_mode("IDLE")
-    view_model.run_progress.set_backtest_progress(80.0, "Chạy toàn bộ dữ liệu: 80%")
+    view_model.run_progress.set_backtest_progress(80.0, "Running full dataset: 80%")
     view_model.set_ui_mode("RUNNING")
     qapp.processEvents()
 
     status = qml_item(progress_widget.root_object, "progressBannerStatusText")
     percent = qml_item(progress_widget.root_object, "progressBannerPercentText")
-    assert status.property("text") == "Chạy toàn bộ dữ liệu: 80%"
+    assert status.property("text") == "Running full dataset: 80%"
     assert percent.property("text") == "80%"
 
 

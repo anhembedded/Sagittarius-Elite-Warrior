@@ -27,7 +27,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.qml.SelectList.select_list_vm
 
 from .catalogue import MARKET_OPTIONS
 
-_TITLE = "CHỌN THỊ TRƯỜNG"
+_TITLE = "SELECT MARKET"
 _QML = Path(__file__).resolve().parents[2] / "qml" / "SelectList" / "SelectList.qml"
 
 

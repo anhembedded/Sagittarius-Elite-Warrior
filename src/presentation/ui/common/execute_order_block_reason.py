@@ -23,13 +23,13 @@ _SAFETY_GATE_MESSAGES = EnumLabels(
     ExecuteOrderSafetyGate,
     {
         ExecuteOrderSafetyGate.TRADING_VENUE_DISABLED: (
-            "Trading venue đang tắt trong cấu hình — chỉ hỗ trợ Futures Testnet."
+            "Trading venue is disabled in configuration — only Futures Testnet is supported."
         ),
         ExecuteOrderSafetyGate.TRADING_SWITCH_OFF: (
-            "Giao dịch đang TẮT — bật giao dịch trước khi đặt/huỷ lệnh."
+            "Trading is OFF — enable trading before placing/cancelling an order."
         ),
         ExecuteOrderSafetyGate.CONNECTION_NOT_READY: (
-            "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
+            "Connection to the exchange is not ready — check your API key/network connection."
         ),
     },
 )
@@ -38,16 +38,16 @@ _LIMIT_VIOLATION_MESSAGES = EnumLabels(
     TradingLimitViolation,
     {
         TradingLimitViolation.MAX_ORDERS_PER_SESSION: (
-            "Đã đạt số lệnh tối đa cho phép trong phiên này."
+            "Maximum number of orders allowed for this session has been reached."
         ),
         TradingLimitViolation.MAX_NOTIONAL_PER_ORDER: (
-            "Giá trị lệnh vượt trần cho phép mỗi lệnh."
+            "Order value exceeds the maximum allowed per order."
         ),
         TradingLimitViolation.MAX_POSITIONS_PER_SYMBOL: (
-            "Symbol này đang có vị thế mở — không mở thêm."
+            "This symbol already has an open position — no more can be opened."
         ),
         TradingLimitViolation.MIN_ORDER_INTERVAL: (
-            "Lệnh gửi quá gần lệnh trước trên cùng symbol."
+            "Order submitted too soon after the previous order on the same symbol."
         ),
     },
 )
@@ -67,5 +67,5 @@ def format_execute_order_block_reason(
     if isinstance(blocked_by, TradingLimitViolation):
         return _LIMIT_VIOLATION_MESSAGES[blocked_by]
     if blocked_by is ExecuteOrderNotionalRejection.MIN_NOTIONAL:
-        return "Giá trị lệnh (sau khi làm tròn) chưa đạt notional tối thiểu của symbol."
-    return "Không rõ lý do."  # pragma: no cover - blocked_by is None handled by callers first
+        return "Order value (after rounding) is below the symbol's minimum notional."
+    return "Unknown reason."  # pragma: no cover - blocked_by is None handled by callers first

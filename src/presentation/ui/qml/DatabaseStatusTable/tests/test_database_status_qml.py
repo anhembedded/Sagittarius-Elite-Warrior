@@ -185,7 +185,7 @@ def test_search_field_placeholder_matches_house_style(qapp, qml_item):
 
     field = qml_item(root, "txtDatabaseStatusSearch")
 
-    assert field.property("placeholderText") == "Tìm symbol / khung thời gian…"
+    assert field.property("placeholderText") == "Search symbol / timeframe…"
     quick.close()
     quick.deleteLater()
 

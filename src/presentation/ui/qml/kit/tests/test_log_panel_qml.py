@@ -12,7 +12,7 @@ from PySide6.QtTest import QTest
 _ENTRIES = [
     {
         "timestampText": "13:56:40",
-        "message": "Trạng thái hệ thống: HEALTHY",
+        "message": "System status: HEALTHY",
         "isError": False,
     },
     {"timestampText": "14:04:34", "message": "Sync failed", "isError": True},

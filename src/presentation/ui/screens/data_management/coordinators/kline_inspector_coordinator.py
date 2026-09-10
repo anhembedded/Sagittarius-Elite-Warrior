@@ -102,13 +102,13 @@ class KLineInspectorCoordinator:
 
             if result.is_clean:
                 summary = (
-                    f"Dữ liệu toàn vẹn 100%! Đã kiểm định {result.total_checked:,} nến, "
-                    f"không phát hiện nến lỗi."
+                    f"Data is 100% intact! Checked {result.total_checked:,} candles, "
+                    f"no faulty candles found."
                 )
             else:
                 summary = (
-                    f"Cảnh báo: Phát hiện {result.anomaly_count:,} nến bất thường trong "
-                    f"{result.total_checked:,} nến đã kiểm định."
+                    f"Warning: Found {result.anomaly_count:,} anomalous candles out of "
+                    f"{result.total_checked:,} candles checked."
                 )
 
             anomalies_list = [
@@ -129,5 +129,5 @@ class KLineInspectorCoordinator:
             self._tracker.finish_action(action.action_id, ActionOutcome.SUCCEEDED)
         except Exception as exc:  # noqa: BLE001
             self._ui_error_log_signal(f"Failed to audit database: {exc}")
-            self._ui_audit_result_signal(False, 0, f"Lỗi kiểm định: {exc}", [])
+            self._ui_audit_result_signal(False, 0, f"Audit error: {exc}", [])
             self._tracker.finish_action(action.action_id, ActionOutcome.FAILED)

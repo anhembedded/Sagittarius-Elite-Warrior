@@ -639,8 +639,7 @@ class BinanceBotModule(BaseModule):
             live_config = LiveStrategyConfigStore(config).load()
         except ValueError as exc:
             logger.warning(
-                "Cấu hình chiến lược đã lưu không hợp lệ (%s) — khởi động ở "
-                "trạng thái chưa nạp.",
+                "The saved strategy config is invalid (%s) — starting unarmed.",
                 exc,
             )
             return

@@ -496,7 +496,7 @@ class StreamLifecycleController:
         # must already see the id it belongs to.
         correlation_id = uuid.uuid4().hex
         self._active_sync_correlation_id = correlation_id
-        self._emit_sync_progress(0, 0, True, "Đang đồng bộ dữ liệu từ Binance...")
+        self._emit_sync_progress(0, 0, True, "Syncing data from Binance...")
         sync_cmd = SyncMarketDataCommand(
             symbols=symbols,
             interval=interval,

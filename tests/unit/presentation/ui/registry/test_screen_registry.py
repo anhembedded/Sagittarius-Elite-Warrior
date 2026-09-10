@@ -192,7 +192,7 @@ def test_conflicting_section_sequence_across_modules_raises(
     registry.register_module(
         _FakeModule("a", section_key="NAV", section_sequence=10), container
     )
-    with pytest.raises(ValueError, match="Xung đột section_sequence"):
+    with pytest.raises(ValueError, match="section_sequence conflict"):
         registry.register_module(
             _FakeModule("b", section_key="NAV", section_sequence=999), container
         )

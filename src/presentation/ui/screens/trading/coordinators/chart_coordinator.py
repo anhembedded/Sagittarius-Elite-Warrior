@@ -135,12 +135,12 @@ class ChartCoordinator:
 
             if not go_live:
                 self._emit_log(
-                    f"Đang tải dữ liệu {symbol} từ cơ sở dữ liệu cục bộ "
-                    "(chưa kết nối trực tiếp — bật giao dịch để kết nối)."
+                    f"Loading {symbol} data from the local database "
+                    "(not connected live — enable trading to connect)."
                 )
 
             if go_live:
-                self._emit_log(f"Đang đồng bộ dữ liệu {symbol} từ Binance...")
+                self._emit_log(f"Syncing {symbol} data from Binance...")
                 self._dispatcher.dispatch(
                     SyncMarketDataCommand,
                     SyncMarketDataCommand(
@@ -159,7 +159,7 @@ class ChartCoordinator:
             if go_live:
                 self._start_stream(symbol, interval)
         except Exception as exc:  # noqa: BLE001 - worker boundary: report the real failure instead of losing it to a background-thread traceback
-            self._emit_stream_failed(f"Lỗi hệ thống: {exc}")
+            self._emit_stream_failed(f"System error: {exc}")
         finally:
             self._emit_load_finished()
 
@@ -174,7 +174,7 @@ class ChartCoordinator:
         results = getattr(response, "data", response) if response else {}
         klines = results.get(symbol, []) if isinstance(results, dict) else []
         if not klines:
-            self._emit_log(f"Không có dữ liệu lịch sử cho {symbol}.")
+            self._emit_log(f"No historical data for {symbol}.")
             return
         ordered = list(reversed(klines))
         # `EPIC-022E` — the raw `MarketData` rows ride along beside the
@@ -187,13 +187,13 @@ class ChartCoordinator:
         )
 
     def _start_stream(self, symbol: str, interval: TimeFrame) -> None:
-        self._emit_log(f"Đang mở luồng trực tiếp cho {symbol}...")
+        self._emit_log(f"Opening live stream for {symbol}...")
         cmd = StartLiveStreamCommand(
             owner=_STREAM_OWNER, symbols=[symbol], interval=interval
         )
         response = self._dispatcher.dispatch(StartLiveStreamCommand, cmd)
         if response and getattr(response, "success", True):
-            self._emit_stream_started(f"Đang truyền dữ liệu trực tiếp cho {symbol}.")
+            self._emit_stream_started(f"Streaming live data for {symbol}.")
         else:
             message = getattr(response, "message", "Unknown error")
-            self._emit_stream_failed(f"Không thể mở luồng trực tiếp: {message}")
+            self._emit_stream_failed(f"Could not open live stream: {message}")

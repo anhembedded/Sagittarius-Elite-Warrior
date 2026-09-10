@@ -74,7 +74,7 @@ class _GapRowWidget(DataRow):
     ) -> None:
         super().__init__(
             _GAP_COLUMNS,
-            actions=[RowAction("Vá Gap")],
+            actions=[RowAction("Repair Gap")],
             action_stretch=_GAP_ACTION_COLUMN.stretch,
             parent=parent,
         )
@@ -105,7 +105,7 @@ class _GapRowWidget(DataRow):
                 str(gap.get("start_time") or ""),
                 str(gap.get("end_time") or ""),
                 str(gap.get("duration_text") or ""),
-                f"-{gap.get('missing_candles') or 0} nến",
+                f"-{gap.get('missing_candles') or 0} candles",
             ]
         )
 
@@ -142,7 +142,7 @@ class _CoverageSegmentWidget(QFrame):  # base-exempt: a coloured bar segment
         tip = (
             f"{'⚠️ GAP: ' if is_gap else '✅ DATA: '}"
             f"{segment.get('start_time', '')} → {segment.get('end_time', '')} "
-            f"({segment.get('candle_count', 0)} nến)"
+            f"({segment.get('candle_count', 0)} candles)"
         )
         self.setToolTip(tip)
 
@@ -163,7 +163,7 @@ class GapInspectorDialog(Overlay):
     def __init__(
         self, view_model: DataManagementViewModel, parent: QWidget | None = None
     ) -> None:
-        super().__init__("CHI TIẾT LỖ HỔNG DỮ LIỆU (GAP INSPECTOR)", parent=parent)
+        super().__init__("DATA GAP DETAILS (GAP INSPECTOR)", parent=parent)
         self.setObjectName("gapInspectorModal")
         self._view_model = view_model
         self.resize(680, 520)
@@ -237,9 +237,7 @@ class GapInspectorDialog(Overlay):
         self._rows_layout.setContentsMargins(0, 0, 0, 0)
         self._rows_layout.setSpacing(2)
 
-        self._empty_label = QLabel(
-            "Không có lỗ hổng nào được phát hiện (Dữ liệu liên tục 100%)."
-        )
+        self._empty_label = QLabel("No gaps detected (100% continuous data).")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_label.setStyleSheet(
             f"color: {Palette.SUCCESS}; font-size: 12px; font-weight: bold;"
@@ -280,7 +278,7 @@ class GapInspectorDialog(Overlay):
         row.addWidget(self._total_missing_label)
         row.addStretch()
 
-        self._btn_repair_all = QPushButton("Vá Toàn Bộ Lỗ Hổng (Repair All)")
+        self._btn_repair_all = QPushButton("Repair All Gaps (Repair All)")
         self._btn_repair_all.setObjectName("btnRepairAllGaps")
         self._btn_repair_all.setIcon(
             get_icon_loader().get_icon("zap", Palette.ACCENT, 14)
@@ -296,7 +294,7 @@ class GapInspectorDialog(Overlay):
         self._btn_repair_all.clicked.connect(self._on_repair_all)
         row.addWidget(self._btn_repair_all)
 
-        btn_close = QPushButton("Đóng")
+        btn_close = QPushButton("Close")
         btn_close.setFixedSize(80, 32)
         btn_close.setStyleSheet(
             f"QPushButton {{ background-color: {Palette.BG_CARD}; color: {Palette.TEXT_PRIMARY}; "
@@ -324,7 +322,7 @@ class GapInspectorDialog(Overlay):
             f"{vm.gapInspectorTotalGaps} gaps detected"
         )
         coverage_pct = vm.gapInspectorCoveragePct
-        self._coverage_pct_label.setText(f"Độ phủ: {coverage_pct}%")
+        self._coverage_pct_label.setText(f"Coverage: {coverage_pct}%")
         color = (
             Palette.SUCCESS
             if coverage_pct >= _FULL_COVERAGE_THRESHOLD
@@ -334,7 +332,7 @@ class GapInspectorDialog(Overlay):
             f"color: {color}; font-size: 11px; font-weight: bold;"
         )
         self._total_missing_label.setText(
-            f"Tổng số nến bị thiếu: {vm.gapInspectorTotalMissing} nến"
+            f"Total missing candles: {vm.gapInspectorTotalMissing} candles"
         )
         self._sync_enabled_state()
 

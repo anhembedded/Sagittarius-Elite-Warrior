@@ -55,7 +55,7 @@ class SidebarTab(ITab):
     def tab_icon(self) -> TabIconPresentation:
         tip = self.tooltip
         if tip is None:
-            tip = self.label if self.is_navigable else f"{self.label} (Sắp ra mắt)"
+            tip = self.label if self.is_navigable else f"{self.label} (Coming soon)"
         return TabIconPresentation(
             icon=self.icon,
             tooltip=tip,

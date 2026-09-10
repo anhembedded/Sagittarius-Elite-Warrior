@@ -99,7 +99,7 @@ RowLayout {
                 Layout.fillWidth: true
                 spacing: 4
                 Text {
-                    text: "TỪ"
+                    text: "FROM"
                     textFormat: Text.PlainText
                     color: Theme.muted
                     font.pixelSize: 10
@@ -126,7 +126,7 @@ RowLayout {
                 Layout.fillWidth: true
                 spacing: 4
                 Text {
-                    text: "ĐẾN"
+                    text: "TO"
                     textFormat: Text.PlainText
                     color: Theme.muted
                     font.pixelSize: 10

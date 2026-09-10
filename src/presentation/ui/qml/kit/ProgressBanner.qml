@@ -27,7 +27,7 @@ ColumnLayout {
     //: pulses instead of claiming a percentage it does not have.
     property bool indeterminate: false
     property bool cancelling: false
-    property string cancelLabel: "Hủy"
+    property string cancelLabel: "Cancel"
     signal cancelRequested()
 
     RowLayout {
@@ -101,7 +101,7 @@ ColumnLayout {
 
         Button {
             objectName: "progressBannerCancelButton"
-            text: root.cancelling ? "Đang hủy..." : root.cancelLabel
+            text: root.cancelling ? "Cancelling..." : root.cancelLabel
             role: "danger"
             enabled: !root.cancelling
             onClicked: root.cancelRequested()

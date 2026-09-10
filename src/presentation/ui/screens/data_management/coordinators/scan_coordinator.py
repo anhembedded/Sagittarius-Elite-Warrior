@@ -161,16 +161,17 @@ class ScanCoordinator:
                     "not yet scanned this session."
                 )
                 self._ui_log_signal(
-                    f"Storage Vault: {local_shard_count} tệp dữ liệu cục bộ trên đĩa, "
-                    "chưa quét trong phiên này. Nhấn 'Scan All Shards & Timeframes' "
-                    "để tải trạng thái."
+                    f"Storage Vault: {local_shard_count} local data file(s) on disk, "
+                    "not scanned in this session yet. Press 'Scan All Shards & "
+                    "Timeframes' to load their status."
                 )
             else:
                 logger.info(
                     "[storage-vault] Storage Vault is empty: 0 database shards found on disk."
                 )
                 self._ui_log_signal(
-                    "Storage Vault trống (chưa có cơ sở dữ liệu cục bộ). Hãy chọn cặp giao dịch và nhấn Sync để tải dữ liệu."
+                    "Storage Vault is empty (no local database yet). Select a "
+                    "trading pair and press Sync to load data."
                 )
             self._tracker.finish_action(action.action_id, ActionOutcome.SUCCEEDED)
         except Exception as exc:  # noqa: BLE001 - boundary: log without crashing
@@ -206,8 +207,8 @@ class ScanCoordinator:
 
         if result.removed_symbols:
             self._ui_log_signal(
-                f"Đã dọn {len(result.removed_symbols)} shard rỗng "
-                "(0 nến, tạo ra do lần kiểm tra dữ liệu trước đây)."
+                f"Cleaned up {len(result.removed_symbols)} empty shard(s) "
+                "(0 candles, created by a previous data check)."
             )
 
     def run_check_status(self, symbol: str, interval: str) -> None:

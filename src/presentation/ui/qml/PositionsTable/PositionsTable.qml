@@ -27,17 +27,17 @@ ColumnLayout {
         reuseItems: true
         columns: [
             { key: "symbol", label: "SYMBOL", width: root.symbolColumnWidth },
-            { key: "side", label: "CHIỀU", width: root.sideColumnWidth },
-            { key: "size", label: "KHỐI LƯỢNG", width: root.sizeColumnWidth, align: "right" },
-            { key: "entry", label: "GIÁ VÀO", width: root.priceColumnWidth, align: "right" },
-            { key: "mark", label: "GIÁ HIỆN TẠI", width: root.priceColumnWidth, align: "right" },
-            { key: "pnl", label: "PNL CHƯA THỰC HIỆN", fillWidth: true, align: "right" },
-            { key: "leverage", label: "ĐÒN BẨY", width: root.leverageColumnWidth, align: "right" },
-            { key: "liquidation", label: "GIÁ THANH LÝ", width: root.liquidationColumnWidth, align: "right" },
+            { key: "side", label: "SIDE", width: root.sideColumnWidth },
+            { key: "size", label: "SIZE", width: root.sizeColumnWidth, align: "right" },
+            { key: "entry", label: "ENTRY PRICE", width: root.priceColumnWidth, align: "right" },
+            { key: "mark", label: "MARK PRICE", width: root.priceColumnWidth, align: "right" },
+            { key: "pnl", label: "UNREALIZED PNL", fillWidth: true, align: "right" },
+            { key: "leverage", label: "LEVERAGE", width: root.leverageColumnWidth, align: "right" },
+            { key: "liquidation", label: "LIQUIDATION PRICE", width: root.liquidationColumnWidth, align: "right" },
         ]
         rowsModel: vm ? vm.rows : null
         isEmpty: vm ? vm.rows.length === 0 : false
-        emptyText: "Không có vị thế đang mở"
+        emptyText: "No open positions"
         rowDelegate: Component {
             PositionRow {
                 width: ListView.view.width

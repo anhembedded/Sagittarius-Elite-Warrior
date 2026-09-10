@@ -52,7 +52,7 @@ from ..host import QmlOverlay
 from .timeframe_vm import TimeframeVM
 
 _QML = Path(__file__).with_name("TimeframePicker.qml")
-_DEFAULT_TITLE = "CHỌN KHUNG THỜI GIAN"
+_DEFAULT_TITLE = "SELECT TIMEFRAME"
 
 
 class PinnedTimeframes:

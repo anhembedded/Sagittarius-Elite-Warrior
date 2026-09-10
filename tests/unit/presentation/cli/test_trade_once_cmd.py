@@ -174,7 +174,7 @@ def test_a_live_order_rejected_by_the_exchange_prints_a_friendly_message_not_a_c
         mock_build_engine.return_value.on_tick.return_value = _signal()
         execute_trade_once(app, _args())  # must not raise
 
-    assert "Sàn từ chối lệnh" in capsys.readouterr().out
+    assert "Exchange rejected the order" in capsys.readouterr().out
 
 
 def test_a_network_failure_during_live_dispatch_prints_a_friendly_message_not_a_crash(
@@ -196,4 +196,4 @@ def test_a_network_failure_during_live_dispatch_prints_a_friendly_message_not_a_
         mock_build_engine.return_value.on_tick.return_value = _signal()
         execute_trade_once(app, _args())  # must not raise
 
-    assert "Không gửi được lệnh tới sàn" in capsys.readouterr().out
+    assert "Could not send the order to the exchange" in capsys.readouterr().out

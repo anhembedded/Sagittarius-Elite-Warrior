@@ -33,7 +33,7 @@ from ..host import QmlOverlay
 from .time_range_picker_vm import TimeRangePickerVM
 
 _QML = Path(__file__).with_name("TimeRangePicker.qml")
-_DEFAULT_TITLE = "KHOẢNG THỜI GIAN DỮ LIỆU"
+_DEFAULT_TITLE = "DATA TIME RANGE"
 
 
 def _default_get_now() -> datetime:
@@ -88,11 +88,11 @@ class TimeRangePickerDialog(QmlOverlay):
     def _build_buttons(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.addStretch(1)
-        btn_cancel = QPushButton("Hủy")
+        btn_cancel = QPushButton("Cancel")
         btn_cancel.setObjectName("btnCancelTimeRange")
         btn_cancel.clicked.connect(self.reject)
         row.addWidget(btn_cancel)
-        self._btn_apply: QPushButton = QPushButton("Áp dụng")
+        self._btn_apply: QPushButton = QPushButton("Apply")
         self._btn_apply.setObjectName("btnApplyTimeRange")
         self._btn_apply.clicked.connect(self._widget_vm.apply)
         row.addWidget(self._btn_apply)

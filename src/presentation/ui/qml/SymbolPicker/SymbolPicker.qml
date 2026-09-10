@@ -151,7 +151,7 @@ Item {
                 Text {
                     objectName: "symbolPickerTitle"
                     Layout.fillWidth: true
-                    text: "CHỌN SYMBOL"
+                    text: "SELECT SYMBOL"
                     textFormat: Text.PlainText
                     color: root.theme.textPrimary
                     font.bold: true
@@ -162,7 +162,7 @@ Item {
                     objectName: "btnRefreshSymbols"
                     text: "🔄"
                     ToolTip.visible: hovered
-                    ToolTip.text: "Cập nhật danh sách từ sàn Binance"
+                    ToolTip.text: "Refresh symbol list from Binance"
                     onClicked: root.vm.requestRefresh()
                     contentItem: Text {
                         text: parent.text
@@ -199,7 +199,7 @@ Item {
                     id: searchField
                     objectName: "txtSymbolSearch"
                     Layout.fillWidth: true
-                    placeholderText: "Tìm symbol (vd: BTC)"
+                    placeholderText: "Search symbol (e.g. BTC)"
                     text: root.vm.query
                     color: root.theme.textPrimary
                     selectByMouse: true
@@ -216,7 +216,7 @@ Item {
                 }
                 Text {
                     objectName: "lblSymbolResultCount"
-                    text: root.vm.resultCount + " kết quả"
+                    text: root.vm.resultCount + " results"
                     textFormat: Text.PlainText
                     color: root.theme.muted
                     font.pixelSize: 11
@@ -281,7 +281,7 @@ Item {
                         objectName: "lblSymbolFavouritesHeading"
                         width: parent.width
                         visible: root.vm.showSplit
-                        text: "YÊU THÍCH"
+                        text: "FAVOURITES"
                         textFormat: Text.PlainText
                         color: root.theme.muted
                         font.bold: true
@@ -318,7 +318,7 @@ Item {
                         objectName: "lblSymbolResultsHeading"
                         width: parent.width
                         visible: root.vm.showSplit && root.vm.resultModel.count > 0
-                        text: "TẤT CẢ KẾT QUẢ"
+                        text: "ALL RESULTS"
                         textFormat: Text.PlainText
                         color: root.theme.muted
                         font.bold: true
@@ -359,14 +359,14 @@ Item {
                 Text {
                     objectName: "lblSymbolKeyHints"
                     Layout.fillWidth: true
-                    text: "↑↓ di chuyển   ↵ chọn   ☆ yêu thích"
+                    text: "↑↓ move   ↵ select   ☆ favourite"
                     textFormat: Text.PlainText
                     color: root.theme.muted
                     font.pixelSize: 10
                 }
                 Text {
                     objectName: "lblSymbolCurrent"
-                    text: "Đang dùng: " + root.vm.currentSymbol
+                    text: "Current: " + root.vm.currentSymbol
                     textFormat: Text.PlainText
                     color: root.theme.muted
                     font.pixelSize: 10

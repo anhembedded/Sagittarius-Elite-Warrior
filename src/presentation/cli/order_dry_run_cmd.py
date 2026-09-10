@@ -36,7 +36,7 @@ def execute_order_dry_run(app: App, args: argparse.Namespace) -> None:
         quantity = Decimal(args.qty)
         reference_price = Decimal(args.price)
     except InvalidOperation:
-        print(f"Số không hợp lệ: qty={args.qty!r} price={args.price!r}")
+        print(f"Invalid number: qty={args.qty!r} price={args.price!r}")
         return
 
     order_request = PreviewOrderQuery(
@@ -50,12 +50,12 @@ def execute_order_dry_run(app: App, args: argparse.Namespace) -> None:
     try:
         preview = app.dispatch(PreviewOrderQuery, order_request)
     except ValueError as exc:
-        print(f"Không xem trước được lệnh: {exc}")
+        print(f"Could not preview the order: {exc}")
         return
     except (BinanceAPIException, BinanceRequestException, RequestException):
         print(
-            "Không lấy được luật giao dịch (exchange rules) cho "
-            f"{args.symbol} — kiểm tra kết nối mạng rồi thử lại."
+            "Could not fetch exchange rules for "
+            f"{args.symbol} — check your network connection and try again."
         )
         return
 
@@ -68,19 +68,21 @@ def execute_order_dry_run(app: App, args: argparse.Namespace) -> None:
         )
     except DependencyResolutionError:
         print(
-            "Trading venue đang tắt (DISABLED). Bật lên bằng cách đặt "
-            '"exchange.trading_venue": "futures_testnet" trong '
-            "src/config/user_config.json, rồi thử lại."
+            "Trading venue is DISABLED. Enable it by setting "
+            '"exchange.trading_venue": "futures_testnet" in '
+            "src/config/user_config.json, then try again."
         )
         return
     except OrderRejectedByExchangeError as exc:
         print(format_submission_rejected(exc))
         return
     except InvalidOrderForSubmissionError as exc:
-        print(f"Order chưa hợp lệ để gửi: {exc}")
+        print(f"Order is not valid for submission: {exc}")
         return
     except (BinanceAPIException, BinanceRequestException, RequestException):
-        print("Không gửi được payload tới sàn — kiểm tra kết nối mạng rồi thử lại.")
+        print(
+            "Could not send the payload to the exchange — check your network connection and try again."
+        )
         return
 
     print(format_submission_accepted())

@@ -11,8 +11,8 @@ from .filtering import SymbolEntry
 #: Shown under the pair instead of its quote when the symbol is the one the
 #: screen is currently running on — the state a user scanning the grid most
 #: needs to find, and the one thing worth spending the subtitle line on.
-_CURRENT_TEXT = "Đang dùng"
-_RECENT_TEXT = "Gần đây"
+_CURRENT_TEXT = "Current"
+_RECENT_TEXT = "Recent"
 _QUOTE_TEXT = "Quote {quote}"
 _UNKNOWN_QUOTE_TEXT = "—"
 
@@ -104,6 +104,8 @@ class SymbolCard(SelectableCard):
         star.setObjectName(f"symbolStar_{entry.symbol}")
         star.setFixedSize(_STAR_SIZE, _STAR_SIZE)
         star.setCursor(Qt.CursorShape.PointingHandCursor)
-        star.setToolTip("Bỏ yêu thích" if entry.is_favourite else "Đánh dấu yêu thích")
+        star.setToolTip(
+            "Remove from favourites" if entry.is_favourite else "Add to favourites"
+        )
         star.clicked.connect(lambda: self.favourite_toggled.emit(entry.symbol))
         return star

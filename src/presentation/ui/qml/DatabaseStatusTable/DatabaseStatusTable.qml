@@ -39,7 +39,7 @@ ColumnLayout {
             width: 180
             implicitHeight: 26
             font.pixelSize: 11
-            placeholderText: "Tìm symbol / khung thời gian…"
+            placeholderText: "Search symbol / timeframe…"
             color: Theme.textPrimary
             selectByMouse: true
             onTextEdited: if (vm) vm.setSearchText(text)
@@ -77,10 +77,10 @@ ColumnLayout {
         rowsModel: vm ? vm.rowsModel : null
         isEmpty: vm ? vm.rowCount === 0 : false
         emptyText: (vm && vm.knownShardCount > 0)
-            ? ("Storage Vault có " + vm.knownShardCount + " tệp dữ liệu cục bộ trên đĩa, "
-               + "chưa quét trong phiên này. Nhấn 'Scan All Shards & Timeframes' hoặc "
-               + "chọn Symbol & Timeframe rồi nhấn 'Sync' để xem chi tiết.")
-            : "Storage Vault trống. Hãy chọn Symbol & Timeframe và nhấn 'Sync' để tải dữ liệu."
+            ? ("Storage Vault has " + vm.knownShardCount + " local data file(s) on disk, "
+               + "not yet scanned this session. Click 'Scan All Shards & Timeframes' or "
+               + "select a Symbol & Timeframe then click 'Sync' to view details.")
+            : "Storage Vault is empty. Select a Symbol & Timeframe and click 'Sync' to load data."
         rowDelegate: Component {
             DatabaseStatusRow {
                 width: ListView.view.width

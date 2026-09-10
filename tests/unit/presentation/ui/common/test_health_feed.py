@@ -68,7 +68,7 @@ def test_one_log_line_for_every_screen(qapp):
     bus.emit(HealthUpdatedEvent.event_name, HealthUpdatedEvent(_STATUS))
 
     line = seen[0].to_log_line()
-    assert line.startswith("[Health] Trạng thái hệ thống: HEALTHY (")
+    assert line.startswith("[Health] System status: HEALTHY (")
     assert "Container: OK" in line
 
 

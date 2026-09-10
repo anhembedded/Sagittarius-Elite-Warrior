@@ -50,10 +50,10 @@ from .param_stepper import ParamStepper
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QHBoxLayout
 
-_TITLE = "Thông số Chiến lược"
-_EMPTY_TEXT = "Chiến lược này không khai báo thông số nào."
-_SAVE_TEXT = "Lưu"
-_CANCEL_TEXT = "Huỷ"
+_TITLE = "Strategy Parameters"
+_EMPTY_TEXT = "This strategy does not declare any parameters."
+_SAVE_TEXT = "Save"
+_CANCEL_TEXT = "Cancel"
 
 
 class BotParamsSink(ParamStepper, Protocol):

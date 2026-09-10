@@ -60,7 +60,7 @@ def test_format_candle_and_signal_shows_the_signal() -> None:
     signal = Signal(
         symbol="BTCUSDT",
         action=SignalAction.BUY,
-        reason="ema_fast cắt lên trong xu hướng tăng",
+        reason="ema_fast crossed above in an uptrend",
         price=64102.30,
         time=datetime(2026, 9, 1, 14, 35, tzinfo=UTC),
     )
@@ -73,7 +73,7 @@ def test_format_candle_and_signal_shows_the_signal() -> None:
 
 def test_format_candle_and_signal_no_signal() -> None:
     text = format_candle_and_signal(_candle(), "ema_trend_confirm_pullback", None)
-    assert "không có tín hiệu" in text
+    assert "no actionable signal" in text
 
 
 def test_format_limit_checks_all_passing() -> None:
@@ -91,10 +91,10 @@ def test_format_limit_checks_all_passing() -> None:
     )
     text = format_limit_checks(checks, context, _LIMITS)
 
-    assert "lệnh 1/20" in text
+    assert "order 1/20" in text
     assert "128.20" in text
     assert "500.00" in text
-    assert "chưa có" in text
+    assert "none" in text
     assert "n/a" in text
     assert "✘" not in text
 
@@ -119,7 +119,7 @@ def test_format_result_blocked_by_trading_limit() -> None:
         submitted_order=None,
     )
     text = format_result(result, live_requested=False)
-    assert "CHẶN" in text
+    assert "BLOCKED" in text
     assert "max_positions_per_symbol" in text
 
 
@@ -131,7 +131,7 @@ def test_format_result_blocked_by_safety_gate() -> None:
         submitted_order=None,
     )
     text = format_result(result, live_requested=False)
-    assert "Không gửi lệnh nào." in text
+    assert "No order was sent." in text
 
 
 def test_format_result_live_submitted() -> None:

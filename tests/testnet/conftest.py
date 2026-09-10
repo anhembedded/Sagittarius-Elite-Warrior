@@ -38,7 +38,7 @@ def testnet_credentials() -> ExchangeCredentials:
     """@brief Real Futures Testnet API credentials, or a `pytest.skip` with
     a reason naming exactly which of the two gates is closed."""
     if os.environ.get(ENV_FLAG) != "1":
-        pytest.skip(f"thiếu {ENV_FLAG}=1 — tier này không chạy trong CI thường")
+        pytest.skip(f"missing {ENV_FLAG}=1 — this tier does not run in regular CI")
 
     secrets_file_path = PathUtils.get_relative_path(
         __file__, "..", "..", "src", "config", "secrets.local.json"
@@ -47,5 +47,7 @@ def testnet_credentials() -> ExchangeCredentials:
         SecretsFileSource(secrets_file_path)
     ).resolve()
     if resolution.credentials is None:
-        pytest.skip(f"có {ENV_FLAG}=1 nhưng không tìm thấy credentials Futures Testnet")
+        pytest.skip(
+            f"{ENV_FLAG}=1 is set but no Futures Testnet credentials were found"
+        )
     return resolution.credentials

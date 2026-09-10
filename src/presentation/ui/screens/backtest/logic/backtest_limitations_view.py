@@ -17,27 +17,27 @@ from Sagittarius_Elite_Warrior.src.domain.backtesting.backtest_result import (
 #: (BOT-104) and leverage (BOT-105) all shipped, so nothing in that claim
 #: was still true.
 _ALWAYS_APPLICABLE_LIMITATIONS = [
-    "Chế độ đang chạy: Static — dựa trên nến đã đóng, không phải tick thật.",
-    "Không mô phỏng slippage — mọi lệnh khớp đúng giá yêu cầu.",
-    "Không mô phỏng độ trễ mạng / thời gian xử lý lệnh.",
+    "Running mode: Static — based on closed candles, not real ticks.",
+    "Does not simulate slippage — every order fills at exactly the requested price.",
+    "Does not simulate network latency / order processing time.",
     (
-        "Không mô phỏng độ sâu sổ lệnh (orderbook depth) — lệnh luôn khớp "
-        "trọn vẹn bất kể khối lượng."
+        "Does not simulate orderbook depth — orders always fill in full "
+        "regardless of size."
     ),
-    "Chưa có Stop Loss / Take Profit.",  # BOT-041
+    "No Stop Loss / Take Profit yet.",  # BOT-041
     (
-        "Lệnh khớp tại giá mở nến kế tiếp — chặn lookahead bias, nhưng tạo "
-        "độ trễ nhân tạo 1 nến."
+        "Orders fill at the next candle's open price — this blocks lookahead "
+        "bias, but introduces an artificial 1-candle delay."
     ),
     (
-        'Phí giao dịch có thể chiếm phần lớn kết quả — xem "Total Fees Paid" '
-        "ở chỉ số mở rộng."
+        'Trading fees can make up most of the result — see "Total Fees Paid" '
+        "in the extended metrics."
     ),
 ]
 
 _NO_OUT_OF_SAMPLE_NOTE = (
-    "Không có kiểm định ngoài mẫu (out-of-sample) cho lần chạy này — khoảng "
-    "dữ liệu quá ngắn để chia 70/30."
+    "No out-of-sample validation for this run — the data range is too "
+    "short to split 70/30."
 )
 
 

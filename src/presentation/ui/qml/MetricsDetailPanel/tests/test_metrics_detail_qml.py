@@ -112,7 +112,7 @@ def test_group_headers_and_nested_cards_render(qapp, qml_item):
     # Repeater's `modelData` is the row, not left over from the outer one.
     quick, _root, vm = _load(qapp)
 
-    risk_group = next(g for g in vm.groups if g["label"] == "RỦI RO")
+    risk_group = next(g for g in vm.groups if g["label"] == "RISK")
     assert len(risk_group["rows"]) > 0
     quick.close()
     quick.deleteLater()
@@ -122,7 +122,7 @@ def test_footer_text_renders(qapp, qml_item):
     quick, root, _ = _load(qapp)
 
     footer = qml_item(root, "lblMetricsFooter")
-    assert footer.property("text") == "Tính trên 891 lệnh đã đóng · phí 0.1% mỗi lệnh"
+    assert footer.property("text") == "Based on 891 closed trades · fee 0.1% per trade"
     quick.close()
     quick.deleteLater()
 

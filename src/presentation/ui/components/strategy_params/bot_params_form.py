@@ -168,7 +168,7 @@ def parse_bot_params(
         try:
             parsed[spec.name] = _coerce(spec, raw)
         except (TypeError, ValueError) as exc:
-            raise ValueError(f"{spec.label}: giá trị không hợp lệ ({raw!r})") from exc
+            raise ValueError(f"{spec.label}: invalid value ({raw!r})") from exc
     return parsed
 
 

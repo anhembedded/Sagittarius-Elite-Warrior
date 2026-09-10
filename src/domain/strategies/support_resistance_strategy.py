@@ -23,14 +23,14 @@ _DEFAULT_TREND_EMA_PERIOD = 50
 
 class SupportResistanceStrategy(BaseStrategy):
     """
-    @brief Chiến lược giao dịch theo Vùng Hỗ trợ & Kháng cự (Support & Resistance Breakout).
+    @brief Support & Resistance Breakout trading strategy.
     @details
-    Xác định vùng cản động (Kháng cự = Đỉnh cao nhất, Hỗ trợ = Đáy thấp nhất,
-    Trung tuyến = Điểm cân bằng) trong N nến gần nhất:
-    - **Vào lệnh MUA (BUY)**: Khi giá đóng cửa phá vỡ mức Kháng cự (Breakout)
-      và nằm trên đường xu hướng EMA.
-    - **Thoát lệnh (SELL)**: Khi giá quay đầu rơi xuống dưới mức Trung tuyến (Midline)
-      hoặc phá thủng mức Hỗ trợ (Support Breakdown).
+    Determines a dynamic zone (Resistance = highest high, Support = lowest low,
+    Midline = the balance point) over the N most recent bars:
+    - **Enter LONG (BUY)**: When the close price breaks above the Resistance
+      level (Breakout) and sits above the trend EMA.
+    - **Exit (SELL)**: When price turns back down below the Midline
+      or breaks down through the Support level (Support Breakdown).
     """
 
     SR_KEY = "sr_levels"
@@ -40,39 +40,39 @@ class SupportResistanceStrategy(BaseStrategy):
         self._lookback_period = self.input_int(
             "lookback_period",
             _DEFAULT_LOOKBACK_PERIOD,
-            label="Chu kỳ Hỗ trợ & Kháng cự",
+            label="Support & Resistance period",
             minval=5,
             maxval=200,
-            group="Cài đặt Cản",
+            group="Zone Settings",
         )
         self._breakout_pct = self.input_float(
             "breakout_pct",
             _DEFAULT_BREAKOUT_PCT,
-            label="Độ nhạy Breakout (%)",
+            label="Breakout sensitivity (%)",
             minval=0.0,
             maxval=5.0,
             step=0.1,
-            group="Cài đặt Cản",
+            group="Zone Settings",
         )
         self._use_trend_filter = self.input_bool(
             "use_trend_filter",
             True,
-            label="Bộ lọc xu hướng EMA",
-            group="Bộ lọc Xu hướng",
+            label="EMA trend filter",
+            group="Trend Filter",
         )
         self._trend_ema_period = self.input_int(
             "trend_ema_period",
             _DEFAULT_TREND_EMA_PERIOD,
-            label="Chu kỳ EMA Xu hướng",
+            label="Trend EMA period",
             minval=5,
             maxval=300,
-            group="Bộ lọc Xu hướng",
+            group="Trend Filter",
         )
         self._exit_on_midline = self.input_bool(
             "exit_on_midline",
             True,
-            label="Thoát lệnh khi chạm Trung tuyến",
-            group="Quy tắc Thoát lệnh",
+            label="Exit when price touches the Midline",
+            group="Exit Rules",
         )
         self._name = (
             f"Support & Resistance Breakout (Lookback {self._lookback_period}, "
@@ -97,13 +97,13 @@ class SupportResistanceStrategy(BaseStrategy):
         is_breakout = close >= breakout_target
         trend_ok = not self._use_trend_filter or (close > trend_ema)
 
-        # 1. Entry check: Chỉ kích hoạt tín hiệu MUA vào thanh nến đầu tiên phá vỡ cản
+        # 1. Entry check: only fire the BUY signal on the first bar that breaks the zone
         if is_breakout and trend_ok:
             if not self._prev_was_breakout:
                 self._prev_was_breakout = True
                 return (
                     SignalAction.BUY,
-                    f"Breakout Kháng cự {sr.resistance:.2f}",
+                    f"Resistance breakout {sr.resistance:.2f}",
                     {
                         "resistance": sr.resistance,
                         "support": sr.support,
@@ -115,18 +115,18 @@ class SupportResistanceStrategy(BaseStrategy):
 
         self._prev_was_breakout = False
 
-        # 2. Exit check: Thoát vị thế khi giá rớt dưới Trung tuyến hoặc thủng Hỗ trợ
+        # 2. Exit check: close the position when price drops below the Midline or breaks Support
         if self._exit_on_midline and close < sr.midline:
             return (
                 SignalAction.SELL,
-                f"Thoát lệnh: Rơi dưới Trung tuyến {sr.midline:.2f}",
+                f"Exit: dropped below Midline {sr.midline:.2f}",
                 {"midline": sr.midline, "close": close},
             )
 
         if close < sr.support:
             return (
                 SignalAction.SELL,
-                f"Thoát lệnh: Thủng Hỗ trợ {sr.support:.2f}",
+                f"Exit: broke through Support {sr.support:.2f}",
                 {"support": sr.support, "close": close},
             )
 

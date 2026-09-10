@@ -17,8 +17,8 @@ ColumnLayout {
 
     property string title: ""
     property bool showFooter: false
-    property string cancelText: "Hủy"
-    property string confirmText: "Áp dụng"
+    property string cancelText: "Cancel"
+    property string confirmText: "Apply"
     property bool confirmEnabled: true
     default property alias body: bodyItem.data
     signal cancelled()

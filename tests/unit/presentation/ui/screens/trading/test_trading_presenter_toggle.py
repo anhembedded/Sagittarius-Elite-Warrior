@@ -264,7 +264,7 @@ def test_refused_enable_shows_the_block_reason_and_seeds_positions(
 
     assert presenter._view_model.enabled is False
     assert presenter._view_model.statusIsError is True
-    assert "vị thế mở ngoài dự kiến" in presenter._view_model.statusMessage
+    assert "unexpected open positions" in presenter._view_model.statusMessage
     view.set_positions.assert_called_once_with([build_position_row(position)])
 
 

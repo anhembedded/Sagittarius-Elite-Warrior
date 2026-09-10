@@ -225,7 +225,7 @@ class GapCoordinator:
 
             for gap in result.gaps:
                 if token_to_use is not None and token_to_use.is_cancelled():
-                    self._ui_log_signal("Đã dừng quá trình vá lỗ hổng.")
+                    self._ui_log_signal("Gap repair process stopped.")
                     self._tracker.finish_action(
                         action.action_id, ActionOutcome.CANCELLED
                     )
@@ -257,7 +257,7 @@ class GapCoordinator:
                 return
 
             self._ui_log_signal(
-                f"Đã hoàn tất vá tất cả {result.total_gaps} lỗ hổng cho {symbol} ({interval})."
+                f"Finished repairing all {result.total_gaps} gap(s) for {symbol} ({interval})."
             )
             self._tracker.finish_action(action.action_id, ActionOutcome.SUCCEEDED)
 

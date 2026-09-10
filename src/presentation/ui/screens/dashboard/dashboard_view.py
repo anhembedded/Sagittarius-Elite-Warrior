@@ -27,11 +27,11 @@ from sagittarius_engine.extensions.pyside_mvc import BaseView
 from .dev_board_panel import DevBoardPanel
 
 _TITLE = "Developer Board (Live Testbed)"
-_SUBTITLE = "Kiểm thử chỉ báo & script trên dữ liệu trực tiếp"
+_SUBTITLE = "Test indicators & scripts on live data"
 
 #: `EPIC-023B` — the equity chart's `ChartCard(symbol=...)` title, same
 #: constant `TradingView` uses for its own equity chart.
-_EQUITY_CHART_TITLE = "Vốn"
+_EQUITY_CHART_TITLE = "Equity"
 
 #: An empty `ChartCard`'s own `sizeHint()` is tiny (no candles/toolbar to
 #: size around) — `workspace_layout`'s stretch factors only split space

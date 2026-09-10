@@ -111,8 +111,8 @@ def test_inspect_gaps_opens_dialog_and_rows_match_source_data(qapp, database_scr
     assert dialog.objectName() == "gapInspectorModal"
 
     assert dialog._subtitle_label.text() == "BTCUSDT (1m) • 2 gaps detected"
-    assert dialog._coverage_pct_label.text() == "Độ phủ: 92.5%"
-    assert dialog._total_missing_label.text() == "Tổng số nến bị thiếu: 150 nến"
+    assert dialog._coverage_pct_label.text() == "Coverage: 92.5%"
+    assert dialog._total_missing_label.text() == "Total missing candles: 150 candles"
     assert len(dialog._row_widgets) == 2
     assert dialog._row_widgets[0].action_buttons[0].objectName() == "btnRepairGap_0"
     assert dialog._row_widgets[1].action_buttons[0].objectName() == "btnRepairGap_1"

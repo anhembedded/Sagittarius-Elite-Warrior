@@ -86,7 +86,7 @@ def test_support_resistance_strategy_fires_buy_signal_on_breakout_above_resistan
     )
     sig2, reason2, meta2 = strategy.decide(ctx2)
     assert sig2 is SignalAction.BUY
-    assert "Breakout Kháng cự" in reason2
+    assert "Resistance breakout" in reason2
     assert meta2["resistance"] == 100.0
 
     # 3. Next bar still above breakout target (Close 102.0) -> HOLD (no duplicate signal spam)
@@ -118,7 +118,7 @@ def test_support_resistance_strategy_fires_sell_when_falling_below_midline():
     ctx = _make_context(close_price=94.0, resistance=100.0, support=90.0)
     sig, reason, meta = strategy.decide(ctx)
     assert sig is SignalAction.SELL
-    assert "Trung tuyến" in reason
+    assert "Midline" in reason
     assert meta["midline"] == 95.0
 
 
@@ -135,5 +135,5 @@ def test_support_resistance_strategy_fires_sell_when_breaking_below_support():
     ctx2 = _make_context(close_price=89.0, resistance=100.0, support=90.0)
     sig2, reason2, meta2 = strategy.decide(ctx2)
     assert sig2 is SignalAction.SELL
-    assert "Thủng Hỗ trợ" in reason2
+    assert "Support" in reason2
     assert meta2["support"] == 90.0

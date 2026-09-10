@@ -33,14 +33,15 @@ from Sagittarius_Elite_Warrior.src.application.use_cases.trading.execute_order i
 from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
 
 _STRATEGY_SYMBOL_CONFLICT_MESSAGE = (
-    "Bị chặn: symbol này đang được chiến lược đang armed quản lý — giao dịch "
-    "thủ công trên đúng symbol chiến lược đang canh có thể làm chiến lược "
-    "mất dấu vị thế thật (kể cả khi hiện đang Flat). Dùng Dừng khẩn cấp hoặc "
-    "gỡ chiến lược trước, hoặc giao dịch thủ công trên symbol khác."
+    "Blocked: this symbol is managed by an armed strategy — manually trading "
+    "the exact symbol the strategy is watching can make the strategy lose "
+    "track of its real position (even while it is currently Flat). Use "
+    "Emergency Stop or disarm the strategy first, or trade manually on a "
+    "different symbol."
 )
 _TRADING_VENUE_DISABLED_MESSAGE = (
-    "Lệnh thủ công bị chặn: Trading venue đang tắt trong cấu hình — chỉ hỗ "
-    "trợ Futures Testnet."
+    "Manual order blocked: Trading venue is disabled in configuration — only "
+    "Futures Testnet is supported."
 )
 
 

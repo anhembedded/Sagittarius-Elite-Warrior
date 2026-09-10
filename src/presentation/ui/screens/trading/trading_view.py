@@ -54,17 +54,17 @@ from sagittarius_engine.extensions.pyside_mvc import BaseView
 if TYPE_CHECKING:
     from .trading_view_model import TradingViewModel
 
-_TITLE = "Giao dịch trực tiếp (Testnet)"
-_SUBTITLE = "Theo dõi vị thế, lệnh chờ khớp và biểu đồ trực tiếp"
+_TITLE = "Live Trading (Testnet)"
+_SUBTITLE = "Monitor positions, pending orders, and the live chart"
 DEFAULT_VIEW_MODEL_CONTEXT_NAME = "viewModel"
 
-_TOGGLE_ON_TEXT = "Tắt giao dịch"
-_TOGGLE_OFF_TEXT = "Bật giao dịch"
-_TOGGLE_BUSY_TEXT = "Đang xử lý..."
+_TOGGLE_ON_TEXT = "Disable Trading"
+_TOGGLE_OFF_TEXT = "Enable Trading"
+_TOGGLE_BUSY_TEXT = "Processing..."
 
 #: `EPIC-021M` — the equity chart's `ChartCard(symbol=...)` title; not a
 #: real trading symbol, just what `Card`'s header shows.
-_EQUITY_CHART_TITLE = "Vốn"
+_EQUITY_CHART_TITLE = "Equity"
 
 #: An empty `ChartCard`'s own `sizeHint()` is tiny (no candles/toolbar to
 #: size around) — `_build_workspace()`'s stretch factors only split space
@@ -81,11 +81,11 @@ _EQUITY_CHART_MINIMUM_HEIGHT = 220
 # --- `EPIC-022D` strategy card ---------------------------------------- #
 #: Domain terminology fixed by `ui-presentation-rule.md`: strategy
 #: parameters are "Thông số Chiến lược", never the general Bot settings.
-_PARAMS_BUTTON_TEXT = "Thông số Chiến lược…"
-_ARM_TEXT = "Nạp chiến lược"
-_DISARM_TEXT = "Gỡ"
-_NOT_ARMED_TEXT = "Chưa nạp chiến lược nào."
-_NO_SIGNAL_TEXT = "Chưa có tín hiệu nào."
+_PARAMS_BUTTON_TEXT = "Strategy Parameters…"
+_ARM_TEXT = "Arm Strategy"
+_DISARM_TEXT = "Disarm"
+_NOT_ARMED_TEXT = "No strategy armed."
+_NO_SIGNAL_TEXT = "No signal yet."
 #: The spin-box ranges come from `LiveStrategyConfig`'s own bounds, not
 #: from literals typed here (`BOT-125` review). A widget can only constrain
 #: what is typed into it; these values also arrive from `app_config.json`
@@ -255,9 +255,7 @@ class TradingView(BaseView):
         self._connection_dot.setStyleSheet(
             f"color: {Palette.SUCCESS if enabled else Palette.MUTED}; font-size: 14px;"
         )
-        self._connection_label.setText(
-            "Trading đang BẬT" if enabled else "Trading đang TẮT"
-        )
+        self._connection_label.setText("Trading is ON" if enabled else "Trading is OFF")
 
     def _apply_status(self, message: str, is_error: bool) -> None:
         self._status_label.setText(message)
@@ -387,7 +385,7 @@ class TradingView(BaseView):
         self._shell.set_context_bar(self._build_context_bar())
         self._shell.set_workspace(self._build_workspace(), rail=self._build_rail())
 
-        self._log_panel = AppLogPanel("NHẬT KÝ GIAO DỊCH")
+        self._log_panel = AppLogPanel("TRADING LOG")
         self._shell.set_console(self._log_panel)
 
     def _build_context_bar(self) -> QWidget:
@@ -417,7 +415,7 @@ class TradingView(BaseView):
         row.addWidget(self._status_label, 1)
 
         self._emergency_stop_button = StyledButton(
-            "DỪNG KHẨN CẤP", role=StyleRole.DANGER_BUTTON
+            "EMERGENCY STOP", role=StyleRole.DANGER_BUTTON
         )
         self._emergency_stop_button.setObjectName("btnEmergencyStop")
         self._emergency_stop_button.setFixedHeight(32)
@@ -466,22 +464,22 @@ class TradingView(BaseView):
         return rail
 
     def _build_strategy_card(self) -> QWidget:
-        card = Card("CHIẾN LƯỢC")
+        card = Card("STRATEGY")
         card.setObjectName("tradingStrategyCard")
         card.body_layout.setContentsMargins(12, 12, 12, 12)
         card.body_layout.setSpacing(8)
 
-        card.body_layout.addWidget(self._field_label("Chiến lược"))
+        card.body_layout.addWidget(self._field_label("Strategy"))
         self._strategy_combo = QComboBox()
         self._strategy_combo.setObjectName("cboLiveStrategy")
         card.body_layout.addWidget(self._strategy_combo)
 
-        card.body_layout.addWidget(self._field_label("Khung thời gian giao dịch"))
+        card.body_layout.addWidget(self._field_label("Trading Timeframe"))
         self._interval_combo = QComboBox()
         self._interval_combo.setObjectName("cboLiveInterval")
         card.body_layout.addWidget(self._interval_combo)
 
-        card.body_layout.addWidget(self._field_label("% vốn mỗi lệnh"))
+        card.body_layout.addWidget(self._field_label("% Capital per Trade"))
         self._sizing_spin = QDoubleSpinBox()
         self._sizing_spin.setObjectName("spnLiveSizingPercent")
         self._sizing_spin.setRange(MIN_SIZING_PERCENT, MAX_SIZING_PERCENT)
@@ -489,7 +487,7 @@ class TradingView(BaseView):
         self._sizing_spin.setSuffix(" %")
         card.body_layout.addWidget(self._sizing_spin)
 
-        card.body_layout.addWidget(self._field_label("Đòn bẩy"))
+        card.body_layout.addWidget(self._field_label("Leverage"))
         self._leverage_spin = QDoubleSpinBox()
         self._leverage_spin.setObjectName("spnLiveLeverage")
         self._leverage_spin.setRange(MIN_LEVERAGE, MAX_LEVERAGE)
@@ -541,7 +539,7 @@ class TradingView(BaseView):
         return card
 
     def _build_last_signal_card(self) -> QWidget:
-        card = Card("TÍN HIỆU GẦN NHẤT")
+        card = Card("LATEST SIGNAL")
         card.setObjectName("tradingLastSignalCard")
         card.body_layout.setContentsMargins(12, 12, 12, 12)
         card.body_layout.setSpacing(6)
@@ -552,18 +550,18 @@ class TradingView(BaseView):
         return card
 
     def _build_session_card(self) -> QWidget:
-        card = Card("PHIÊN GIAO DỊCH")
+        card = Card("TRADING SESSION")
         card.setObjectName("tradingSessionRail")
         card.body_layout.setContentsMargins(12, 12, 12, 12)
         card.body_layout.setSpacing(10)
 
-        card.body_layout.addWidget(self._field_label("Số lệnh đã gửi phiên này"))
+        card.body_layout.addWidget(self._field_label("Orders Sent This Session"))
         self._orders_sent_value = QLabel("0")
         self._orders_sent_value.setObjectName("lblOrdersSentThisSession")
         apply_role(self._orders_sent_value, StyleRole.STAT_VALUE)
         card.body_layout.addWidget(self._orders_sent_value)
 
-        card.body_layout.addWidget(self._field_label("Số symbol đang có vị thế mở"))
+        card.body_layout.addWidget(self._field_label("Symbols With Open Positions"))
         self._open_symbols_value = QLabel("0")
         self._open_symbols_value.setObjectName("lblOpenSymbolsCount")
         apply_role(self._open_symbols_value, StyleRole.STAT_VALUE)

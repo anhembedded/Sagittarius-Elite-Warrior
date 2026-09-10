@@ -91,7 +91,7 @@ RowLayout {
     Button {
         objectName: "btnOpenOrderCancel_" + (index + 1)
         Layout.preferredWidth: root.cancelWidth
-        text: "Huỷ"
+        text: "Cancel"
         role: "danger"
         onClicked: if (vm) vm.requestCancel(modelData.symbol, modelData.clientOrderId)
     }

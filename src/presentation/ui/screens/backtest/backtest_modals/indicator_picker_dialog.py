@@ -38,7 +38,7 @@ class IndicatorPickerDialog(QmlOverlay):
         self._vm = view_model
         self._widget_vm = CheckboxListVM(get_rows=self._rows)
         super().__init__(
-            "CHỈ BÁO THAM KHẢO",
+            "REFERENCE INDICATORS",
             qml_file=_QML,
             context={"vm": self._widget_vm},
             parent=parent,
