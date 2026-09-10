@@ -76,6 +76,15 @@ one file able to affect build, runtime, lint, type check or test behavior brings
 `-SkipLint`, `-SkipTests`, `-UnitOnly`, `-SanityOnly` and `-TestnetOnly` are diagnostic tools.
 They MUST NOT be used to bypass a failing required gate, justify a commit, or mark a task complete.
 
+**A run that looks hung, not merely slow, on a box with fewer than 6 real cores** — most workers'
+CPU time frozen for minutes while only one or two still tick up — is very likely `-n` oversubscribing
+past actual core count, not a real deadlock in the code under test: several xdist workers end up
+CPU-starved rather than making forward progress. `$Workers`' default (`min(logical processor
+count, 6)`) already avoids this on a smaller machine; it only resurfaces if `-Workers` is passed
+explicitly above the real core count. Confirm before killing anything: `ps aux` (Linux) / Task
+Manager (Windows) — worker CPU time genuinely frozen across two checks a few seconds apart, not
+merely low, is the tell; a worker still climbing, even slowly, is not hung.
+
 `-TestnetOnly` is not a fifth mandatory tier — see §3a. `-Full` (and every other mode) excludes
 `tests/testnet/` via `--ignore`, never runs it, and never will: it touches the real exchange with
 real credentials, which a gate that runs on every commit must never depend on.
@@ -218,7 +227,7 @@ before treating either one as sufficient:
 
 | | `ci-local.ps1 -Full` | `.github/workflows/ci.yml` |
 | :--- | :--- | :--- |
-| Primary tests | parallel (`-n 6` by default) | sequential, single process |
+| Primary tests | parallel (`-n min(logical cores, 6)` by default — see §1's `-Workers`) | sequential, single process |
 | Sanity | separate job, always sequential | mixed into `pytest tests/` |
 | 80% coverage gate | yes | yes (since 2026-08-27) |
 | Ruff/`mypy`/`.agents/Skills` guard | all 3 | all 3 (since 2026-08-27) |

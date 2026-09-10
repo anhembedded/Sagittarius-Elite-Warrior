@@ -7,13 +7,19 @@
     Runs Ruff lint, Ruff format check, Mypy static type check, and Pytest
     with coverage locally.
 
-    By default, unit/full test runs use 6 parallel workers (benchmark sweet spot
-    on this machine). Sanity tests always run on 1 sequential process because they
-    boot a real QApplication and cannot share Qt process context across xdist workers.
+    By default, unit/full test runs use min(logical processor count, 6) parallel
+    workers — 6 is the benchmarked sweet spot on the primary dev machine (>=6
+    cores), auto-scaled down on a smaller box (e.g. a 4-core sandbox/CI runner)
+    so xdist does not oversubscribe past real core count. Oversubscription is
+    not just slower: it was observed to leave several workers CPU-starved and
+    the run looking hung (zero progress for minutes) rather than merely slow.
+    Override explicitly with -Workers any time. Sanity tests always run on 1
+    sequential process because they boot a real QApplication and cannot share
+    Qt process context across xdist workers.
 
     By default, sanity and unit run CONCURRENTLY: sanity launches as a background
-    job while unit tests execute in the foreground with 6 workers — total wall-clock
-    time ≈ max(sanity_time, unit_time) instead of their sum.
+    job while unit tests execute in the foreground with the default worker count
+    above — total wall-clock time ≈ max(sanity_time, unit_time) instead of their sum.
 
 .PARAMETER SkipLint
     Skip Ruff lint, Ruff format check, and Mypy static type check steps.
@@ -34,8 +40,9 @@
     suite with --cov-fail-under=80 gate enforced.
 
 .PARAMETER Workers
-    Override the number of parallel xdist worker processes (default: 6).
-    Use -Workers 1 to force sequential execution.
+    Override the number of parallel xdist worker processes (default:
+    min(logical processor count, 6) — see .DESCRIPTION). Use -Workers 1 to
+    force sequential execution.
 
 .PARAMETER TestnetOnly
     Run ONLY tests/testnet (EPIC-021J) — the one tier that touches the real
@@ -49,7 +56,7 @@
 
 .EXAMPLE
     .\scripts\ci-local.ps1                  # Full: lint + parallel tests (default)
-    .\scripts\ci-local.ps1 -UnitOnly        # Unit (6 workers) + sanity (concurrent)
+    .\scripts\ci-local.ps1 -UnitOnly        # Unit (default worker count) + sanity (concurrent)
     .\scripts\ci-local.ps1 -SanityOnly      # Sanity only
     .\scripts\ci-local.ps1 -Workers 4       # Full with 4 workers
     .\scripts\ci-local.ps1 -SkipLint        # Full, skip lint
@@ -63,7 +70,13 @@ param(
     [switch]$UnitOnly,
     [switch]$Full,
     [switch]$TestnetOnly,
-    [int]$Workers = 6,   # Default: 6 workers (benchmark sweet spot for this machine)
+    # Default: min(logical processor count, 6) — 6 is the benchmarked sweet
+    # spot on the primary dev machine; auto-scaled down so a smaller box
+    # (fewer than 6 real cores) never oversubscribes xdist past what it
+    # actually has. Observed effect of oversubscribing on a 4-core sandbox:
+    # several workers went CPU-starved and the run looked hung rather than
+    # merely slow (zero forward progress for minutes, not a crash).
+    [int]$Workers = [Math]::Max(1, [Math]::Min([Environment]::ProcessorCount, 6)),
     # code-rule.md §4 "CI/CD MUST capture a log file, then scan it for problem
     # levels": a green exit code is not proof a run was clean. Set this only
     # to triage a run whose hits are already understood and recorded — never
@@ -185,7 +198,7 @@ $mypyExe   = if ($venvBinDir) { Join-Path $venvBinDir "mypy$exeSuffix" } else { 
 # Project rule (code-rule.md): sanity tests MUST always run alongside unit tests.
 #
 # All modes except -SanityOnly run unit + sanity. By default:
-#   - Unit/full tests   → parallel, 6 workers (xdist)
+#   - Unit/full tests   → parallel, min(cores, 6) workers (xdist, see $Workers)
 #   - Sanity tests      → always sequential, 1 process (Qt DI boot)
 #   - Execution model   → sanity runs as a background job while unit runs in
 #                         foreground → total wall time ≈ max(sanity, unit)
@@ -437,7 +450,7 @@ if (-not $SkipTests) {
                 $pytestArgs += "--cov-report=term-missing"
                 if ($enforceCoverageGate) { $pytestArgs += "--cov-fail-under=80" }
             }
-            # Parallel: default 6 workers, override with -Workers N (-Workers 1 = sequential)
+            # Parallel: default min(cores, 6) workers, override with -Workers N (-Workers 1 = sequential)
             if ($workerCount -gt 1) {
                 $pytestArgs += @("-n", "$workerCount")
             }
