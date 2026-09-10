@@ -37,7 +37,7 @@ class RepairDataGapCommandHandler(
             return RepairDataGapResult(
                 success=False,
                 repaired_candles=0,
-                message="Mã symbol không được để trống.",
+                message="Symbol cannot be empty.",
             )
 
         logger.info(
@@ -59,21 +59,21 @@ class RepairDataGapCommandHandler(
             return RepairDataGapResult(
                 success=False,
                 repaired_candles=0,
-                message="Thao tác vá lỗ hổng đã bị hủy.",
+                message="Gap repair was cancelled.",
             )
         except Exception as err:  # noqa: BLE001
             logger.error(f"Failed to fetch klines for gap repair: {err}")
             return RepairDataGapResult(
                 success=False,
                 repaired_candles=0,
-                message=f"Lỗi khi tải dữ liệu từ sàn: {err}",
+                message=f"Error fetching data from the exchange: {err}",
             )
 
         if command.cancellation_requested and command.cancellation_requested():
             return RepairDataGapResult(
                 success=False,
                 repaired_candles=0,
-                message="Thao tác vá lỗ hổng đã bị hủy.",
+                message="Gap repair was cancelled.",
             )
 
         if klines:
@@ -85,7 +85,7 @@ class RepairDataGapCommandHandler(
                 success=True,
                 repaired_candles=len(klines),
                 message=(
-                    f"Đã vá thành công {len(klines)} nến cho {command.symbol} "
+                    f"Successfully repaired {len(klines)} candles for {command.symbol} "
                     f"({command.interval.value})."
                 ),
             )
@@ -93,5 +93,5 @@ class RepairDataGapCommandHandler(
         return RepairDataGapResult(
             success=True,
             repaired_candles=0,
-            message="Không có nến bổ sung trên sàn cho khoảng thời gian này.",
+            message="No additional candles available from the exchange for this time range.",
         )

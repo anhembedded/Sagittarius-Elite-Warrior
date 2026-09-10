@@ -243,14 +243,14 @@ class StrategyConfigCoordinator:
         if metadata is None:
             self._view_model.set_market_rule_verification(
                 MetadataVerificationStatus.UNVERIFIED_MISSING.value,
-                "Chưa xác minh theo quy tắc sàn (chưa có metadata cho cặp giao dịch).",
+                "Not verified against exchange rules (no metadata for this trading pair yet).",
             )
             return
 
         if metadata.is_stale():
             self._view_model.set_market_rule_verification(
                 MetadataVerificationStatus.UNVERIFIED_STALE.value,
-                f"Chưa xác minh theo quy tắc sàn (metadata cũ từ {metadata.fetched_at.strftime('%Y-%m-%d %H:%M:%S UTC')}).",
+                f"Not verified against exchange rules (metadata is stale, fetched at {metadata.fetched_at.strftime('%Y-%m-%d %H:%M:%S UTC')}).",
             )
             return
 

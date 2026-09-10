@@ -307,9 +307,7 @@ class Sidebar(BaseView):
         )
         self._brand_label.setVisible(not collapsed)
         self._brand_tag.setVisible(not collapsed)
-        collapse_button_label = (
-            "Mở rộng thanh bên" if collapsed else "Thu gọn thanh bên"
-        )
+        collapse_button_label = "Expand sidebar" if collapsed else "Collapse sidebar"
         self._btn_collapse.setToolTip(collapse_button_label)
         self._btn_collapse.setAccessibleName(collapse_button_label)
 

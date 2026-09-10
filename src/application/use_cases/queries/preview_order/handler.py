@@ -57,7 +57,7 @@ class PreviewOrderQueryHandler(IQueryHandler[PreviewOrderQuery, OrderPreview]):
             rounded_quantity, rounded_price, metadata.min_notional
         )
 
-        # `BUG-115` — `time_in_force` is only meaningful for `LIMIT`
+        # `BUG-116` — `time_in_force` is only meaningful for `LIMIT`
         # (`Order`'s own docstring); left unset here, every real `LIMIT`
         # submission was refused by `map_order_to_futures_params()`
         # ("LIMIT order is missing time_in_force."). GTC is the correct

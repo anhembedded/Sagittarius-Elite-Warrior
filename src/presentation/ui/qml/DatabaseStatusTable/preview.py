@@ -9,16 +9,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.DatabaseStatusTable.database_status_table_model import (
     DatabaseStatusTableModel,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.DatabaseStatusTable.database_status_vm import (
     DatabaseStatusVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 
 _QML_FILE = Path(__file__).with_name("DatabaseStatusTable.qml")
 
@@ -44,21 +43,11 @@ def build_preview() -> QWidget:
     )
     vm = DatabaseStatusVM(model)
 
-    quick = QQuickWidget()
-    quick.setObjectName("databaseStatusTablePreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    # QML context properties are borrowed references; retain both for the
-    # scene lifetime, same reasoning `QmlOverlay.__init__` documents.
-    quick._database_status_vm = vm
-    quick._database_status_model = model
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(900, 260)
-    return quick
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm, "model": model},
+        object_name="databaseStatusTablePreview",
+    )
+    surface.resize(900, 260)
+    return surface

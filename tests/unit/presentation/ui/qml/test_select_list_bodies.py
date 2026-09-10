@@ -63,7 +63,7 @@ def test_clicking_a_selectable_row_emits_its_id(qapp):
     item = find_qml_item(dialog.root_object, "selectItem_a")
     centre = item.mapToScene(item.boundingRect().center())
     QTest.mouseClick(
-        dialog._quick,
+        dialog.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

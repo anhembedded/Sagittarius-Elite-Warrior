@@ -21,29 +21,31 @@ _FAILURE_GUIDANCE = EnumLabels(
     ConnectionFailureKind,
     {
         ConnectionFailureKind.NOT_CONFIGURED: (
-            "Chưa cấu hình API key/secret. Lấy key tại testnet.binancefuture.com, "
-            "rồi lưu qua màn Settings hoặc biến môi trường "
-            "BINANCE_FUTURES_TESTNET_API_KEY/BINANCE_FUTURES_TESTNET_API_SECRET."
+            "API key/secret not configured. Get a key at testnet.binancefuture.com, "
+            "then save it via the Settings screen or the "
+            "BINANCE_FUTURES_TESTNET_API_KEY/BINANCE_FUTURES_TESTNET_API_SECRET "
+            "environment variables."
         ),
         ConnectionFailureKind.BAD_SIGNATURE: (
-            "Chữ ký request không hợp lệ. Kiểm tra lại API Secret đã sao chép "
-            "đúng, không thừa hay thiếu ký tự."
+            "Request signature is invalid. Double-check the API Secret was "
+            "copied correctly, with no extra or missing characters."
         ),
         ConnectionFailureKind.CLOCK_SKEW: (
-            "Đồng hồ máy lệch quá xa giờ sàn. Đồng bộ lại giờ hệ thống (NTP) rồi thử lại."
+            "The local clock is too far from the exchange's time. Resync the system "
+            "clock (NTP) and try again."
         ),
         ConnectionFailureKind.KEY_EXPIRED: (
-            "Key testnet đã hết hạn hoặc bị reset. Lấy key mới tại "
+            "The testnet key has expired or been reset. Get a new key at "
             "testnet.binancefuture.com.\n"
-            "  (Lưu ý: key Spot Testnet và key mainnet KHÔNG dùng được ở đây.)"
+            "  (Note: Spot Testnet keys and mainnet keys do NOT work here.)"
         ),
         ConnectionFailureKind.NETWORK: (
-            "Không kết nối được tới sàn. Kiểm tra mạng/proxy rồi thử lại."
+            "Could not connect to the exchange. Check your network/proxy and try again."
         ),
         ConnectionFailureKind.HEDGE_MODE_UNSUPPORTED: (
-            "Tài khoản đang ở Hedge Mode. Epic này giả định One-way Mode — đổi "
-            "lại ở Binance Futures > Settings > Position Mode trên web/app "
-            "Binance, rồi kiểm tra kết nối lại."
+            "The account is in Hedge Mode. This epic assumes One-way Mode — "
+            "switch it back under Binance Futures > Settings > Position Mode "
+            "on the Binance web/app, then check the connection again."
         ),
     },
 )
@@ -70,7 +72,7 @@ def format_exchange_connection_status(status: ExchangeConnectionStatus) -> str:
 
 def _format_unreachable(status: ExchangeConnectionStatus) -> str:
     kind = _require_failure_kind(status)
-    lines = [f"Venue: {status.venue.name}   Kết nối: ✘  {kind.name}"]
+    lines = [f"Venue: {status.venue.name}   Connection: ✘  {kind.name}"]
     lines.append(f"→ {_FAILURE_GUIDANCE[kind]}")
     return "\n".join(lines)
 
@@ -79,9 +81,9 @@ def _format_reachable_with_failure(status: ExchangeConnectionStatus) -> str:
     """Reachable, but a later check (Hedge Mode) blocks trade-readiness —
     show what was actually learned, then the guidance."""
     kind = _require_failure_kind(status)
-    lines = [f"Venue: {status.venue.name}   Kết nối: ✔  nhưng {kind.name}"]
+    lines = [f"Venue: {status.venue.name}   Connection: ✔  but {kind.name}"]
     if status.usdt_balance is not None:
-        lines.append(f"Số dư USDT: {status.usdt_balance:,.2f}")
+        lines.append(f"USDT balance: {status.usdt_balance:,.2f}")
     lines.append(f"→ {_FAILURE_GUIDANCE[kind]}")
     return "\n".join(lines)
 
@@ -93,9 +95,9 @@ def _format_success(status: ExchangeConnectionStatus) -> str:
         ""
         if skew is None
         else (
-            f"(recvWindow {_RECV_WINDOW_MS} ms → an toàn)"
+            f"(recvWindow {_RECV_WINDOW_MS} ms → safe)"
             if abs(skew) < _RECV_WINDOW_MS
-            else f"(recvWindow {_RECV_WINDOW_MS} ms → CẢNH BÁO, có thể bị -1021)"
+            else f"(recvWindow {_RECV_WINDOW_MS} ms → WARNING, may hit -1021)"
         )
     )
     position_mode_text = (
@@ -109,9 +111,9 @@ def _format_success(status: ExchangeConnectionStatus) -> str:
 
     return "\n".join(
         [
-            f"Venue:            {status.venue.name:<25} Kết nối: ✔",
-            f"Lệch đồng hồ:     {skew_text:<25} {skew_safety}",
+            f"Venue:            {status.venue.name:<25} Connection: ✔",
+            f"Clock skew:       {skew_text:<25} {skew_safety}",
             f"Position mode:    {position_mode_text:<25} Margin type: {margin_type_text}",
-            f"Số dư USDT:       {balance_text:<25} Vị thế đang mở: {open_positions_text}",
+            f"USDT balance:     {balance_text:<25} Open positions: {open_positions_text}",
         ]
     )

@@ -78,7 +78,7 @@ What replaces them: a command whose output is the answer.
 - **Language convention** (`CLAUDE.md`): task files, bug reports, `ROADMAP.md`
   and anything you write for the user are **Vietnamese**; code, identifiers,
   docstrings, comments and commit subjects are **English**; user-visible UI
-  strings are **Vietnamese**.
+  strings and log messages are **English**.
 
 ---
 

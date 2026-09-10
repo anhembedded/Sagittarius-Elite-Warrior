@@ -76,7 +76,7 @@ ColumnLayout {
         objectName: "lblTimeframeWarning"
         Layout.fillWidth: true
         visible: vm.hasWarning
-        text: "Khung dưới 1 phút sinh rất nhiều nến — một ngày dữ liệu ở 1s là ~86.400 nến."
+        text: "Timeframes under 1 minute generate a lot of candles — one day of 1s data is ~86,400 candles."
         textFormat: Text.PlainText
         wrapMode: Text.Wrap
         color: Theme.muted
@@ -87,14 +87,14 @@ ColumnLayout {
         Layout.fillWidth: true
         Text {
             Layout.fillWidth: true
-            text: "★ ghim lên thanh biểu đồ"
+            text: "★ pin to chart toolbar"
             textFormat: Text.PlainText
             color: Theme.muted
             font.pixelSize: 10
         }
         Text {
             objectName: "lblTimeframeCurrent"
-            text: "Đang dùng: " + vm.currentCode
+            text: "Current: " + vm.currentCode
             textFormat: Text.PlainText
             color: Theme.muted
             font.pixelSize: 10

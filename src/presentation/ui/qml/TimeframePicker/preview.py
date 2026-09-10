@@ -11,13 +11,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QVBoxLayout, QWidget
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeframePicker.timeframe_vm import (
     TimeframeVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 _TOOLBAR_QML = Path(__file__).with_name("TimeframeToolbar.qml")
 _PICKER_QML = Path(__file__).with_name("TimeframePicker.qml")
@@ -51,19 +50,15 @@ class _PreviewSeed:
             self.pinned.discard(code)
 
 
-def _load(qml_file: Path, vm: TimeframeVM, object_name: str) -> QQuickWidget:
-    quick = QQuickWidget()
-    quick.setObjectName(object_name)
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    quick.setSource(QUrl.fromLocalFile(str(qml_file)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {qml_file}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    return quick
+def _load(qml_file: Path, vm: TimeframeVM, object_name: str) -> QuickSurface:
+    """One embedded scene per `.qml`, both sharing the same `TimeframeVM` —
+    the whole point of this preview (`NOTES.md`)."""
+    return QuickSurface(
+        qml_file,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm},
+        object_name=object_name,
+    )
 
 
 def build_preview() -> QWidget:

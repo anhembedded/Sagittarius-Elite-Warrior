@@ -30,13 +30,13 @@ ColumnLayout {
 
     PanelHeader {
         Layout.fillWidth: true
-        title: "Tra cứu dữ liệu nến (KLine Inspector)"
+        title: "Candle Data Lookup (KLine Inspector)"
     }
 
     Text {
         objectName: "lblKlineInspectorSubtitle"
         Layout.fillWidth: true
-        text: vm ? (vm.symbol + " (" + vm.interval + ")  •  " + vm.rowCount + " nến") : ""
+        text: vm ? (vm.symbol + " (" + vm.interval + ")  •  " + vm.rowCount + " candles") : ""
         textFormat: Text.PlainText
         color: Theme.muted
         font.pixelSize: 10
@@ -49,18 +49,18 @@ ColumnLayout {
         emptyObjectName: "lblKlineInspectorEmpty"
         reuseItems: true
         columns: [
-            { key: "time", label: "Thời gian (UTC)", width: root.timeColumnWidth },
-            { key: "open", label: "Mở (Open)", width: root.priceColumnWidth, align: "right" },
-            { key: "high", label: "Cao (High)", width: root.priceColumnWidth, align: "right" },
-            { key: "low", label: "Thấp (Low)", width: root.priceColumnWidth, align: "right" },
-            { key: "close", label: "Đóng (Close)", width: root.priceColumnWidth, align: "right" },
-            { key: "volume", label: "Khối lượng (Vol)", width: root.volumeColumnWidth, align: "right" },
-            { key: "change", label: "Biến động", width: root.changeColumnWidth, align: "right" },
-            { key: "trades", label: "Số lệnh", fillWidth: true, align: "right" },
+            { key: "time", label: "Time (UTC)", width: root.timeColumnWidth },
+            { key: "open", label: "Open", width: root.priceColumnWidth, align: "right" },
+            { key: "high", label: "High", width: root.priceColumnWidth, align: "right" },
+            { key: "low", label: "Low", width: root.priceColumnWidth, align: "right" },
+            { key: "close", label: "Close", width: root.priceColumnWidth, align: "right" },
+            { key: "volume", label: "Volume (Vol)", width: root.volumeColumnWidth, align: "right" },
+            { key: "change", label: "Change", width: root.changeColumnWidth, align: "right" },
+            { key: "trades", label: "Trades", fillWidth: true, align: "right" },
         ]
         rowsModel: vm ? vm.rows : null
         isEmpty: vm ? vm.rows.length === 0 : false
-        emptyText: "Không có dữ liệu nến nào trong cơ sở dữ liệu."
+        emptyText: "No candle data available in the database."
         rowDelegate: Component {
             KlineInspectorRow {
                 width: ListView.view.width

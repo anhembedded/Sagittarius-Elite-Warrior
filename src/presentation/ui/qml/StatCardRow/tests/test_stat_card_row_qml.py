@@ -104,7 +104,7 @@ def test_one_delegate_per_card_with_stable_object_names(qapp, qml_item):
 def test_delegate_bindings_reach_the_vms_converted_fields(qapp, qml_item):
     cards = [
         {
-            "title": "Tổng Lãi/Lỗ (Net PnL)",
+            "title": "Net PnL",
             "value": "-8,193.54",
             "valueTone": Tone.NEGATIVE,
             "suffix": "USD",

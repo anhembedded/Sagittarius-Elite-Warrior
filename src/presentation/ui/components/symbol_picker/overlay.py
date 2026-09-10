@@ -53,29 +53,29 @@ from .filtering import (
 )
 from .symbol_card import SymbolCard
 
-_TITLE = "CHỌN SYMBOL"
-_SEARCH_PLACEHOLDER = "Tìm symbol (vd: BTC)"
-_LOADING_TEXT = "Đang tải danh sách symbol từ sàn..."
-_NO_MATCH_TEXT = "Không có symbol nào khớp bộ lọc hiện tại."
+_TITLE = "SELECT SYMBOL"
+_SEARCH_PLACEHOLDER = "Search symbol (e.g. BTC)"
+_LOADING_TEXT = "Loading symbol list from the exchange..."
+_NO_MATCH_TEXT = "No symbol matches the current filter."
 
-_FAVOURITES_HEADING = "YÊU THÍCH"
-_RESULTS_HEADING = "TẤT CẢ KẾT QUẢ"
-_RESULT_COUNT_TEXT = "{count} kết quả"
-_CURRENT_FOOTER_TEXT = "Đang dùng: {symbol}"
-_KEY_HINTS = "↑↓ di chuyển   ↵ chọn   ☆ yêu thích"
+_FAVOURITES_HEADING = "FAVOURITES"
+_RESULTS_HEADING = "ALL RESULTS"
+_RESULT_COUNT_TEXT = "{count} results"
+_CURRENT_FOOTER_TEXT = "Current: {symbol}"
+_KEY_HINTS = "↑↓ move   ↵ select   ☆ favourite"
 
 _SCOPE_TABS = (
-    (Scope.ALL, "Tất cả"),
-    (Scope.FAVOURITES, "Yêu thích"),
-    (Scope.RECENT, "Gần đây"),
+    (Scope.ALL, "All"),
+    (Scope.FAVOURITES, "Favourites"),
+    (Scope.RECENT, "Recent"),
 )
-_QUOTE_ANY_LABEL = "Tất cả"
+_QUOTE_ANY_LABEL = "All"
 
 #: Symbols are short, so three to a row reads as a keypad rather than a list —
 #: the shape both existing dialogs already rendered.
 _COLUMNS = 3
 
-#: How many quote tabs to offer beyond "Tất cả". The exchange quotes in more
+#: How many quote tabs to offer beyond "All". The exchange quotes in more
 #: than a dozen assets; past the top few the tab bar wraps and stops being
 #: scannable, and the search box covers the rest.
 _MAX_QUOTE_TABS = 3

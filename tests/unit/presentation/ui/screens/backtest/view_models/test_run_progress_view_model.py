@@ -28,9 +28,9 @@ def test_percent_and_caption_move_together_on_one_emit(qapp) -> None:
         lambda: seen.append((vm.backtestProgressPercent, vm.backtestProgressText))
     )
 
-    vm.set_backtest_progress(42.0, "Đang chạy…")
+    vm.set_backtest_progress(42.0, "Running…")
 
-    assert seen == [(42.0, "Đang chạy…")]
+    assert seen == [(42.0, "Running…")]
 
 
 def test_the_two_bars_do_not_touch_each_other(qapp) -> None:
@@ -39,17 +39,17 @@ def test_the_two_bars_do_not_touch_each_other(qapp) -> None:
     sync_emits: list[int] = []
     vm.syncProgressChanged.connect(lambda: sync_emits.append(1))
 
-    vm.set_backtest_progress(50.0, "Đang chạy…")
+    vm.set_backtest_progress(50.0, "Running…")
 
     assert vm.syncProgressPercent == IDLE_PERCENT
     assert sync_emits == []
 
 
 def test_reset_clears_both_the_percent_and_the_caption(qapp) -> None:
-    """A 0% bar still captioned "Đang chạy…" is worse than no bar."""
+    """A 0% bar still captioned "Running…" is worse than no bar."""
     vm = RunProgressViewModel()
-    vm.set_backtest_progress(80.0, "Đang chạy…")
-    vm.set_sync_progress(30.0, "Đang tải…")
+    vm.set_backtest_progress(80.0, "Running…")
+    vm.set_sync_progress(30.0, "Loading…")
 
     vm.reset_backtest_progress()
     vm.reset_sync_progress()

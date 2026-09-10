@@ -76,7 +76,7 @@ def test_set_cancelling_disables_and_relabels_the_button(qapp):
     button = find_qml_item(widget.root_object, "progressBannerCancelButton")
     label = find_qml_item(button, "buttonLabel")
     assert button.property("enabled") is False
-    assert label.property("text") == "Đang hủy..."
+    assert label.property("text") == "Cancelling..."
     widget.close()
 
 
@@ -91,7 +91,7 @@ def test_clicking_the_qml_cancel_button_emits_cancel_requested(qapp):
 
     centre = button.mapToScene(button.boundingRect().center())
     QTest.mouseClick(
-        widget,
+        widget.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

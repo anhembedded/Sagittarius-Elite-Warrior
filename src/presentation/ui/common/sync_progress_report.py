@@ -42,6 +42,6 @@ class SyncProgressReport:
     def to_message(self) -> str:
         """@brief Dòng hiển thị dùng chung cho mọi màn."""
         return (
-            f"Đang đồng bộ {self.symbol} {self.interval} "
-            f"({self.current:,}/{self.total:,} nến)"
+            f"Syncing {self.symbol} {self.interval} "
+            f"({self.current:,}/{self.total:,} candles)"
         )

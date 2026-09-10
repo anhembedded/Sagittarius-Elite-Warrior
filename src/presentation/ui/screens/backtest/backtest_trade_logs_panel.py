@@ -39,19 +39,19 @@ if TYPE_CHECKING:
 
 
 _FILTER_TABS = [
-    ("all", "Tất cả"),
-    ("long", "Mua (LONG)"),
-    ("short", "Bán (SHORT)"),
-    ("win", "Lệnh thắng"),
-    ("loss", "Lệnh thua"),
+    ("all", "All"),
+    ("long", "Buy (LONG)"),
+    ("short", "Sell (SHORT)"),
+    ("win", "Winning trades"),
+    ("loss", "Losing trades"),
 ]
 
 _HEADERS = (
-    "STT / THỜI GIAN",
-    "LOẠI",
-    "GIÁ VÀO  ➔  GIÁ THOÁT",
-    "QUY MÔ / KHỐI LƯỢNG",
-    "LÃI / LỖ RÒNG",
+    "# / TIME",
+    "TYPE",
+    "ENTRY PRICE  ➔  EXIT PRICE",
+    "SIZE / VOLUME",
+    "NET PROFIT / LOSS",
     "RETURN",
 )
 
@@ -91,7 +91,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         self._trades_tab = self._build_trades_tab()
         outer.addWidget(self._trades_tab, 1)
 
-        self._log_panel = AppLogPanel("NHẬT KÝ BACKTEST")
+        self._log_panel = AppLogPanel("BACKTEST LOG")
         self._log_panel.setObjectName("backtestLogPanel")
         self._log_panel.set_log_model(view_model.log_model)
         outer.addWidget(self._log_panel, 1)
@@ -133,7 +133,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
 
         self._search_field = QLineEdit()
         self._search_field.setObjectName("txtTradeLogSearch")
-        self._search_field.setPlaceholderText("🔍  Tìm theo mã, ngày...")
+        self._search_field.setPlaceholderText("🔍  Search by symbol, date...")
         self._search_field.setFixedSize(200, 28)
         self._search_field.setStyleSheet(
             f"background-color: {Palette.BG_CARD_HEADER}; border: 1px solid {Palette.STATE_HOVER_BG}; border-radius: 6px; "
@@ -181,7 +181,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         self._rows_scroll.setWidget(self._rows_container)
         table_layout.addWidget(self._rows_scroll, 1)
 
-        self._empty_label = QLabel("Chưa có dữ liệu lệnh giao dịch")
+        self._empty_label = QLabel("No trade data yet")
         self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty_label.setStyleSheet(f"color: {Palette.MUTED}; font-size: 12px;")
         table_layout.addWidget(self._empty_label)
@@ -231,7 +231,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         row.setContentsMargins(0, 0, 0, 0)
         row.addStretch(1)
 
-        self._btn_prev_page = QPushButton("‹  Trang trước")
+        self._btn_prev_page = QPushButton("‹  Previous page")
         self._btn_prev_page.setObjectName("btnTradeLogPrevPage")
         self._btn_prev_page.setFixedHeight(26)
         self._btn_prev_page.clicked.connect(
@@ -250,7 +250,7 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         )
         row.addWidget(self._page_label)
 
-        self._btn_next_page = QPushButton("Trang sau  ›")
+        self._btn_next_page = QPushButton("Next page  ›")
         self._btn_next_page.setObjectName("btnTradeLogNextPage")
         self._btn_next_page.setFixedHeight(26)
         self._btn_next_page.clicked.connect(
@@ -301,8 +301,8 @@ class BackTestTradeLogsPanel(QWidget):  # base-exempt: screen region, not a card
         log_count = self._vm.logModel.rowCount()
         self._tab_bar.set_tabs(
             [
-                Tab("trades", "DANH SÁCH LỆNH", f"{total} LỆNH"),
-                Tab("logs", "NHẬT KÝ BACKTEST", f"{log_count} EVENTS"),
+                Tab("trades", "TRADE LIST", f"{total} TRADES"),
+                Tab("logs", "BACKTEST LOG", f"{log_count} EVENTS"),
             ]
         )
         self._sync_active_tab()

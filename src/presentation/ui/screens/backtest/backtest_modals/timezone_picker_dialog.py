@@ -38,8 +38,8 @@ class TimezonePickerDialog(QmlOverlay):
             get_current=lambda: view_model.time_range.displayTimezone,
         )
         super().__init__(
-            "CHỌN MÚI GIỜ HIỂN THỊ",
-            "Chỉ đổi giờ hiển thị. Dữ liệu và Backtest luôn tính theo UTC.",
+            "SELECT DISPLAY TIME ZONE",
+            "Only changes the displayed time zone. Data and backtests are always computed in UTC.",
             qml_file=_QML,
             context={"vm": self._widget_vm},
             parent=parent,

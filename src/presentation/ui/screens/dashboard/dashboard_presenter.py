@@ -252,10 +252,11 @@ _MANUAL_ORDER_ACTION = "manual_order"
 #: first manual order is exactly what makes the strategy's next signal
 #: double up on a position it never opened itself.
 _STRATEGY_SYMBOL_CONFLICT_MESSAGE = (
-    "Bị chặn: symbol này đang được chiến lược đang armed quản lý — giao dịch "
-    "thủ công trên đúng symbol chiến lược đang canh có thể làm chiến lược "
-    "mất dấu vị thế thật (kể cả khi hiện đang Flat). Dùng Dừng khẩn cấp hoặc "
-    "gỡ chiến lược trước, hoặc giao dịch thủ công trên symbol khác."
+    "Blocked: this symbol is managed by an armed strategy — manually trading "
+    "the exact symbol the strategy is watching can make the strategy lose "
+    "track of its real position (even while it is currently Flat). Use "
+    "Emergency Stop or disarm the strategy first, or trade manually on a "
+    "different symbol."
 )
 
 #: `EnumLabels`, not a bare dict — same reasoning `TradingPresenter`'s own
@@ -266,19 +267,19 @@ _BLOCK_REASON_MESSAGES = EnumLabels(
     EnableTradingBlockReason,
     {
         EnableTradingBlockReason.TRADING_VENUE_DISABLED: (
-            "Trading venue đang tắt trong cấu hình — chỉ hỗ trợ Futures Testnet."
+            "Trading venue is disabled in configuration — only Futures Testnet is supported."
         ),
         EnableTradingBlockReason.CONNECTION_NOT_READY: (
-            "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
+            "Connection to the exchange is not ready — check your API key/network connection."
         ),
         EnableTradingBlockReason.UNEXPECTED_POSITIONS: (
-            "Tài khoản đang có vị thế mở ngoài dự kiến — vui lòng xử lý thủ công "
-            "trên sàn trước khi bật giao dịch."
+            "The account has unexpected open positions — please handle them manually "
+            "on the exchange before enabling trading."
         ),
         EnableTradingBlockReason.SUPERSEDED_BY_CONCURRENT_STATE_CHANGE: (
-            "Một thao tác khác (thường là DỪNG KHẨN CẤP) đã thay đổi trạng thái "
-            "trong lúc đang đối soát — không bật giao dịch. Kiểm tra lại rồi thử "
-            "lại nếu vẫn muốn bật."
+            "Another operation (usually EMERGENCY STOP) changed the state while "
+            "reconciliation was in progress — trading was not enabled. Check the "
+            "state and try again if you still want to enable it."
         ),
     },
 )
@@ -919,7 +920,7 @@ class DashboardPresenter(BasePresenter):
 
     @Slot(str)
     def _on_symbol_options_failed(self, message: str) -> None:
-        self._append_log(f"[ERROR] Không tải được danh sách symbol: {message}")
+        self._append_log(f"[ERROR] Failed to load symbol list: {message}")
 
     # ================================================================== #
     # IStateContributor — structural, no base class (EPIC-010D)
@@ -1231,7 +1232,8 @@ class DashboardPresenter(BasePresenter):
         # Emergency Stop already in flight.
         if self._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING:
             self._append_log(
-                "Đang dừng khẩn cấp — vui lòng đợi xong trước khi bật/tắt giao dịch."
+                "Emergency stop in progress — please wait for it to finish "
+                "before enabling/disabling trading."
             )
             return
         action = self._toggle_tracker.begin_action(_TOGGLE_ACTION, None, None)
@@ -1270,13 +1272,13 @@ class DashboardPresenter(BasePresenter):
         if error is not None or result is None:
             self._toggle_tracker.finish_action(action_id, ActionOutcome.FAILED)
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._append_log(f"Lỗi khi bật giao dịch: {error}")
+            self._append_log(f"Error enabling trading: {error}")
             return
 
         self._toggle_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
         self._view_model.set_trading_state(result.enabled, False)
         if result.enabled:
-            self._append_log("Đã bật giao dịch.")
+            self._append_log("Trading enabled.")
             # A refusal is the only path that ever returns a non-empty
             # `reconciled_positions` (see `EnableTradingCommandHandler`) —
             # a successful enable therefore always starts with none open.
@@ -1303,12 +1305,12 @@ class DashboardPresenter(BasePresenter):
         if error is not None:
             self._toggle_tracker.finish_action(action_id, ActionOutcome.FAILED)
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._append_log(f"Lỗi khi tắt giao dịch: {error}")
+            self._append_log(f"Error disabling trading: {error}")
             return
 
         self._toggle_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
         self._view_model.set_trading_state(False, False)
-        self._append_log("Đã tắt giao dịch.")
+        self._append_log("Trading disabled.")
 
     # ================================================================== #
     # Emergency Stop (`EPIC-023D`) — deliberately NOT `@safe_ui_action`
@@ -1331,7 +1333,7 @@ class DashboardPresenter(BasePresenter):
             # racing the first one's own cancel/close calls.
             if self._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING:
                 self._append_log(
-                    "Đang dừng khẩn cấp — yêu cầu đã được gửi, vui lòng đợi."
+                    "Emergency stop in progress — the request has already been sent, please wait."
                 )
                 return
             action = self._emergency_stop_tracker.begin_action(
@@ -1341,11 +1343,11 @@ class DashboardPresenter(BasePresenter):
             # must not race Emergency Stop's own `disable()`/`place_order()`
             # calls.
             self._view_model.set_trading_state(self._session_state.enabled, True)
-            self._append_log("Đang dừng khẩn cấp...")
+            self._append_log("Emergency stop in progress...")
             self._thread_manager.submit(self._run_emergency_stop, action.action_id)
         except Exception as exc:  # noqa: BLE001 - deliberately not @safe_ui_action, see this section's own docstring
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._append_log(f"Lỗi khi dừng khẩn cấp: {exc}")
+            self._append_log(f"Error during emergency stop: {exc}")
 
     def _run_emergency_stop(self, action_id: int) -> None:
         try:
@@ -1370,7 +1372,7 @@ class DashboardPresenter(BasePresenter):
         if error is not None or result is None:
             self._emergency_stop_tracker.finish_action(action_id, ActionOutcome.FAILED)
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._append_log(f"[ERROR] Dừng khẩn cấp thất bại: {error}")
+            self._append_log(f"[ERROR] Emergency stop failed: {error}")
             return
 
         self._emergency_stop_tracker.finish_action(
@@ -1381,9 +1383,9 @@ class DashboardPresenter(BasePresenter):
         self._log_emergency_stop_result(result)
         self._apply_emergency_stop_final_state(result)
         if result.fully_succeeded:
-            self._append_log("Đã dừng khẩn cấp.")
+            self._append_log("Emergency stop completed.")
         else:
-            self._append_log("DỪNG KHẨN CẤP — THẤT BẠI MỘT PHẦN. Xem nhật ký.")
+            self._append_log("EMERGENCY STOP — PARTIALLY FAILED. See the log.")
 
     def _apply_emergency_stop_final_state(self, result: EmergencyStopResult) -> None:
         """`BUG-093` (Trading's own precedent) — the user-data stream is
@@ -1394,9 +1396,9 @@ class DashboardPresenter(BasePresenter):
         before the button was pressed."""
         if not result.final_state_confirmed:
             self._append_log(
-                "[WARNING] Không thể xác nhận trạng thái tài khoản sau khi dừng "
-                "khẩn cấp — bảng vị thế/lệnh chờ bên dưới có thể không còn đúng. "
-                "Chạy `exchange-status` để kiểm tra trực tiếp."
+                "[WARNING] Could not confirm account state after the emergency "
+                "stop — the positions/open orders table below may no longer be "
+                "accurate. Run `exchange-status` to check directly."
             )
             return
         self._order_book.replace_all(
@@ -1404,12 +1406,12 @@ class DashboardPresenter(BasePresenter):
         )
 
     def _log_emergency_stop_result(self, result: EmergencyStopResult) -> None:
-        self._append_log("DỪNG KHẨN CẤP")
+        self._append_log("EMERGENCY STOP")
         for index, (label, step) in enumerate(
             (
-                ("Tắt giao dịch", result.trading_disabled),
-                ("Huỷ lệnh chờ", result.orders_cancelled),
-                ("Đóng vị thế", result.positions_closed),
+                ("Disable trading", result.trading_disabled),
+                ("Cancel pending orders", result.orders_cancelled),
+                ("Close positions", result.positions_closed),
             ),
             start=1,
         ):
@@ -1430,40 +1432,40 @@ class DashboardPresenter(BasePresenter):
         self, direction_text: str, quantity: float, order_type_text: str, price: float
     ) -> None:
         if self._manual_order_tracker.active_outcome is ActionOutcome.PENDING:
-            self._append_log("Đang xử lý lệnh thủ công trước — vui lòng đợi.")
+            self._append_log("Already processing a manual order — please wait.")
             return
         try:
             direction = ManualOrderDirection(direction_text)
             order_type = OrderType[order_type_text]
         except (ValueError, KeyError):
             self._append_log(
-                f"Tham số lệnh thủ công không hợp lệ: {direction_text}/{order_type_text}"
+                f"Invalid manual order parameters: {direction_text}/{order_type_text}"
             )
             return
         quantity_decimal = Decimal(str(quantity))
         if quantity_decimal <= 0:
-            self._append_log("Khối lượng lệnh thủ công phải lớn hơn 0.")
+            self._append_log("Manual order quantity must be greater than 0.")
             return
 
         symbol = self._active_symbol
         if order_type is OrderType.LIMIT:
             reference_price = Decimal(str(price))
             if reference_price <= 0:
-                self._append_log("Giá lệnh Limit phải lớn hơn 0.")
+                self._append_log("Limit order price must be greater than 0.")
                 return
         else:
             reference_price = self._last_price_by_symbol.get(symbol)
             if reference_price is None:
                 self._append_log(
-                    "Chưa có giá thị trường cho symbol này — chờ dữ liệu live "
-                    "rồi thử lại."
+                    "No market price available for this symbol yet — wait for "
+                    "live data and try again."
                 )
                 return
 
         action = self._manual_order_tracker.begin_action(
             _MANUAL_ORDER_ACTION, None, None
         )
-        self._view_model.set_manual_order_state(True, "Đang gửi lệnh...")
+        self._view_model.set_manual_order_state(True, "Sending order...")
         self._thread_manager.submit(
             self._run_manual_order,
             action.action_id,
@@ -1554,7 +1556,7 @@ class DashboardPresenter(BasePresenter):
 
         if error is not None or result is None:
             self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
-            message = f"Lỗi khi đặt lệnh thủ công: {error}"
+            message = f"Error placing manual order: {error}"
             self._view_model.set_manual_order_state(False, message)
             self._append_log(message)
             return
@@ -1562,7 +1564,7 @@ class DashboardPresenter(BasePresenter):
         if result.blocked:
             self._manual_order_tracker.finish_action(action_id, ActionOutcome.FAILED)
             message = (
-                f"Lệnh thủ công bị chặn: "
+                f"Manual order blocked: "
                 f"{format_execute_order_block_reason(result.blocked_by)}"
             )
             self._view_model.set_manual_order_state(False, message)
@@ -1571,7 +1573,7 @@ class DashboardPresenter(BasePresenter):
 
         self._manual_order_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
         order = result.submitted_order
-        message = f"Đã đặt lệnh thủ công: {order.client_order_id if order else '—'}"
+        message = f"Manual order placed: {order.client_order_id if order else '—'}"
         self._view_model.set_manual_order_state(False, message)
         self._append_log(message)
         self._refresh_session_stats()
@@ -1588,7 +1590,7 @@ class DashboardPresenter(BasePresenter):
     @Slot(str, str)
     @safe_ui_action
     def _on_cancel_order_requested(self, symbol: str, client_order_id: str) -> None:
-        self._append_log(f"Đang huỷ lệnh {client_order_id} ({symbol})...")
+        self._append_log(f"Cancelling order {client_order_id} ({symbol})...")
         self._thread_manager.submit(self._run_cancel_order, symbol, client_order_id)
 
     def _run_cancel_order(self, symbol: str, client_order_id: str) -> None:
@@ -1607,15 +1609,15 @@ class DashboardPresenter(BasePresenter):
     def _on_cancel_order_completed(self, payload: tuple) -> None:
         symbol, client_order_id, result, error = payload
         if error is not None or result is None:
-            self._append_log(f"Lỗi khi huỷ lệnh {client_order_id}: {error}")
+            self._append_log(f"Error cancelling order {client_order_id}: {error}")
             return
         if result.blocked:
             self._append_log(
-                f"Huỷ lệnh bị chặn: {format_execute_order_block_reason(result.blocked_by)}"
+                f"Cancel order blocked: {format_execute_order_block_reason(result.blocked_by)}"
             )
             return
         self._order_book.on_order_cancelled(client_order_id)
-        self._append_log(f"Đã huỷ lệnh {client_order_id} ({symbol}).")
+        self._append_log(f"Order {client_order_id} ({symbol}) cancelled.")
 
     # ================================================================== #
     # Strategy card (`EPIC-023C`) — the button handlers live in
@@ -1631,7 +1633,7 @@ class DashboardPresenter(BasePresenter):
     @safe_ui_action
     def _on_bot_params_save_requested(self, values: dict) -> None:
         if self._arming_coordinator.apply_params(values):
-            self._append_log("Đã lưu Thông số Chiến lược.")
+            self._append_log("Strategy Parameters saved.")
 
     @Slot()
     def _on_arm_requested(self) -> None:

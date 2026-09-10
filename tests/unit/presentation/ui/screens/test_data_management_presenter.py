@@ -402,7 +402,7 @@ def test_run_clear_data_dispatches_command_and_updates_model(
     mock_dispatcher.dispatch.return_value = ClearMarketDataResult(
         deleted_records=500,
         success=True,
-        message="Đã xóa thành công 500 nến của BTCUSDT (5m).",
+        message="Successfully deleted 500 candles for BTCUSDT (5m).",
     )
     view_model.status_model.upsert_row("BTCUSDT", "a", "b", "500", "OK", "5m")
     assert view_model.status_model.rowCount() == 1
@@ -428,7 +428,7 @@ def test_run_purge_all_dispatches_command_and_clears_all(
     mock_dispatcher.dispatch.return_value = ClearMarketDataResult(
         deleted_records=5,
         success=True,
-        message="Đã xóa toàn bộ cơ sở dữ liệu (5 database shards).",
+        message="Deleted the entire database (5 database shards).",
     )
     view_model.status_model.upsert_row("BTCUSDT", "a", "b", "100", "OK", "1m")
     view_model.status_model.upsert_row("ETHUSDT", "a", "b", "200", "OK", "1h")
@@ -635,7 +635,7 @@ def test_auto_discover_empty_database_logs_informative_message(
         view_model.log_model.data(view_model.log_model.index(i, 0), 257)
         for i in range(view_model.log_model.rowCount())
     ]
-    assert any("Storage Vault trống" in entry for entry in log_entries)
+    assert any("Storage Vault is empty" in entry for entry in log_entries)
 
 
 def test_scan_all_empty_database_logs_informative_message(
@@ -701,7 +701,7 @@ def test_single_sync_with_cancelled_token_logs_cancellation_message(
         view_model.log_model.data(view_model.log_model.index(i, 0), 257)
         for i in range(view_model.log_model.rowCount())
     ]
-    assert any("Đã dừng đồng bộ BTCUSDT (1m)" in entry for entry in log_entries)
+    assert any("Sync stopped for BTCUSDT (1m)" in entry for entry in log_entries)
     assert presenter._cancellation_token is None
 
 
@@ -720,7 +720,7 @@ def test_bulk_sync_with_cancelled_token_logs_cancellation_message(
         view_model.log_model.data(view_model.log_model.index(i, 0), 257)
         for i in range(view_model.log_model.rowCount())
     ]
-    assert any("Đã dừng quá trình đồng bộ hàng loạt" in entry for entry in log_entries)
+    assert any("Bulk sync process stopped" in entry for entry in log_entries)
     assert presenter._cancellation_token is None
 
 

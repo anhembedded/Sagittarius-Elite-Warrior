@@ -17,15 +17,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Qt, QUrl, Signal
-from PySide6.QtQuickWidgets import QQuickWidget
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QWidget
-from Sagittarius_Elite_Warrior.src.presentation.ui.kit import Panel
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import Panel, StyleRole
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.DatabaseStatusTable.database_status_vm import (
     DatabaseStatusVM,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.qml.style import ensure_qml_style
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 
 if TYPE_CHECKING:
     from Sagittarius_Elite_Warrior.src.presentation.ui.qml.DatabaseStatusTable.database_status_table_model import (
@@ -57,36 +55,22 @@ class DatabaseStatusPanel(Panel):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        ensure_qml_style()
         self.body_layout.setContentsMargins(12, 12, 12, 12)
         self.body_layout.setSpacing(8)
 
         self._vm = DatabaseStatusVM(status_model, parent=self)
         self._vm.rowActionRequested.connect(self.rowActionRequested)
-
-        self._quick = QQuickWidget()
-        self._quick.setObjectName("databaseStatusQuick")
-        self._quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        # Transparent so this `Panel`'s own SURFACE background shows behind
-        # the QML body — same reasoning `QmlOverlay.__init__` documents for
-        # its own `QQuickWidget`.
-        self._quick.setClearColor(Qt.GlobalColor.transparent)
-        root_context = self._quick.rootContext()
-        root_context.setContextProperty("vm", self._vm)
-        # A QML context property is a borrowed pointer, and this bridge is
-        # process-wide — but `get_theme_bridge()` is not something a bare
-        # embedded `QQuickWidget` gets seeded with for free the way a
-        # `QmlHostView`-driven screen does, so it is set explicitly here,
-        # matching `QmlOverlay.__init__` (`qml/host.py`).
-        root_context.setContextProperty("Theme", get_theme_bridge())
-
-        self._quick.setSource(QUrl.fromLocalFile(str(_QML)))
-        if self._quick.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML}\n"
-                + "\n".join(error.toString() for error in self._quick.errors())
-            )
-        self.body_layout.addWidget(self._quick, 1)
+        # BUG-115: this used to be a hand-built `QQuickWidget` with a
+        # transparent clear colour "so the Panel's SURFACE shows through" —
+        # on a real screen the table body rendered black. `QuickSurface`
+        # clears to the SURFACE token itself, through the engine factory.
+        self._surface = QuickSurface(
+            _QML,
+            surface=StyleRole.SURFACE,
+            context={"vm": self._vm},
+            object_name="databaseStatusQuick",
+        )
+        self.body_layout.addWidget(self._surface, 1)
 
     def set_search_text(self, text: str) -> None:
         self._vm.setSearchText(text)
@@ -101,7 +85,4 @@ class DatabaseStatusPanel(Panel):
     def root_object(self) -> QObject:
         """The loaded QML root, for tests to `findChild`/`qml_item` into by
         `objectName` — same contract `QmlOverlay.root_object` documents."""
-        root = self._quick.rootObject()
-        if root is None:  # pragma: no cover - __init__ raises before this
-            raise RuntimeError("QML root object is missing")
-        return root
+        return self._surface.root_object

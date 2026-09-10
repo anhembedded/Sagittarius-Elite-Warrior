@@ -21,23 +21,22 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.venue_alignment import (
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit.style import StyleRole
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit.surfaces.banner import Severity
 
-#: Vietnamese copy, verbatim from the task's own worked mock (`EPIC-021K`
-#: §2.1's table) — not re-worded here, since it is the exact text the
-#: mockup was reviewed and approved against.
+#: English copy, translated from the task's own worked mock (`EPIC-021K`
+#: §2.1's table).
 _CONTENT: dict[VenueAlignment, tuple[str, str, StyleRole]] = {
     VenueAlignment.TRADING_DISABLED: (
         "⏸",
-        "Giao dịch đang TẮT. Chỉ xem dữ liệu.",
+        "Trading is OFF. Data view only.",
         Severity.INFO,
     ),
     VenueAlignment.ALIGNED: (
         "ⓘ",
-        "FUTURES TESTNET — tiền giả lập.",
+        "FUTURES TESTNET — simulated funds.",
         Severity.WARN,
     ),
     VenueAlignment.DATA_MAINNET_ORDERS_TESTNET: (
         "⚠",
-        "Chart đang hiển thị giá MAINNET, lệnh khớp trên TESTNET. Giá thấy ≠ giá khớp.",
+        "Chart is showing MAINNET prices, orders fill on TESTNET. Price shown ≠ fill price.",
         Severity.DANGER,
     ),
 }

@@ -145,8 +145,8 @@ def test_real_result_produces_truthful_long_markers_via_the_real_pipeline():
 
     assert len(markers) == 2
     entry_marker, exit_marker = markers
-    assert entry_marker[2] == "MUA (LONG)"
-    assert exit_marker[2] == "ĐÓNG LONG"
+    assert entry_marker[2] == "BUY (LONG)"
+    assert exit_marker[2] == "CLOSE LONG"
     # Truthful markers (BOT-096): never mislabel a long trade as short/sell.
     assert "SHORT" not in entry_marker[2].upper()
     assert "SHORT" not in exit_marker[2].upper()

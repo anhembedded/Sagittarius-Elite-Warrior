@@ -93,7 +93,7 @@ class BackTestView(BaseView):
         # is not built until `set_view_model()`, which calls this again
         # with the real button once it exists.
         self._shell.set_header(
-            "Backtest Engine", "Kiểm thử chiến lược trên dữ liệu lịch sử"
+            "Backtest Engine", "Test strategies against historical data"
         )
 
         self.scroll_area = PreferredHeightScrollArea()
@@ -144,7 +144,7 @@ class BackTestView(BaseView):
         self._scroll_content_layout.insertWidget(0, self.top_widget)
         self._shell.set_header(
             "Backtest Engine",
-            "Kiểm thử chiến lược trên dữ liệu lịch sử",
+            "Test strategies against historical data",
             actions=self.top_widget.run_button,
         )
 

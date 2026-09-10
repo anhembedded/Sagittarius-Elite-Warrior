@@ -103,7 +103,7 @@ class LiveOrderBookCoordinator:
         visible on the screen itself, not just in a log file nobody is
         watching. Callers append this at `level="info"`: a blocked order is
         a one-time-meaningful event, not an application error."""
-        self._emit_log(f"Lệnh live bị chặn ({symbol}): {reason}")
+        self._emit_log(f"Live order blocked ({symbol}): {reason}")
 
     def _render_positions(self) -> None:
         self._view.set_positions(

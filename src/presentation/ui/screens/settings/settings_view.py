@@ -47,9 +47,7 @@ from sagittarius_engine.extensions.pyside_mvc import BaseView
 from .venue_labels import market_data_venue_label, trading_venue_label
 
 #: `BOT-125` — shown instead of letting the combos be edited mid-session.
-_VENUES_LOCKED_TEXT = (
-    "Đang giao dịch — tắt giao dịch ở màn Giao dịch trước khi đổi 2 mục này."
-)
+_VENUES_LOCKED_TEXT = "Trading is active — disable trading on the Trading screen before changing these two fields."
 
 if TYPE_CHECKING:
     from .settings_view_model import SettingsViewModel
@@ -232,7 +230,7 @@ class SettingsView(BaseView):
         and renders the last result, if any."""
         self._check_connection_button.setEnabled(not checking)
         self._check_connection_button.setText(
-            "Đang kiểm tra..." if checking else "Kiểm tra kết nối"
+            "Checking..." if checking else "Check Connection"
         )
         self._connection_result_label.setText(result_text)
         color = Palette.DANGER if result_is_error else Palette.SUCCESS
@@ -311,11 +309,11 @@ class SettingsView(BaseView):
         layout.setSpacing(14)
 
         warning = QLabel(
-            "Thay đổi được ghi xuống user_config.json ngay khi lưu. "
-            "Riêng API Key/Secret ghi vào secrets.local.json (không nằm trong "
-            "git). API Key/Secret, Nguồn dữ liệu và Nơi đặt lệnh đều cần "
-            "khởi động lại app mới có hiệu lực — chúng chỉ được đọc một lần "
-            "lúc app khởi động."
+            "Changes are written to user_config.json as soon as you save. "
+            "API Key/Secret are written to secrets.local.json instead (not "
+            "tracked in git). API Key/Secret, Data Source and Order Venue all "
+            "require an app restart to take effect — they are only read once, "
+            "on app startup."
         )
         warning.setObjectName("lblRestartWarning")
         warning.setWordWrap(True)
@@ -344,7 +342,7 @@ class SettingsView(BaseView):
         row += 1
 
         self._check_connection_button = StyledButton(
-            "Kiểm tra kết nối", role=StyleRole.SECONDARY_BUTTON
+            "Check Connection", role=StyleRole.SECONDARY_BUTTON
         )
         self._check_connection_button.setObjectName("btnCheckConnection")
         self._check_connection_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -424,7 +422,7 @@ class SettingsView(BaseView):
         `TradingVenue` has no `MAINNET` member by design (ADR §3), and a
         typed-out list here could grow one by accident.
         """
-        grid.addWidget(self._field_label("Nguồn dữ liệu (chart):"), row, 0)
+        grid.addWidget(self._field_label("Data Source (chart):"), row, 0)
         self._market_data_venue_combo = QComboBox()
         self._market_data_venue_combo.setObjectName("cboMarketDataVenue")
         for venue in MarketDataVenue:
@@ -434,7 +432,7 @@ class SettingsView(BaseView):
         grid.addWidget(self._market_data_venue_combo, row, 1)
         row += 1
 
-        grid.addWidget(self._field_label("Nơi đặt lệnh:"), row, 0)
+        grid.addWidget(self._field_label("Order Venue:"), row, 0)
         self._trading_venue_combo = QComboBox()
         self._trading_venue_combo.setObjectName("cboTradingVenue")
         for trading_venue in TradingVenue:

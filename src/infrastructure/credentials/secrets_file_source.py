@@ -36,7 +36,7 @@ class SecretsFileSource:
                 data = json.load(f)
         except (OSError, json.JSONDecodeError) as exc:
             logger.warning(
-                "Không đọc được %s: %s. Coi như chưa cấu hình credentials.",
+                "Could not read %s: %s. Treating credentials as not configured.",
                 self._filepath,
                 exc,
             )
@@ -71,7 +71,7 @@ class SecretsFileSource:
             os.chmod(self._filepath, 0o600)
         except OSError as exc:
             logger.warning(
-                "Không đặt được quyền truy cập chỉ-chủ-sở-hữu cho %s: %s",
+                "Could not set owner-only permissions on %s: %s",
                 self._filepath,
                 exc,
             )

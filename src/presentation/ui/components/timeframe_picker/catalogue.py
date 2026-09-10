@@ -1,4 +1,4 @@
-"""Every timeframe the domain knows, ordered, grouped and named in Vietnamese.
+"""Every timeframe the domain knows, ordered, grouped and named in English.
 
 @par Why this is derived from `TimeFrame` rather than listed here
 The app used to offer five timeframes — `DEFAULT_TIMEFRAMES`, a tuple in
@@ -44,35 +44,35 @@ class TimeframeGroup(Enum):
 GROUP_LABELS = EnumLabels(
     TimeframeGroup,
     {
-        TimeframeGroup.SECONDS: "GIÂY",
-        TimeframeGroup.MINUTES: "PHÚT",
-        TimeframeGroup.HOURS: "GIỜ",
-        TimeframeGroup.DAYS: "NGÀY TRỞ LÊN",
+        TimeframeGroup.SECONDS: "SECONDS",
+        TimeframeGroup.MINUTES: "MINUTES",
+        TimeframeGroup.HOURS: "HOURS",
+        TimeframeGroup.DAYS: "DAYS AND UP",
     },
 )
 
 #: Short annotation shown beside each section heading in the QML picker
-#: (`qml/TimeframePicker/`) — context a bare "PHÚT" does not give: which
+#: (`qml/TimeframePicker/`) — context a bare "MINUTES" does not give: which
 #: section is heavy, which is the sane default, which suits a scalper versus
 #: a swing trader.
 GROUP_CAPTIONS: dict[TimeframeGroup, str] = {
-    TimeframeGroup.SECONDS: "dữ liệu tick — nặng",
-    TimeframeGroup.MINUTES: "mặc định cho scalping",
+    TimeframeGroup.SECONDS: "tick data — heavy",
+    TimeframeGroup.MINUTES: "default for scalping",
     TimeframeGroup.HOURS: "intraday",
-    TimeframeGroup.DAYS: "swing / vị thế dài",
+    TimeframeGroup.DAYS: "swing / long-term position",
 }
 
-#: Unit suffix → (group, Vietnamese noun). Keyed by the same last character
+#: Unit suffix → (group, English noun). Keyed by the same last character
 #: `TimeFrame.to_seconds()` switches on, so a member this map does not cover
 #: is a member that has no duration either — `test_every_timeframe_is_named`
 #: fails rather than the picker silently dropping it.
 _UNITS: dict[str, tuple[TimeframeGroup, str]] = {
-    "s": (TimeframeGroup.SECONDS, "giây"),
-    "m": (TimeframeGroup.MINUTES, "phút"),
-    "h": (TimeframeGroup.HOURS, "giờ"),
-    "d": (TimeframeGroup.DAYS, "ngày"),
-    "w": (TimeframeGroup.DAYS, "tuần"),
-    "M": (TimeframeGroup.DAYS, "tháng"),
+    "s": (TimeframeGroup.SECONDS, "second"),
+    "m": (TimeframeGroup.MINUTES, "minute"),
+    "h": (TimeframeGroup.HOURS, "hour"),
+    "d": (TimeframeGroup.DAYS, "day"),
+    "w": (TimeframeGroup.DAYS, "week"),
+    "M": (TimeframeGroup.DAYS, "month"),
 }
 
 #: Below this, one day of history is tens of thousands of candles. Not a
@@ -119,9 +119,10 @@ def describe(code: str) -> TimeframeOption | None:
     if unit is None:  # pragma: no cover - guarded by test_every_timeframe_is_named
         return None
     group, noun = unit
+    amount = int(code[:-1])
     return TimeframeOption(
         code=code,
-        label=f"{int(code[:-1])} {noun}",
+        label=f"{amount} {noun}{'s' if amount != 1 else ''}",
         group=group,
         seconds=TimeFrame(code).to_seconds(),
     )

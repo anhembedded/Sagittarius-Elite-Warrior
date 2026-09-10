@@ -9,17 +9,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 
 _QML_FILE = Path(__file__).with_name("_StyleGuidePreview.qml")
 
 _LOG_ENTRIES = [
     {
         "timestampText": "13:56:40",
-        "message": "[Health] Trạng thái hệ thống: HEALTHY",
+        "message": "[Health] System status: HEALTHY",
         "isError": False,
     },
     {
@@ -32,17 +31,11 @@ _LOG_ENTRIES = [
 
 def build_preview() -> QWidget:
     """Builds the style-guide preview, no host chrome."""
-    quick = QQuickWidget()
-    quick.setObjectName("kitStyleGuidePreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    quick.rootContext().setContextProperty("previewLogModel", _LOG_ENTRIES)
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(760, 620)
-    return quick
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"previewLogModel": _LOG_ENTRIES},
+        object_name="kitStyleGuidePreview",
+    )
+    surface.resize(760, 620)
+    return surface

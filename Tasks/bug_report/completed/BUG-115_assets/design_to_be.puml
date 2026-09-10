@@ -1,0 +1,100 @@
+@startuml BUG-115_to_be
+title BUG-115 — TO-BE: one embedding abstraction; background is a StyleRole, read from the same token map as the parent's QSS
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Engine (unchanged in this bug; TASK later: promote QuickSurface)" #EEEEEE {
+  class "configure_app_qml()" as cfg <<function>>
+  class "create_quick_widget()" as factory <<function>> {
+    style pin + Theme + icons + import path
+  }
+  cfg ..> factory : bootstrap calls cfg once again\n(the EPIC-006F removal is reverted)
+}
+
+package "App — kit/style.py" {
+  enum StyleRole {
+    SURFACE
+    STAT_CARD
+    ...
+  }
+  class "apply_role(widget, role)" as apply <<function>>
+  class "background_token(role) -> str" as bgtok <<new, extracted from _build_qss>> {
+    SURFACE -> "bgCard"
+    raises for roles with no static background
+  }
+  apply ..> bgtok : QSS of the parent reads it
+}
+
+package "App — qml/embed/  (the bridge layer; one abstraction per file)" #DDEEFF {
+  enum QuickSizePolicy {
+    FILL  (SizeRootObjectToView)
+    HUG   (SizeViewToRootObject, sizeHint forwarded)
+  }
+  class QuickSurface {
+    +__init__(qml_file, *, surface: StyleRole, context, size_policy, object_name)
+    +root_object
+    -_quick : QQuickWidget  (from create_quick_widget())
+    -_context : dict  (kept alive)
+    -- invariant --
+    clear colour = opaque background_token(surface)
+    load failure raises
+  }
+  QuickSurface ..> factory : the ONLY place a\nQQuickWidget is created in the app
+  QuickSurface ..> bgtok : same token the parent painted
+  QuickSurface --> QuickSizePolicy
+}
+
+package "App — hosts after migration" {
+  class QmlOverlay {
+    _surface = QuickSurface(qml, surface=SURFACE, context={vm})
+  }
+  class SymbolPickerModal
+  class MetricsDetailModal
+  class DatabaseStatusPanel
+  class PositionsPanel
+  class OpenOrdersPanel
+  class ChartToolbar {
+    QuickSurface(..., size_policy=HUG)
+  }
+  class ProgressBannerWidget
+  class StatusPillWidget
+  class StatCardRowWidget
+
+  QmlOverlay o-- QuickSurface : composes (6)
+  SymbolPickerModal o-- QuickSurface
+  MetricsDetailModal o-- QuickSurface
+  DatabaseStatusPanel o-- QuickSurface
+  PositionsPanel o-- QuickSurface
+  OpenOrdersPanel o-- QuickSurface
+  QuickSurface <|-- ChartToolbar : subclasses (4) — public API\n(setters/signals) unchanged
+  QuickSurface <|-- ProgressBannerWidget
+  QuickSurface <|-- StatusPillWidget
+  QuickSurface <|-- StatCardRowWidget
+}
+
+package "Guards (mechanism, not review discipline)" #FFF3DD {
+  class "test_quick_widget_only_in_embed" as g1 <<grep guard>> {
+    QQuickWidget( / (QQuickWidget) allowed only under qml/embed/
+    red today at 17 sites
+  }
+  class "QuickSurface contract tests (offscreen)" as g2 {
+    clear colour alpha == 255 and == background_token(surface)
+    raises on load failure; HUG forwards sizeHint
+  }
+  class "Desktop-tier visual test (real display / xvfb-run)" as g3 {
+    QScreen.grabWindow pixel == widget.grab() pixel
+    in the empty QML region — the only tier that
+    sees the texture path (missed BUG-102 & BUG-115)
+  }
+}
+
+note bottom of QuickSurface
+  New invariant for qml-rule.md §0:
+  "An embedded QML scene is opaque, and its background is the token of the
+   StyleRole it is embedded in — the same rule a child QWidget on a QFrame obeys."
+  Two painters (parent QSS, child clear colour) read ONE mapping,
+  so they cannot drift; software and texture paths render identically,
+  so tests, Windows and Linux agree.
+end note
+@enduml

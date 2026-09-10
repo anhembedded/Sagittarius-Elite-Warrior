@@ -8,8 +8,9 @@ import time
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
-from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
-from sagittarius_engine.extensions.pyside_mvc.tokens import get_theme_bridge
+from Sagittarius_Elite_Warrior.src.presentation.ui.theme_bootstrap import (
+    seed_app_theme,
+)
 
 from .chart_card import ChartCard
 
@@ -19,15 +20,16 @@ app = QApplication(sys.argv)
 
 # EPIC-007E: the card styles itself through the engine's `apply_role()`, so
 # the #base_card / #base_card_header / #base_card_title rules that used to
-# sit here have nothing left to target. The theme bridge below is what the
-# card actually reads.
-get_theme_bridge(Palette.as_ui_dict())
+# sit here have nothing left to target. `apply_role()` reads the theme this
+# call seeds — one function for every entry point that builds this app's
+# widgets (BOT-133); this file used to spell out its own half of it.
+seed_app_theme()
 
 card = ChartCard("BTCUSDT")
 card.resize(1000, 700)
 card.show()
 
-print("⏳ Tự động sinh 5,000 nến lịch sử và 2 Indicators (SMA, RSI)...")
+print("⏳ Auto-generating 5,000 historical candles and 2 indicators (SMA, RSI)...")
 now = time.time()
 history = []
 sma_x, sma_y = [], []
@@ -66,7 +68,7 @@ for i in range(5000):
 card.render_historical_data(history)
 card.update_indicator_data("SMA_20", sma_x, sma_y)
 card.update_indicator_data("RSI_14", rsi_x, rsi_y)
-print("✅ Đã load xong bộ khung Main Chart & Subplots.")
+print("✅ Main Chart & Subplots frame loaded.")
 
 # 3. MOCK LIVE TICK
 live_t = now + 60

@@ -37,7 +37,7 @@ def test_a_successful_check_shows_every_field():
     assert "FUTURES_TESTNET" in text
     assert "✔" in text
     assert "+134 ms" in text
-    assert "an toàn" in text
+    assert "safe" in text
     assert "ONE_WAY" in text
     assert "CROSSED" in text
     assert "15,000.00" in text
@@ -46,8 +46,8 @@ def test_a_successful_check_shows_every_field():
 def test_a_clock_skew_beyond_the_recv_window_warns_instead_of_saying_safe():
     text = format_exchange_connection_status(_success_status(server_time_skew_ms=6000))
 
-    assert "CẢNH BÁO" in text
-    assert "an toàn" not in text
+    assert "WARNING" in text
+    assert "safe" not in text
 
 
 def test_an_unreachable_status_shows_the_failure_kind_and_guidance():

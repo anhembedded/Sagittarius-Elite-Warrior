@@ -1,0 +1,71 @@
+@startuml BUG-115_as_is
+title BUG-115 — AS-IS: the QtWidgets↔QML bridge is a convention repeated per host, not an abstraction
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Engine (unused by the app)" #EEEEEE {
+  class "create_quick_widget()" as factory <<function>> {
+    ensure_qml_style()
+    register_theme()
+    addImportPath(Sagittarius.UI)
+    addImageProvider(icons)
+    -- clear colour: Qt default (opaque white) --
+  }
+}
+
+package "App — 10 hand-rolled hosts (+7 preview.py)" {
+  abstract class QQuickWidget <<Qt>>
+
+  class QmlOverlay {
+    _quick = QQuickWidget()
+    setClearColor(transparent)
+    setContextProperty(Theme)
+    setSource / raise
+    root_object
+  }
+  class SymbolPickerModal
+  class MetricsDetailModal
+  class DatabaseStatusPanel
+  class PositionsPanel
+  class OpenOrdersPanel
+
+  class ChartToolbar
+  class ProgressBannerWidget
+  class StatusPillWidget
+  class StatCardRowWidget
+
+  QmlOverlay o-- QQuickWidget : composes (6 hosts)
+  SymbolPickerModal o-- QQuickWidget
+  MetricsDetailModal o-- QQuickWidget
+  DatabaseStatusPanel o-- QQuickWidget
+  PositionsPanel o-- QQuickWidget
+  OpenOrdersPanel o-- QQuickWidget
+
+  QQuickWidget <|-- ChartToolbar : subclasses (4 hosts)
+  QQuickWidget <|-- ProgressBannerWidget
+  QQuickWidget <|-- StatusPillWidget
+  QQuickWidget <|-- StatCardRowWidget
+
+  class "qml/style.py\nensure_qml_style()" as appstyle <<copy of engine's>>
+}
+
+note right of QmlOverlay
+  Every host repeats the same 12 lines:
+  style pin, Theme, context lifetime, load+raise,
+  resize mode, **setClearColor(transparent)** +
+  comment "so the parent SURFACE shows through".
+  The assumption is only true on the software
+  paint path (offscreen / widget.grab()); on the
+  texture path Qt punches a hole in the backing
+  store and clears to black → BUG-102 / BUG-115.
+  No guard stops an 11th copy.
+end note
+
+note bottom of factory
+  Exists exactly to prevent "hand-rolling a partial
+  copy" (its own docstring) — bypassed 17 times
+  after EPIC-006F removed configure_app_qml()
+  from bootstrap and EPIC-015 brought QML back.
+end note
+@enduml

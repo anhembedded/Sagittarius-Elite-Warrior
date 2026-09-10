@@ -78,7 +78,7 @@ def _click(view: DataManagementView, qapp) -> None:
     button = _cancel_button(view)
     centre = button.mapToScene(button.boundingRect().center())
     QTest.mouseClick(
-        view._progress_banner,
+        view._progress_banner.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )
@@ -106,7 +106,7 @@ def test_database_cancel_button_visibility_and_interaction(qapp, database_screen
     cancel_btn = _cancel_button(view)
     assert cancel_btn.property("enabled") is True
     label = find_qml_item(cancel_btn, "buttonLabel")
-    assert "Hủy" in label.property("text")
+    assert "Cancel" in label.property("text")
 
     # 3. Clicking cancel emits cancelRequested and transitions to CANCELLING
     cancel_signal_called = False
@@ -127,7 +127,7 @@ def test_database_cancel_button_visibility_and_interaction(qapp, database_screen
     cancel_btn = _cancel_button(view)
     assert cancel_btn.property("enabled") is False
     label = find_qml_item(cancel_btn, "buttonLabel")
-    assert label.property("text") == "Đang hủy..."
+    assert label.property("text") == "Cancelling..."
 
 
 def test_fsm_transition_alone_reaches_ui_mode_without_a_manual_set_ui_mode_call(

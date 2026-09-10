@@ -39,7 +39,7 @@ class CapitalDialogWidget(QmlOverlay):
             get_currency=lambda: view_model.selectedCurrency,
         )
         super().__init__(
-            "THIẾT LẬP VỐN BAN ĐẦU",
+            "SET INITIAL CAPITAL",
             qml_file=_QML,
             context={"vm": self._widget_vm},
             parent=parent,
@@ -57,11 +57,11 @@ class CapitalDialogWidget(QmlOverlay):
     def _build_buttons(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.addStretch(1)
-        btn_cancel = QPushButton("Hủy")
+        btn_cancel = QPushButton("Cancel")
         btn_cancel.setObjectName("btnCancelCapital")
         btn_cancel.clicked.connect(self.reject)
         row.addWidget(btn_cancel)
-        self._btn_apply: QPushButton = QPushButton("Áp dụng")
+        self._btn_apply: QPushButton = QPushButton("Apply")
         self._btn_apply.setObjectName("btnApplyCapital")
         self._btn_apply.clicked.connect(self._widget_vm.apply)
         row.addWidget(self._btn_apply)

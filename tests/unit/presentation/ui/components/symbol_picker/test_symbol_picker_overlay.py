@@ -72,7 +72,7 @@ def test_typing_narrows_the_grid_and_updates_the_count(qapp, qtbot):
     shown = _card_symbols(dialog)
     assert "BTCUSDT" not in shown
     assert "ETHBTC" in shown
-    assert dialog._result_count.text() == f"{len(shown)} kết quả"
+    assert dialog._result_count.text() == f"{len(shown)} results"
     dialog.close()
 
 
@@ -134,7 +134,7 @@ def test_an_empty_symbol_list_shows_the_loading_message(qapp, qtbot):
     dialog = _Source(symbols=[]).build(qapp, qtbot)
 
     assert dialog._status_label.isVisible()
-    assert "Đang tải" in dialog._status_label.text()
+    assert "Loading" in dialog._status_label.text()
     assert not dialog._scroll.isVisible()
     dialog.close()
 
@@ -146,7 +146,7 @@ def test_a_filter_matching_nothing_says_so_instead_of_going_blank(qapp, qtbot):
     qapp.processEvents()
 
     assert dialog._status_label.isVisible()
-    assert "Không có symbol" in dialog._status_label.text()
+    assert "No symbol" in dialog._status_label.text()
     dialog.close()
 
 

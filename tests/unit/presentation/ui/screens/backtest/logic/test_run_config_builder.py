@@ -250,7 +250,7 @@ def test_the_365_day_preset_in_tick_mode_is_refused_not_dispatched() -> None:
     )
 
     assert outcome.config is None
-    assert "7 ngày" in outcome.error_message
+    assert "7 days" in outcome.error_message
 
 
 def test_the_7_day_preset_in_tick_mode_still_runs() -> None:
@@ -321,7 +321,7 @@ def test_an_unparseable_custom_range_becomes_no_range_not_an_error() -> None:
         FakeInputs(
             time_range=FakeTimeRange(
                 preset=TimeRangePreset.CUSTOM.value,
-                customStartText="hôm qua",
+                customStartText="yesterday",
                 customEndText="",
             )
         )

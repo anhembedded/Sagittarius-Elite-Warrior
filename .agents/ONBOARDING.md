@@ -248,7 +248,7 @@ Note: **every rule file in both repos only lists PowerShell commands**. On Linux
 - **`.agents/` rule documentation and this onboarding:** English.
 - **Code, identifiers, docstrings, comments, commit subjects:** English.
 - **Conversation with the user, task files, bug reports, ROADMAP and other `Tasks/` documents:** Vietnamese.
-- **User-visible UI strings:** Vietnamese, using the agreed domain terminology (for example "Thông số Chiến lược" — strategy parameters — is distinct from the general Bot settings).
+- **User-visible UI strings and log messages:** English, using the agreed domain terminology (for example "Strategy Parameters" is distinct from the general Bot Settings).
 
 ---
 

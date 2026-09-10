@@ -1,4 +1,4 @@
-# BUG-115 — Đặt lệnh Limit thủ công luôn bị từ chối: `LIMIT order is missing time_in_force.`
+# BUG-116 — Đặt lệnh Limit thủ công luôn bị từ chối: `LIMIT order is missing time_in_force.`
 
 **Reported date:** 2026-09-10
 **Severity:** 🟠 P2 — chặn đứng toàn bộ nhánh lệnh Limit của thẻ đặt lệnh thủ công
@@ -78,3 +78,10 @@ pipeline (`Order`, `PreviewOrderQuery`, `TimeInForce`, mapper, CLI) trước khi
 luận đây là thiếu gán ở `PreviewOrderQueryHandler`, không phải lỗi ở guard hay
 thiếu exception handling như user đoán ban đầu — đúng theo `bug-fix-rule.md` §1
 (root cause trước, không đoán).
+
+Đánh số **116** (không phải 115) — `BUG-115` đã bị lấy trước lúc merge bởi một
+phiên song song (`QQuickWidget` clear-colour đen/xuyên thấu trên hardware
+compositor thật, `BOT-132`/`BOT-133`), phát hiện lúc merge nhánh vào
+`master-warrior`. Cùng lớp va chạm số đã xảy ra nhiều lần trước đây
+(`BUG-078`/`BUG-104`/`BUG-105`/`BUG-106`/`BUG-109`) — xem README §"Đánh số tay
+đã hỏng một lần".

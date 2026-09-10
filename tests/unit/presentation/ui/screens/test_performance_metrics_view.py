@@ -127,16 +127,16 @@ def test_profitable_run_colors_every_card_bullish():
     cards = build_primary_stat_cards(result)
     by_title = {card.title: card for card in cards}
 
-    net_pnl = by_title["Tổng Lãi/Lỗ (Net PnL)"]
+    net_pnl = by_title["Net PnL"]
     assert net_pnl.value == "+40.00"
     assert net_pnl.value_tone is Tone.POSITIVE
 
-    win_rate = by_title["Tỷ lệ thắng (Win Rate)"]
-    assert win_rate.badge_text == "(1/2 lệnh)"
+    win_rate = by_title["Win Rate"]
+    assert win_rate.badge_text == "(1/2 trades)"
 
-    profit_factor = by_title["Hệ số lãi (Profit Factor)"]
+    profit_factor = by_title["Profit Factor"]
     assert profit_factor.value_tone is Tone.POSITIVE
-    assert profit_factor.badge_text == ""  # not "Rủi ro" — profit_factor >= 1
+    assert profit_factor.badge_text == ""  # not "Risk" — profit_factor >= 1
 
 
 def test_losing_run_colors_net_pnl_and_profit_factor_bearish():
@@ -148,10 +148,10 @@ def test_losing_run_colors_net_pnl_and_profit_factor_bearish():
     cards = build_primary_stat_cards(result)
     by_title = {card.title: card for card in cards}
 
-    assert by_title["Tổng Lãi/Lỗ (Net PnL)"].value_tone is Tone.NEGATIVE
-    profit_factor = by_title["Hệ số lãi (Profit Factor)"]
+    assert by_title["Net PnL"].value_tone is Tone.NEGATIVE
+    profit_factor = by_title["Profit Factor"]
     assert profit_factor.value_tone is Tone.NEGATIVE
-    assert profit_factor.badge_text == "Rủi ro"
+    assert profit_factor.badge_text == "Risk"
 
 
 def test_infinite_profit_factor_displays_as_the_infinity_symbol_not_a_crash():
@@ -161,7 +161,7 @@ def test_infinite_profit_factor_displays_as_the_infinity_symbol_not_a_crash():
     )
 
     cards = build_primary_stat_cards(result)
-    profit_factor = next(c for c in cards if c.title == "Hệ số lãi (Profit Factor)")
+    profit_factor = next(c for c in cards if c.title == "Profit Factor")
 
     assert profit_factor.value == "∞"
 
@@ -173,10 +173,10 @@ def test_zero_trades_produces_four_cards_all_reading_zero_without_crashing():
 
     assert len(cards) == 4
     by_title = {card.title: card for card in cards}
-    assert by_title["Tổng Lãi/Lỗ (Net PnL)"].value == "+0.00"
-    assert by_title["Tỷ lệ thắng (Win Rate)"].value == "0.00%"
-    assert by_title["Tỷ lệ thắng (Win Rate)"].badge_text == "(0/0 lệnh)"
-    assert by_title["Hệ số lãi (Profit Factor)"].value == "0.000"
+    assert by_title["Net PnL"].value == "+0.00"
+    assert by_title["Win Rate"].value == "0.00%"
+    assert by_title["Win Rate"].badge_text == "(0/0 trades)"
+    assert by_title["Profit Factor"].value == "0.000"
 
 
 # ---------------------------------------------------------------------------
@@ -267,11 +267,7 @@ def test_net_pnl_badge_is_always_the_plain_signed_percent():
     equity_curve = [(_T0, 1000.0)] * 40
     result = _result(trades=[_trade(50.0), _trade(-10.0)], equity_curve=equity_curve)
 
-    net_pnl = next(
-        c
-        for c in build_primary_stat_cards(result)
-        if c.title == "Tổng Lãi/Lỗ (Net PnL)"
-    )
+    net_pnl = next(c for c in build_primary_stat_cards(result) if c.title == "Net PnL")
 
     assert net_pnl.badge_text == "+4.00%"
     assert net_pnl.badge_tone is Tone.POSITIVE
@@ -294,8 +290,8 @@ def test_result_warning_text_names_fee_dominance_and_high_frequency_together():
 
     warning = build_result_warning_text(result)
 
-    assert "Phí giao dịch" in warning
-    assert "Tần suất giao dịch" in warning
+    assert "Fees account for" in warning
+    assert "High trade frequency" in warning
     assert "10.0" in warning  # avg_bars_per_trade interpolated into the sentence
 
 

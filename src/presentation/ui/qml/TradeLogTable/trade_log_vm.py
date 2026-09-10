@@ -48,11 +48,11 @@ _FILTER_ORDER: tuple[TradeLogFilter, ...] = (
 _FILTER_LABELS = EnumLabels(
     TradeLogFilter,
     {
-        TradeLogFilter.ALL: "Tất cả",
-        TradeLogFilter.LONG: "Mua (LONG)",
-        TradeLogFilter.SHORT: "Bán (SHORT)",
-        TradeLogFilter.WIN: "Lệnh thắng",
-        TradeLogFilter.LOSS: "Lệnh thua",
+        TradeLogFilter.ALL: "All",
+        TradeLogFilter.LONG: "Buy (LONG)",
+        TradeLogFilter.SHORT: "Sell (SHORT)",
+        TradeLogFilter.WIN: "Winning trades",
+        TradeLogFilter.LOSS: "Losing trades",
     },
 )
 

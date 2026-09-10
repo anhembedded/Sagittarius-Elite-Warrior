@@ -14,6 +14,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from collections.abc import Iterator
 
 from PySide6.QtWidgets import QApplication
+from sagittarius_engine.infrastructure.config.config_manager import ConfigManager
+
 from Sagittarius_Elite_Warrior.src.application.ports.i_exchange_client import (
     ExchangeRequestCancelledError,
     IExchangeClient,
@@ -22,7 +24,6 @@ from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.main import create_app
-from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.sidebar import Sidebar
 from Sagittarius_Elite_Warrior.src.presentation.ui.main_window import MainWindow
 from Sagittarius_Elite_Warrior.src.presentation.ui.registry import ScreenRegistry
@@ -41,8 +42,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.screens.data_management.modul
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.settings.module import (
     SettingsScreenModule,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
-from sagittarius_engine.infrastructure.config.config_manager import ConfigManager
+from Sagittarius_Elite_Warrior.src.presentation.ui.theme_bootstrap import (
+    seed_app_theme,
+)
 
 _START_TIMEOUT_SECONDS = 5.0
 _FINISH_TIMEOUT_SECONDS = 5.0
@@ -124,12 +126,12 @@ def main() -> None:
         app = QApplication.instance() or QApplication([])
         app.setQuitOnLastWindowClosed(False)
         # EPIC-006F: no QML left in this app — apply_role() is the only
-        # remaining reader of get_theme_bridge(), and it must be seeded
-        # directly before the first widget is constructed (see
-        # app_bootstrapper.py's own bootstrap sequence, which this probe
-        # mirrors). configure_app_qml() used to do this as a side effect of
-        # creating the first QML-hosted view; there is no such view anymore.
-        get_theme_bridge(Palette.as_ui_dict())
+        # Any process that builds this app's widgets seeds its theme the
+        # same way the bootstrapper does — one call, one place
+        # (`theme_bootstrap.py`). BOT-132: this used to be a partial copy
+        # here (bridge only, no `configure_app_qml()`), which the QML
+        # embedding rework turned from silently-wrong into a hard failure.
+        seed_app_theme()
         screen_registry = ScreenRegistry()
         for module_cls in (
             DashboardScreenModule,

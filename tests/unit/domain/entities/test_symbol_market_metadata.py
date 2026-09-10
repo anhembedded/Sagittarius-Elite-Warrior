@@ -39,23 +39,23 @@ def _make_metadata(
 def test_price_filter_validation():
     pf = PriceFilter(min_price=10.0, max_price=1000.0, tick_size=0.1)
     assert pf.validate_price(100.5) is None
-    assert "nhỏ hơn giá tối thiểu" in pf.validate_price(5.0)
-    assert "vượt quá giá tối đa" in pf.validate_price(2000.0)
-    assert "không khớp bước giá tick size" in pf.validate_price(100.55)
+    assert "below the allowed minimum" in pf.validate_price(5.0)
+    assert "exceeds the allowed maximum" in pf.validate_price(2000.0)
+    assert "does not match the tick size step" in pf.validate_price(100.55)
 
 
 def test_lot_size_filter_validation():
     ls = LotSizeFilter(min_qty=0.01, max_qty=100.0, step_size=0.01)
     assert ls.validate_quantity(1.5) is None
-    assert "nhỏ hơn khối lượng tối thiểu" in ls.validate_quantity(0.005)
-    assert "vượt quá khối lượng tối đa" in ls.validate_quantity(200.0)
-    assert "không khớp bước nhảy lot size" in ls.validate_quantity(1.555)
+    assert "below the minimum quantity" in ls.validate_quantity(0.005)
+    assert "exceeds the maximum quantity" in ls.validate_quantity(200.0)
+    assert "does not match the lot size step" in ls.validate_quantity(1.555)
 
 
 def test_notional_filter_validation():
     nf = NotionalFilter(min_notional=10.0)
     assert nf.validate_notional(50.0) is None
-    assert "nhỏ hơn giá trị tối thiểu" in nf.validate_notional(5.0)
+    assert "below the exchange's minimum" in nf.validate_notional(5.0)
 
 
 def test_metadata_staleness():
@@ -72,7 +72,7 @@ def test_validate_order_intent_missing_metadata():
     result = validate_order_intent(intent, None)
     assert result.status == MetadataVerificationStatus.UNVERIFIED_MISSING
     assert result.is_valid is True
-    assert "chưa có metadata" in result.explanation
+    assert "no metadata for this trading pair" in result.explanation
 
 
 def test_validate_order_intent_stale_metadata():
@@ -82,7 +82,7 @@ def test_validate_order_intent_stale_metadata():
     result = validate_order_intent(intent, metadata, now=now)
     assert result.status == MetadataVerificationStatus.UNVERIFIED_STALE
     assert result.is_valid is True
-    assert "metadata đã cũ" in result.explanation
+    assert "metadata is stale" in result.explanation
 
 
 def test_validate_order_intent_verified_valid():
@@ -92,7 +92,7 @@ def test_validate_order_intent_verified_valid():
     assert result.status == MetadataVerificationStatus.VERIFIED
     assert result.is_valid is True
     assert result.issues == ()
-    assert "Đã xác minh theo quy tắc sàn Binance" in result.explanation
+    assert "Verified against Binance exchange rules" in result.explanation
 
 
 def test_validate_order_intent_verified_invalid_notional():
@@ -104,4 +104,4 @@ def test_validate_order_intent_verified_invalid_notional():
     assert result.status == MetadataVerificationStatus.VERIFIED
     assert result.is_valid is False
     assert len(result.issues) == 1
-    assert "nhỏ hơn giá trị tối thiểu" in result.issues[0]
+    assert "below the exchange's minimum" in result.issues[0]

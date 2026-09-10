@@ -487,7 +487,7 @@ def test_clicking_save_closes_the_dialog_without_starting_a_run(qapp, modal_pres
     dialog = view._modals_host._strategy_properties
     assert dialog is not None
     assert dialog.isVisible()
-    assert dialog.findChild(object, "btnBotParamsSave").text() == "Lưu"
+    assert dialog.findChild(object, "btnBotParamsSave").text() == "Save"
 
     state_before = modal_presenter.fsm.current_state
 

@@ -85,6 +85,6 @@ def test_cancelling_disables_the_button_and_relabels_it(load_qml, qml_item):
     label = qml_item(button, "buttonLabel")
 
     assert button.property("enabled") is False
-    assert label.property("text") == "Đang hủy..."
+    assert label.property("text") == "Cancelling..."
     quick.close()
     quick.deleteLater()

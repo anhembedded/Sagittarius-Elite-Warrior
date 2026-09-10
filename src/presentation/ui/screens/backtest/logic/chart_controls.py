@@ -6,9 +6,9 @@ from .chart_canvas_view import ChartDisplayMode
 _MODE_LABELS = EnumLabels(
     ChartDisplayMode,
     {
-        ChartDisplayMode.OHLC: "Nến Nhật",
-        ChartDisplayMode.EQUITY: "Đường Vốn",
-        ChartDisplayMode.BOTH: "Song song",
+        ChartDisplayMode.OHLC: "Candlestick",
+        ChartDisplayMode.EQUITY: "Equity Curve",
+        ChartDisplayMode.BOTH: "Side by Side",
     },
 )
 
@@ -57,7 +57,7 @@ class BacktestChartControls(QtWidgets.QWidget):
         # BOT-060: no longer a fixed "4 EMA" — draws whatever the selected
         # strategy's own build_indicators() declares (name/count vary).
         self._ema_check = self._add_checkbox(
-            layout, "chkChartEma", "Chỉ báo Chiến lược"
+            layout, "chkChartEma", "Strategy Indicators"
         )
         self._ema_check.setChecked(True)
         self._ema_check.toggled.connect(self.sig_ema_toggled.emit)

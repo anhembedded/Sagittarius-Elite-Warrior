@@ -143,8 +143,8 @@ class _TradeLogRowWidget(QFrame):  # base-exempt: excluded from DataRow by desig
         detail_layout = QHBoxLayout(self._detail)
         detail_layout.setContentsMargins(14, 14, 14, 14)
         detail_layout.setSpacing(20)
-        self._entry_reason_label = self._detail_column(detail_layout, "LÝ DO VÀO LỆNH")
-        self._exit_reason_label = self._detail_column(detail_layout, "LÝ DO THOÁT LỆNH")
+        self._entry_reason_label = self._detail_column(detail_layout, "ENTRY REASON")
+        self._exit_reason_label = self._detail_column(detail_layout, "EXIT REASON")
         self._metrics_column, self._metrics_label = self._detail_metrics_column(
             detail_layout
         )
@@ -173,7 +173,7 @@ class _TradeLogRowWidget(QFrame):  # base-exempt: excluded from DataRow by desig
     ) -> tuple[QVBoxLayout, QLabel]:
         column = QVBoxLayout()
         column.setSpacing(4)
-        title = QLabel("CHỈ SỐ ĐÁNH GIÁ & THỜI LƯỢNG")
+        title = QLabel("EVALUATION METRICS & DURATION")
         title.setStyleSheet(
             f"color: {Palette.ACCENT}; font-size: 9px; font-weight: bold; letter-spacing: 0.5px; border: none; background: transparent;"
         )
@@ -218,7 +218,7 @@ class _TradeLogRowWidget(QFrame):  # base-exempt: excluded from DataRow by desig
         self._price_diff_label.setStyleSheet(
             f"color: {diff_color}; font-size: 10px; font-weight: bold; border: none; background: transparent;"
         )
-        self._exit_time_label.setText(f"Thoát: {row.get('exitTimeText', '')}")
+        self._exit_time_label.setText(f"Exit: {row.get('exitTimeText', '')}")
 
         self._size_label.setText(row.get("positionSizeText", ""))
         self._qty_label.setText(row.get("quantityText", ""))
@@ -237,7 +237,7 @@ class _TradeLogRowWidget(QFrame):  # base-exempt: excluded from DataRow by desig
 
         self._entry_reason_label.setText(row.get("entryReasonText", ""))
         self._exit_reason_label.setText(row.get("exitReasonText", ""))
-        duration_text = f"Thời lượng: {row.get('durationText', '')}"
+        duration_text = f"Duration: {row.get('durationText', '')}"
         for item in row.get("metadataItems", []) or []:
             duration_text += f"\n{item.get('label', '')}: {item.get('value', '')}"
         self._metrics_label.setText(duration_text)

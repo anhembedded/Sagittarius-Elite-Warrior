@@ -19,16 +19,17 @@ _QML = Path(__file__).resolve().parents[3] / "qml" / "CheckboxList" / "CheckboxL
 
 _EXECUTION_TRIGGERS = (
     ("On bar close", True, ""),
-    ("Khi lệnh được khớp", True, ""),
+    ("On order fill", True, ""),
     (
-        "Trên mỗi tick của thanh lịch sử",
+        "On every tick of the historical bar",
         False,
         (
-            "Chế độ này dùng nến 1 giây, tách biệt hoàn toàn với nến bạn đã đồng bộ ở khung "
-            "thời gian khác — sẽ cần đồng bộ lại dữ liệu riêng cho khung 1 giây."
+            "This mode uses 1-second candles, entirely separate from the "
+            "candles you've synced at other timeframes — a separate sync "
+            "of 1-second data will be required."
         ),
     ),
-    ("Trên mỗi tick của thanh thời gian thực", True, ""),
+    ("On every tick of the real-time bar", True, ""),
 )
 
 #: The one row a user can actually toggle. Its `key` in `CheckboxListVM.rows`
@@ -59,7 +60,7 @@ class OrderExecutionDialog(QmlOverlay):
         self._vm = view_model
         self._widget_vm = CheckboxListVM(get_rows=self._rows)
         super().__init__(
-            "THỰC THI TẬP LỆNH",
+            "ORDER EXECUTION",
             qml_file=_QML,
             context={"vm": self._widget_vm},
             parent=parent,

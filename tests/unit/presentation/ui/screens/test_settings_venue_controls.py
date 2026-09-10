@@ -183,7 +183,7 @@ def test_saving_is_refused_outright_while_trading_is_on(
 
     assert config.values[ConfigKeys.EXCHANGE_TRADING_VENUE.value] == "disabled"
     assert view_model.statusIsError is True
-    assert "Đang giao dịch" in view_model.statusMessage
+    assert "Trading is active" in view_model.statusMessage
 
 
 def test_the_combos_are_disabled_while_trading_is_on(

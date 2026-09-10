@@ -46,7 +46,7 @@ def test_a_buy_fill_is_a_green_up_marker() -> None:
 
     _, price, label, color, direction = marker
     assert price == 64000.0
-    assert label == "MUA"
+    assert label == "BUY"
     assert color == BULL_COLOR
     assert direction == "up"
 
@@ -55,7 +55,7 @@ def test_a_sell_fill_is_a_red_down_marker() -> None:
     marker = order_filled_marker(_event(order=_order(OrderSide.SELL)))
 
     _, _, label, color, direction = marker
-    assert label == "BÁN"
+    assert label == "SELL"
     assert color == BEAR_COLOR
     assert direction == "down"
 
@@ -63,7 +63,7 @@ def test_a_sell_fill_is_a_red_down_marker() -> None:
 def test_a_reduce_only_fill_is_labelled_as_closing() -> None:
     marker = order_filled_marker(_event(order=_order(OrderSide.SELL, reduce_only=True)))
 
-    assert marker[2] == "BÁN (Đóng)"
+    assert marker[2] == "SELL (Close)"
 
 
 def test_uses_the_orders_own_fill_time_when_present() -> None:

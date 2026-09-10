@@ -54,7 +54,7 @@ ColumnLayout {
                 font.pixelSize: 10
             }
             Text {
-                text: "Thoát: " + modelData.exitTimeText + " · " + modelData.durationText
+                text: "Exit: " + modelData.exitTimeText + " · " + modelData.durationText
                 textFormat: Text.PlainText
                 color: Theme.muted
                 font.pixelSize: 10
@@ -141,7 +141,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
                 Text {
-                    text: "LÝ DO VÀO LỆNH"
+                    text: "ENTRY REASON"
                     textFormat: Text.PlainText
                     color: Theme.muted
                     font.pixelSize: 9
@@ -165,7 +165,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
                 Text {
-                    text: "LÝ DO THOÁT LỆNH"
+                    text: "EXIT REASON"
                     textFormat: Text.PlainText
                     color: Theme.muted
                     font.pixelSize: 9
@@ -189,7 +189,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 4
                 Text {
-                    text: "ĐÁNH GIÁ & THỜI LƯỢNG"
+                    text: "RATING & DURATION"
                     textFormat: Text.PlainText
                     color: Theme.muted
                     font.pixelSize: 9
@@ -207,7 +207,7 @@ ColumnLayout {
                         Text {
                             id: durationLabel
                             anchors.centerIn: parent
-                            text: "Thời lượng " + modelData.durationText
+                            text: "Duration " + modelData.durationText
                             textFormat: Text.PlainText
                             color: Theme.textPrimary
                             font.pixelSize: 10

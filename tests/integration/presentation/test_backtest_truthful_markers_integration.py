@@ -89,19 +89,19 @@ def test_backtest_truthful_markers_integration(qtbot, sample_long_only_result) -
     # 3. Assert chart markers: Long-only result has strictly LONG_ENTRY and LONG_EXIT
     markers = trade_flag_markers(sample_long_only_result)
     assert len(markers) == 2
-    assert markers[0][2] == _LONG_ENTRY_LABEL  # "MUA (LONG)"
-    assert markers[1][2] == _LONG_EXIT_LABEL  # "ĐÓNG LONG"
+    assert markers[0][2] == _LONG_ENTRY_LABEL  # "BUY (LONG)"
+    assert markers[1][2] == _LONG_EXIT_LABEL  # "CLOSE LONG"
 
     # Must NOT contain ambiguous "SELL" or "SHORT"
     for _, _, label, _, _ in markers:
         assert label != "SELL"
-        assert label != "BÁN (SHORT)"
+        assert label != "SELL (SHORT)"
         assert "SHORT" not in label
 
     # 4. Assert Trade Logs table in ViewModel
     rows = presenter._view_model.trade_log.rows
     assert len(rows) == 1
-    assert "vị thế mua" in rows[0]["positionLabel"]
+    assert "long position" in rows[0]["positionLabel"]
     assert "SHORT" not in rows[0]["positionLabel"]
 
     # 5. Filter tab "short" contains 0 items in long-only engine

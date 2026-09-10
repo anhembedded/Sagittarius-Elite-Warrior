@@ -28,10 +28,10 @@ class _Strategy:
     def __init__(self, params: dict[str, Any] | None = None) -> None:
         params = params or {}
         if "period" in params and int(params["period"]) <= 0:
-            raise ValueError("period phải > 0")
+            raise ValueError("period must be > 0")
         self.inputs = [
             ScriptInput(
-                name="period", label="Chu kỳ", kind=InputKind.INT, default=14, minval=1
+                name="period", label="Period", kind=InputKind.INT, default=14, minval=1
             )
         ]
 
@@ -174,7 +174,7 @@ def test_no_metadata_clears_any_previous_verdict(qtbot) -> None:
     proves nothing — that is already its default. Seeding a different verdict
     first is what shows the method actually writes one."""
     coordinator, view_model, _state, _logger = _build()
-    view_model.set_market_rule_verification("VERIFIED", "đã xác minh")
+    view_model.set_market_rule_verification("VERIFIED", "verified")
     assert view_model.marketRuleVerificationStatus == "VERIFIED"
 
     coordinator.refresh_market_rule_verification()

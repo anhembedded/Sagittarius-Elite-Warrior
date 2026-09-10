@@ -43,17 +43,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QUrl, Signal
-from PySide6.QtQuickWidgets import QQuickWidget
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
-from ..style import ensure_qml_style
+from ...kit import StyleRole
+from ..embed import QuickSurface
 
 _QML_FILE = Path(__file__).with_name("ProgressBanner.qml")
 
 
-class ProgressBannerWidget(QQuickWidget):
+class ProgressBannerWidget(QuickSurface):
     """@brief Inline (non-modal) host for `ProgressBanner.qml`.
 
     @details Plain setters, not Qt `Property`/`Signal` reflection into QML —
@@ -67,38 +66,18 @@ class ProgressBannerWidget(QQuickWidget):
     cancelRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        # Every caller places this banner on a SURFACE-coloured card
+        # (`backtest_top_panel.py`'s BG_CARD frame, Data Management's and Dev
+        # Board's panels); `QuickSurface` clears to that token (BUG-115).
+        super().__init__(
+            _QML_FILE,
+            surface=StyleRole.SURFACE,
+            object_name="progressBannerQuick",
+            parent=parent,
+        )
         self.setObjectName("progressBannerWidget")
-        ensure_qml_style()
-        self.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        # Transparent so the QtWidgets card (`StyleRole.SURFACE`) behind this
-        # widget shows through — same reasoning as `QmlOverlay`/
-        # `SymbolPickerModal`, without their modal chrome.
-        self.setClearColor(Qt.GlobalColor.transparent)
-
-        # A QML context property is a borrowed pointer; held on `self` so
-        # `Theme` stays alive for as long as this scene can read it (same
-        # note as `QmlOverlay`/`SymbolPickerModal`).
-        self._theme = get_theme_bridge()
-        self.rootContext().setContextProperty("Theme", self._theme)
-
-        self.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-        if self.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML_FILE}\n"
-                + "\n".join(error.toString() for error in self.errors())
-            )
-
-        root = self.rootObject()
-        if root is None:  # pragma: no cover - status check above already raises
-            raise RuntimeError("ProgressBanner QML root object is missing")
-        self._root = root
-        root.cancelRequested.connect(self.cancelRequested)
-
-    @property
-    def root_object(self) -> QObject:
-        """The loaded QML root, for tests to reach in by `objectName`."""
-        return self._root
+        self._root = self.root_object
+        self._root.cancelRequested.connect(self.cancelRequested)
 
     def set_status_text(self, text: str) -> None:
         self._root.setProperty("statusText", text)

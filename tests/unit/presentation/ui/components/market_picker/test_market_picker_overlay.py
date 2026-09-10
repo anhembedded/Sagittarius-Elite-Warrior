@@ -62,7 +62,7 @@ def test_choosing_emits_the_market_id_and_closes(qapp):
     item = find_qml_item(dialog.root_object, "selectItem_futures_coin_m")
     centre = item.mapToScene(item.boundingRect().center())
     QTest.mouseClick(
-        dialog._quick,
+        dialog.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

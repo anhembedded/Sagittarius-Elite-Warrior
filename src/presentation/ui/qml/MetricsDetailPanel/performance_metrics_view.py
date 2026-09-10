@@ -9,7 +9,7 @@ from Sagittarius_Elite_Warrior.src.domain.backtesting.backtest_result import (
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import Tone
 
 _INFINITY_DISPLAY = "∞"  # "∞" — profit_factor is float("inf") with 0 losers
-_LOSING_PROFIT_FACTOR_BADGE = "Rủi ro"
+_LOSING_PROFIT_FACTOR_BADGE = "Risk"
 #: A figure with no verdict attached — a raw number in the extended dump,
 #: or a drawdown of exactly zero. `Tone.NEUTRAL` resolves to `textPrimary`,
 #: which is what the old empty-string sentinel meant before the widget layer
@@ -25,11 +25,9 @@ _WIN_RATE_SUCCESS_THRESHOLD = 50.0
 #: sentence and doesn't fight the badge's layout). Informational only — task
 #: explicitly warns against "nhuộm đỏ toàn màn hình như thể sai", so this is
 #: one quiet line, not a colored-in card.
-_FEE_WARNING_NOTE = (
-    '⚠ Phí giao dịch chiếm phần lớn kết quả — xem "Total Fees Paid" ở chỉ số mở rộng.'
-)
+_FEE_WARNING_NOTE = '⚠ Fees account for a large share of the result — see "Total Fees Paid" in the extended metrics.'
 _FREQUENCY_WARNING_NOTE = (
-    "⚠ Tần suất giao dịch cao — trung bình chỉ {bars:.1f} bar/lệnh."
+    "⚠ High trade frequency — averaging only {bars:.1f} bars/trade."
 )
 #: BOT-080 — same dedicated-line mechanism as the 2 notes above, extended to
 #: the in-sample/out-of-sample check. Interpolates the 2 raw numbers
@@ -37,7 +35,7 @@ _FREQUENCY_WARNING_NOTE = (
 #: self-explanatory without a popup click, per the user's explicit decision
 #: to reuse BOT-079's resultWarningText for this rather than a separate UI.
 _OUT_OF_SAMPLE_DIVERGENCE_NOTE = (
-    "⚠ Có thể đang overfit — In-sample {in_sample:+.2f}% nhưng "
+    "⚠ Possible overfitting — In-sample {in_sample:+.2f}% but "
     "Out-of-sample {out_of_sample:+.2f}%."
 )
 
@@ -142,7 +140,7 @@ def build_primary_stat_cards(result: BacktestResult) -> list[StatCardData]:
 
     return [
         StatCardData(
-            title="Tổng Lãi/Lỗ (Net PnL)",
+            title="Net PnL",
             value=_signed(metrics.net_profit),
             value_tone=profit_tone,
             suffix="USD",
@@ -150,7 +148,7 @@ def build_primary_stat_cards(result: BacktestResult) -> list[StatCardData]:
             badge_tone=profit_tone,
         ),
         StatCardData(
-            title="Mức sụt giảm tối đa (Max Drawdown)",
+            title="Max Drawdown",
             value=f"{drawdown_amount:,.2f}",
             value_tone=Tone.NEGATIVE if drawdown_amount > 0 else _NEUTRAL,
             suffix="USD",
@@ -158,15 +156,15 @@ def build_primary_stat_cards(result: BacktestResult) -> list[StatCardData]:
             badge_tone=Tone.NEGATIVE,
         ),
         StatCardData(
-            title="Tỷ lệ thắng (Win Rate)",
+            title="Win Rate",
             value=f"{metrics.percent_profitable:.2f}%",
             value_tone=win_rate_tone,
             suffix="",
-            badge_text=f"({winners}/{total} lệnh)",
+            badge_text=f"({winners}/{total} trades)",
             badge_tone=_NEUTRAL,
         ),
         StatCardData(
-            title="Hệ số lãi (Profit Factor)",
+            title="Profit Factor",
             value=_profit_factor_text(metrics.profit_factor),
             value_tone=profit_factor_tone,
             suffix="",

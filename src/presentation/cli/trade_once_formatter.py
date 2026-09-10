@@ -21,38 +21,38 @@ from Sagittarius_Elite_Warrior.src.domain.value_objects.signal import Signal
 
 _SAFETY_GATE_TEXT: dict[ExecuteOrderSafetyGate, str] = {
     ExecuteOrderSafetyGate.TRADING_VENUE_DISABLED: (
-        "TradingVenue đang DISABLED — bật ở exchange.trading_venue=futures_testnet."
+        "TradingVenue is DISABLED — enable it via exchange.trading_venue=futures_testnet."
     ),
     ExecuteOrderSafetyGate.TRADING_SWITCH_OFF: (
-        "Công tắc trading.enabled đang tắt — bật bằng EnableTradingCommand trước."
+        "The trading.enabled switch is off — turn it on with EnableTradingCommand first."
     ),
     ExecuteOrderSafetyGate.CONNECTION_NOT_READY: (
-        "Kết nối sàn chưa sẵn sàng (không reachable, hoặc Hedge Mode) — chạy "
-        "`exchange-status` để xem chi tiết."
+        "Exchange connection not ready (unreachable, or Hedge Mode) — run "
+        "`exchange-status` for details."
     ),
 }
 
 _VIOLATION_TEXT: dict[TradingLimitViolation, str] = {
-    TradingLimitViolation.MAX_ORDERS_PER_SESSION: "đã chạm số lệnh tối đa/phiên",
-    TradingLimitViolation.MAX_NOTIONAL_PER_ORDER: "notional lệnh vượt trần",
-    TradingLimitViolation.MAX_POSITIONS_PER_SYMBOL: "đã có vị thế đang mở",
-    TradingLimitViolation.MIN_ORDER_INTERVAL: "quá gần lệnh trước trên cùng symbol",
+    TradingLimitViolation.MAX_ORDERS_PER_SESSION: "reached the max orders per session",
+    TradingLimitViolation.MAX_NOTIONAL_PER_ORDER: "order notional exceeds the cap",
+    TradingLimitViolation.MAX_POSITIONS_PER_SYMBOL: "already has an open position",
+    TradingLimitViolation.MIN_ORDER_INTERVAL: "too soon after the previous order on this symbol",
 }
 
 
 def format_candle_and_signal(
     candle: MarketData, strategy_key: str, signal: Signal | None
 ) -> str:
-    header = f"Nến gần nhất : {candle.close_time} UTC  close={candle.close_price:,.2f}"
+    header = f"Latest candle: {candle.close_time} UTC  close={candle.close_price:,.2f}"
     if signal is None:
         return (
             f"{header}\n"
-            f"Chiến lược   : {strategy_key} → không có tín hiệu actionable "
-            "(HOLD, hoặc chỉ báo chưa đủ dữ liệu warm-up)"
+            f"Strategy     : {strategy_key} → no actionable signal "
+            "(HOLD, or the indicator has not warmed up yet)"
         )
     return (
         f"{header}\n"
-        f"Chiến lược   : {strategy_key} → SIGNAL {signal.action.value} ({signal.reason})"
+        f"Strategy     : {strategy_key} → SIGNAL {signal.action.value} ({signal.reason})"
     )
 
 
@@ -75,9 +75,7 @@ def format_limit_checks(
         "✔" if by_violation[TradingLimitViolation.MIN_ORDER_INTERVAL] else "✘"
     )
 
-    position_text = (
-        "chưa có" if context.open_position_count_for_symbol == 0 else "đang mở"
-    )
+    position_text = "none" if context.open_position_count_for_symbol == 0 else "open"
     interval_text = (
         "n/a"
         if context.time_since_last_order_for_symbol is None
@@ -85,24 +83,24 @@ def format_limit_checks(
     )
 
     return (
-        f"Hạn mức      : lệnh {context.orders_sent_this_session + 1}/"
+        f"Limits       : order {context.orders_sent_this_session + 1}/"
         f"{limits.max_orders_per_session} {orders_mark}   "
         f"notional {context.order_notional:,.2f} ≤ {limits.max_notional_per_order:,.2f} "
-        f"{notional_mark}   vị thế: {position_text} {position_mark}\n"
-        f"               khoảng cách lệnh trước: {interval_text} {interval_mark}"
+        f"{notional_mark}   position: {position_text} {position_mark}\n"
+        f"               time since previous order: {interval_text} {interval_mark}"
     )
 
 
 def format_result(result: ExecuteOrderResult, live_requested: bool) -> str:
     if result.blocked_by is not None and result.preview is None:
         gate = _SAFETY_GATE_TEXT.get(result.blocked_by, str(result.blocked_by))  # type: ignore[arg-type]
-        return f"Chặn trước cả khi xem lệnh: {gate}\nKhông gửi lệnh nào."
+        return f"Blocked before the order preview even ran: {gate}\nNo order was sent."
 
     if isinstance(result.blocked_by, TradingLimitViolation):
         reason = _VIOLATION_TEXT.get(result.blocked_by, result.blocked_by.value)
         return (
-            f"Hạn mức      : ✘ CHẶN — {reason} ({result.blocked_by.value})\n"
-            "Không gửi lệnh nào."
+            f"Limits       : ✘ BLOCKED — {reason} ({result.blocked_by.value})\n"
+            "No order was sent."
         )
 
     if result.blocked_by is ExecuteOrderNotionalRejection.MIN_NOTIONAL:
@@ -112,23 +110,26 @@ def format_result(result: ExecuteOrderResult, live_requested: bool) -> str:
         # through.
         preview = result.preview
         if preview is None:  # pragma: no cover - handler always populates it
-            return "Trạng thái   : ✘ TỪ CHỐI MIN_NOTIONAL\nKhông gửi lệnh nào."
+            return "Status       : ✘ REJECTED MIN_NOTIONAL\nNo order was sent."
         return (
-            f"Trạng thái   : ✘ TỪ CHỐI MIN_NOTIONAL — "
+            f"Status       : ✘ REJECTED MIN_NOTIONAL — "
             f"{preview.estimated_notional:,.2f} USDT < "
             f"{preview.min_notional:,.2f} USDT\n"
-            "Không gửi lệnh nào."
+            "No order was sent."
         )
 
     if not live_requested:
-        return "Chế độ       : DRY-RUN → dừng ở đây. Thêm --live để đặt thật."
+        return (
+            "Mode         : DRY-RUN → stopping here. Add --live to place a real order."
+        )
 
     order = result.submitted_order
     if order is None:
-        return "Chế độ       : LIVE, nhưng không có lệnh nào được gửi."
+        return "Mode         : LIVE, but no order was sent."
     return (
-        "Chế độ       : LIVE\n"
-        f"Đã gửi       : {order.client_order_id}   → {order.status.name}\n"
-        "Trạng thái   : sàn đã nhận — trạng thái khớp thật do EPIC-021H's "
-        "User Data Stream báo lại, không có trong response gửi lệnh đồng bộ."
+        "Mode         : LIVE\n"
+        f"Submitted    : {order.client_order_id}   → {order.status.name}\n"
+        "Status       : accepted by the exchange — the real fill status is "
+        "reported back by EPIC-021H's User Data Stream, not present in the "
+        "synchronous order-submission response."
     )

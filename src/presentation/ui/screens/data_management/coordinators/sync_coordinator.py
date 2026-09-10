@@ -134,7 +134,7 @@ class SyncCoordinator:
                 return
 
             if token_to_use is not None and token_to_use.is_cancelled():
-                self._ui_log_signal(f"Đã dừng đồng bộ {symbol} ({interval}).")
+                self._ui_log_signal(f"Sync stopped for {symbol} ({interval}).")
                 self._tracker.finish_action(action.action_id, ActionOutcome.CANCELLED)
             else:
                 self._ui_log_signal(
@@ -186,7 +186,7 @@ class SyncCoordinator:
                 return
 
             if token_to_use is not None and token_to_use.is_cancelled():
-                self._ui_log_signal("Đã dừng quá trình đồng bộ hàng loạt.")
+                self._ui_log_signal("Bulk sync process stopped.")
                 self._tracker.finish_action(action.action_id, ActionOutcome.CANCELLED)
             else:
                 self._tracker.finish_action(action.action_id, ActionOutcome.SUCCEEDED)
@@ -204,7 +204,7 @@ class SyncCoordinator:
             self._ui_log_signal(event.message)
 
         if event.total_targets > 0:
-            msg = f"Đang đồng bộ: {event.current_index}/{event.total_targets} mục"
+            msg = f"Syncing: {event.current_index}/{event.total_targets} items"
             if event.symbol and event.interval:
                 msg += f" ({event.symbol} {event.interval})"
             self._ui_single_sync_progress_signal(

@@ -69,7 +69,7 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.logic.timefr
 
 #: Shown when the strategy picker is empty — a run cannot be guessed into
 #: existence, so this is a refusal, not a default.
-NO_STRATEGY_MESSAGE = "Chưa có chiến lược nào được đăng ký."
+NO_STRATEGY_MESSAGE = "No strategy has been registered yet."
 
 #: A kline can be closed locally yet still be absent from the exchange's
 #: historical endpoint for a short publication window. Live-ended backtests

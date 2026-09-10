@@ -60,7 +60,7 @@ def test_trade_log_row_to_qml_formats_the_position_label_with_stable_index():
 
     qml_row = trade_log_row_to_qml(row)
 
-    assert qml_row["positionLabel"] == "#216 vị thế mua"
+    assert qml_row["positionLabel"] == "#216 long position"
     assert qml_row["index"] == "216"
 
 
@@ -79,7 +79,7 @@ def test_trade_log_row_to_qml_labels_a_short_position_distinctly():
 
     qml_row = trade_log_row_to_qml(row)
 
-    assert qml_row["positionLabel"] == "#7 vị thế bán"
+    assert qml_row["positionLabel"] == "#7 short position"
 
 
 def test_trade_log_row_to_qml_exposes_a_bare_side_badge_alongside_the_sentence():
@@ -214,7 +214,7 @@ def test_trade_log_row_to_qml_falls_back_to_a_placeholder_for_a_blank_entry_reas
     assert qml_row["entryReasonText"] == "—"
 
 
-def test_trade_log_row_to_qml_translates_exit_reason_to_vietnamese():
+def test_trade_log_row_to_qml_translates_exit_reason_to_readable_text():
     row = TradeLogRow(
         1,
         _T0,
@@ -229,7 +229,7 @@ def test_trade_log_row_to_qml_translates_exit_reason_to_vietnamese():
 
     qml_row = trade_log_row_to_qml(row)
 
-    assert qml_row["exitReasonText"] == "Kết thúc backtest"
+    assert qml_row["exitReasonText"] == "End of backtest"
 
 
 def test_trade_log_row_to_qml_formats_duration_as_hours_and_minutes():

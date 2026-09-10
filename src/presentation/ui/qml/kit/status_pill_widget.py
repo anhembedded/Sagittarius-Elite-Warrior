@@ -51,17 +51,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
-from ..style import ensure_qml_style
+from ...kit import StyleRole
+from ..embed import QuickSurface
 
 _QML_FILE = Path(__file__).with_name("StatusPill.qml")
 
 
-class StatusPillWidget(QQuickWidget):
+class StatusPillWidget(QuickSurface):
     """@brief Inline (non-modal) host for `StatusPill.qml`.
 
     @details Plain setters, not Qt `Property`/`Signal` reflection into
@@ -72,36 +70,16 @@ class StatusPillWidget(QQuickWidget):
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
+        # Sits in `DevBoardPanel`'s System Controls panel header — a SURFACE;
+        # `QuickSurface` clears to that token (BUG-115).
+        super().__init__(
+            _QML_FILE,
+            surface=StyleRole.SURFACE,
+            object_name="statusPillQuick",
+            parent=parent,
+        )
         self.setObjectName("statusPillWidget")
-        ensure_qml_style()
-        self.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        # Transparent so the QtWidgets header row behind this widget shows
-        # through — same reasoning as `ProgressBannerWidget`/`QmlOverlay`.
-        self.setClearColor(Qt.GlobalColor.transparent)
-
-        # A QML context property is a borrowed pointer; held on `self` so
-        # `Theme` stays alive for as long as this scene can read it (same
-        # note as every other host).
-        self._theme = get_theme_bridge()
-        self.rootContext().setContextProperty("Theme", self._theme)
-
-        self.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-        if self.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML_FILE}\n"
-                + "\n".join(error.toString() for error in self.errors())
-            )
-
-        root = self.rootObject()
-        if root is None:  # pragma: no cover - status check above already raises
-            raise RuntimeError("StatusPill QML root object is missing")
-        self._root = root
-
-    @property
-    def root_object(self) -> QObject:
-        """The loaded QML root, for tests to reach in by `objectName`."""
-        return self._root
+        self._root = self.root_object
 
     def set_text(self, text: str) -> None:
         self._root.setProperty("text", text)

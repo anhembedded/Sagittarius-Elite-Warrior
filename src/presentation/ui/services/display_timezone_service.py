@@ -56,7 +56,7 @@ def get_display_timezone_label(tz_name: str) -> str:
     if tz_name == DEFAULT_TIMEZONE:
         return "UTC"
     if tz_name == SYSTEM_TIMEZONE_KEY:
-        return f"Hệ thống ({get_system_timezone_name()})"
+        return f"System ({get_system_timezone_name()})"
     return tz_name
 
 
@@ -64,30 +64,30 @@ def get_supported_timezones() -> list[dict[str, str]]:
     """Returns list of selectable timezone options for UI pickers."""
     sys_name = get_system_timezone_name()
     options = [
-        {"id": "UTC", "label": "UTC (Giờ phối hợp quốc tế)", "shortLabel": "UTC"},
+        {"id": "UTC", "label": "UTC (Coordinated Universal Time)", "shortLabel": "UTC"},
         {
             "id": SYSTEM_TIMEZONE_KEY,
-            "label": f"Giờ hệ thống ({sys_name})",
-            "shortLabel": f"Hệ thống ({sys_name})",
+            "label": f"System time ({sys_name})",
+            "shortLabel": f"System ({sys_name})",
         },
         {
             "id": "Asia/Ho_Chi_Minh",
-            "label": "Asia/Ho_Chi_Minh (Việt Nam / GMT+7)",
+            "label": "Asia/Ho_Chi_Minh (Vietnam / GMT+7)",
             "shortLabel": "Asia/Ho_Chi_Minh",
         },
         {
             "id": "Asia/Tokyo",
-            "label": "Asia/Tokyo (Nhật Bản / GMT+9)",
+            "label": "Asia/Tokyo (Japan / GMT+9)",
             "shortLabel": "Asia/Tokyo",
         },
         {
             "id": "Europe/London",
-            "label": "Europe/London (Anh)",
+            "label": "Europe/London (UK)",
             "shortLabel": "Europe/London",
         },
         {
             "id": "America/New_York",
-            "label": "America/New_York (Mỹ - Eastern)",
+            "label": "America/New_York (US - Eastern)",
             "shortLabel": "America/New_York",
         },
     ]

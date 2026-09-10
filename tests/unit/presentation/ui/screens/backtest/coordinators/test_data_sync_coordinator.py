@@ -102,13 +102,13 @@ def test_no_coverage_falls_back_to_the_requested_start() -> None:
 
 
 def test_coverage_message_names_the_specific_shortfall() -> None:
-    assert "Thiếu nến từ" in DataSyncCoordinator.format_coverage_message(
+    assert "Missing candles from" in DataSyncCoordinator.format_coverage_message(
         _coverage(missing=[datetime(2026, 8, 15, tzinfo=UTC)])
     )
-    assert "trùng thời điểm" in DataSyncCoordinator.format_coverage_message(
+    assert "duplicate-timestamp" in DataSyncCoordinator.format_coverage_message(
         _coverage(duplicates=3)
     )
-    assert "chưa đóng" in DataSyncCoordinator.format_coverage_message(
+    assert "unclosed candle" in DataSyncCoordinator.format_coverage_message(
         _coverage(unclosed=True)
     )
 
@@ -131,17 +131,17 @@ def test_a_sync_that_leaves_the_gap_open_reports_failure_not_success() -> None:
     coordinator.run_sync(_config())
 
     assert events[0][0] == "failed"
-    assert "trùng thời điểm" in events[0][2]
+    assert "duplicate-timestamp" in events[0][2]
 
 
 def test_a_raising_sync_reports_failure_with_the_message() -> None:
     coordinator, _dispatcher, events = _build(
-        _Dispatcher(raises=RuntimeError("mạng hỏng"))
+        _Dispatcher(raises=RuntimeError("network down"))
     )
 
     coordinator.run_sync(_config())
 
-    assert events == [("failed", 7, "mạng hỏng")]
+    assert events == [("failed", 7, "network down")]
 
 
 def test_a_cancelled_sync_emits_cancelled_rather_than_falling_silent() -> None:

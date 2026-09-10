@@ -52,4 +52,4 @@ class HealthStatusReport:
         detail = ", ".join(
             f"{name.capitalize()}: {state}" for name, state in self.components.items()
         )
-        return f"[Health] Trạng thái hệ thống: {self.status} ({detail})"
+        return f"[Health] System status: {self.status} ({detail})"

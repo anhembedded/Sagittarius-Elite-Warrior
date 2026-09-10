@@ -116,7 +116,7 @@ def test_order_blocked_reports_through_emit_log():
     coordinator.on_order_blocked("BTCUSDT", "max_notional_per_order")
 
     emit_log.assert_called_once_with(
-        "Lệnh live bị chặn (BTCUSDT): max_notional_per_order"
+        "Live order blocked (BTCUSDT): max_notional_per_order"
     )
 
 

@@ -70,7 +70,7 @@ def _run(symbol: str, price: Decimal, quantities: list[Decimal]) -> None:
     )
     metadata = provider.get_or_fetch(symbol)
     if metadata is None:
-        print(f"{symbol}: không tìm thấy trong catalog futures testnet.")
+        print(f"{symbol}: not found in the futures testnet catalog.")
         return
 
     print(
@@ -87,7 +87,7 @@ def _run(symbol: str, price: Decimal, quantities: list[Decimal]) -> None:
             accepted_qty, rounded_price, metadata.min_notional
         )
         verdict = (
-            "HỢP LỆ" if check is NotionalCheck.SUFFICIENT else "TỪ CHỐI (MIN_NOTIONAL)"
+            "ACCEPTED" if check is NotionalCheck.SUFFICIENT else "REJECTED (MIN_NOTIONAL)"
         )
         comparator = "≥" if check is NotionalCheck.SUFFICIENT else "<"
         print(

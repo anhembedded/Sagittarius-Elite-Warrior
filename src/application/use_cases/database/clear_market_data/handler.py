@@ -28,7 +28,7 @@ class ClearMarketDataCommandHandler(
         try:
             if command.purge_all:
                 count = self._repository.purge_all()
-                msg = f"Đã xóa toàn bộ cơ sở dữ liệu ({count} database shards)."
+                msg = f"Purged the entire database ({count} database shards)."
                 logger.info(msg)
                 return ClearMarketDataResult(
                     deleted_records=count, success=True, message=msg
@@ -38,7 +38,7 @@ class ClearMarketDataCommandHandler(
                 return ClearMarketDataResult(
                     deleted_records=0,
                     success=False,
-                    message="Mã symbol không được để trống.",
+                    message="Symbol cannot be empty.",
                 )
 
             count = self._repository.clear_klines(
@@ -47,13 +47,13 @@ class ClearMarketDataCommandHandler(
             interval_label = (
                 f" ({command.interval.value})" if command.interval is not None else ""
             )
-            msg = f"Đã xóa thành công {count:,} nến của {command.symbol.strip()}{interval_label}."
+            msg = f"Successfully deleted {count:,} candles for {command.symbol.strip()}{interval_label}."
             logger.info(msg)
             return ClearMarketDataResult(
                 deleted_records=count, success=True, message=msg
             )
         except Exception as exc:  # noqa: BLE001 - boundary: wrap exception in result
-            err_msg = f"Lỗi khi xóa dữ liệu: {exc}"
+            err_msg = f"Error while clearing data: {exc}"
             logger.error(err_msg)
             return ClearMarketDataResult(
                 deleted_records=0, success=False, message=err_msg

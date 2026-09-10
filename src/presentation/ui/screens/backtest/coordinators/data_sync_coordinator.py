@@ -73,12 +73,12 @@ class DataSyncCoordinator:
     @staticmethod
     def format_coverage_message(coverage: BacktestRangeCoverage) -> str:
         if coverage.missing_open_times:
-            return f"Thiếu nến từ {coverage.missing_open_times[0]:%Y-%m-%d %H:%M UTC}."
+            return f"Missing candles from {coverage.missing_open_times[0]:%Y-%m-%d %H:%M UTC}."
         if coverage.duplicate_candles:
-            return f"Dữ liệu có {coverage.duplicate_candles} nến trùng thời điểm."
+            return f"Data has {coverage.duplicate_candles} duplicate-timestamp candles."
         if coverage.has_unclosed_candle:
-            return "Khoảng dữ liệu chứa nến chưa đóng."
-        return "Dữ liệu local chưa đủ cho khoảng Backtest đã chọn."
+            return "The data range contains an unclosed candle."
+        return "Local data is not sufficient for the selected Backtest range."
 
     @staticmethod
     def resolve_sync_start(
@@ -198,7 +198,7 @@ class DataSyncCoordinator:
         coverage = self.probe_coverage(config)
         if not coverage.is_fully_covered:
             message = (
-                "Đồng bộ chưa đủ để chạy Backtest: "
+                "Sync is not sufficient to run the backtest: "
                 f"{self.format_coverage_message(coverage)}"
             )
             self._log_dev_trace(

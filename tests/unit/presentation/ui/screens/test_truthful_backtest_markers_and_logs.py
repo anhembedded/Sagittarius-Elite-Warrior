@@ -106,7 +106,7 @@ def test_trade_markers_reflect_long_only_execution_truth():
     # Exit label must never confuse the user by claiming to be a SHORT entry
     assert "SHORT" not in exit1_label.upper()
     assert "SELL" not in exit1_label.upper()
-    assert "ĐÓNG" in exit1_label or "EXIT" in exit1_label
+    assert "CLOSE" in exit1_label or "EXIT" in exit1_label
 
 
 def test_trade_markers_reflect_short_execution_truth():

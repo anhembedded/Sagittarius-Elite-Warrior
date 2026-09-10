@@ -135,7 +135,7 @@ def run_batch_approach(candles, registry, scripts_to_run):
 
 
 def main():
-    print("Khởi tạo IndicatorScriptRegistry...")
+    print("Initializing IndicatorScriptRegistry...")
     registry = IndicatorScriptRegistry()
     registry.register("ema_20", Ema20Script)
     registry.register("ema_50", Ema50Script)
@@ -145,33 +145,33 @@ def main():
     scripts_to_run = ["ema_20", "ema_50", "ema_100", "ema_200"]
 
     candles_count = 10000
-    print(f"Tạo {candles_count} nến (MarketData) mock...")
+    print(f"Generating {candles_count} mock candles (MarketData)...")
     candles = create_mock_candles(candles_count)
 
     print(
-        f"\n--- BENCHMARK: CHẠY 4 CHỈ BÁO ({', '.join(scripts_to_run)}) - {candles_count} NẾN ---"
+        f"\n--- BENCHMARK: RUNNING 4 INDICATORS ({', '.join(scripts_to_run)}) - {candles_count} CANDLES ---"
     )
 
     current_time, current_metrics = run_current_approach(
         candles, registry, scripts_to_run
     )
-    print("\n[HIỆN TẠI] Runner phát Signal báo vẽ từng nến cho TỪNG CHỈ BÁO:")
-    print(f"- Thời gian xử lý : {current_time:.4f} giây")
-    print(f"- Số lần gọi vẽ (emit) : {current_metrics.emit_count:,} lần")
-    print(f"- Data rác bị RAM copy: {current_metrics.total_data_copied:,} phần tử")
+    print("\n[CURRENT] Runner emits a redraw signal per candle for EACH indicator:")
+    print(f"- Processing time : {current_time:.4f} sec")
+    print(f"- Draw calls (emit) : {current_metrics.emit_count:,}")
+    print(f"- Garbage copied through RAM: {current_metrics.total_data_copied:,} elements")
 
     batch_time, batch_metrics = run_batch_approach(candles, registry, scripts_to_run)
-    print("\n[ĐỀ XUẤT] Logic gộp batching trước khi vẽ:")
-    print(f"- Thời gian xử lý : {batch_time:.4f} giây")
-    print(f"- Số lần gọi vẽ (emit) : {batch_metrics.emit_count:,} lần")
-    print(f"- Data rác bị RAM copy: {batch_metrics.total_data_copied:,} phần tử")
+    print("\n[PROPOSED] Batching logic before drawing:")
+    print(f"- Processing time : {batch_time:.4f} sec")
+    print(f"- Draw calls (emit) : {batch_metrics.emit_count:,}")
+    print(f"- Garbage copied through RAM: {batch_metrics.total_data_copied:,} elements")
 
     if batch_time > 0:
         print(
-            f"\n=> KẾT LUẬN: Với 4 EMA, thuật toán batch nhanh hơn gấp {current_time / batch_time:.1f} lần!"
+            f"\n=> CONCLUSION: With 4 EMAs, the batch algorithm is {current_time / batch_time:.1f}x faster!"
         )
         print(
-            f"=> Rác luân chuyển qua RAM giảm {(current_metrics.total_data_copied - batch_metrics.total_data_copied) / current_metrics.total_data_copied * 100:.2f}%"
+            f"=> Garbage traffic through RAM reduced by {(current_metrics.total_data_copied - batch_metrics.total_data_copied) / current_metrics.total_data_copied * 100:.2f}%"
         )
 
 

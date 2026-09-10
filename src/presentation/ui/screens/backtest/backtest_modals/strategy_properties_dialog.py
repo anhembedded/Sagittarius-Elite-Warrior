@@ -83,7 +83,7 @@ class StrategyPropertiesDialog(Overlay):
     def __init__(
         self, view_model: BackTestViewModel, parent: QWidget | None = None
     ) -> None:
-        super().__init__("CÀI ĐẶT CHIẾN LƯỢC", parent=parent)
+        super().__init__("STRATEGY SETTINGS", parent=parent)
         self.setObjectName("botParamsDialog")
         self._vm = view_model
         self._strategy_name = ""
@@ -101,7 +101,7 @@ class StrategyPropertiesDialog(Overlay):
         inputs_scroll.setWidgetResizable(True)
         inputs_scroll.setFrameShape(QFrame.Shape.NoFrame)
         inputs_scroll.setWidget(self._inputs_tab)
-        self._tabs.addTab(inputs_scroll, "Các đầu vào")
+        self._tabs.addTab(inputs_scroll, "Inputs")
 
         self._properties_tab = self._build_properties_tab()
         self._property_widgets = self._build_property_widgets()
@@ -110,19 +110,19 @@ class StrategyPropertiesDialog(Overlay):
         properties_scroll.setWidgetResizable(True)
         properties_scroll.setFrameShape(QFrame.Shape.NoFrame)
         properties_scroll.setWidget(self._properties_tab)
-        self._tabs.addTab(properties_scroll, "Đặc tính")
+        self._tabs.addTab(properties_scroll, "Properties")
 
-        style_tab = QLabel("Hiển thị và màu sắc chỉ báo chiến lược (Sắp ra mắt)")
+        style_tab = QLabel("Strategy indicator display and colors (Coming soon)")
         style_tab.setStyleSheet(
             f"color: {Palette.MUTED}; font-size: 12px; padding: 12px;"
         )
-        self._tabs.addTab(style_tab, "Định dạng")
+        self._tabs.addTab(style_tab, "Style")
 
-        visibility_tab = QLabel("Bộ lọc hiển thị theo khung thời gian (Sắp ra mắt)")
+        visibility_tab = QLabel("Per-timeframe display filters (Coming soon)")
         visibility_tab.setStyleSheet(
             f"color: {Palette.MUTED}; font-size: 12px; padding: 12px;"
         )
-        self._tabs.addTab(visibility_tab, "Hiển thị")
+        self._tabs.addTab(visibility_tab, "Visibility")
 
         view_model.strategy_params.botParamsRowsChanged.connect(self._sync_inputs)
         view_model.botParamsSaved.connect(self.accept)
@@ -135,76 +135,74 @@ class StrategyPropertiesDialog(Overlay):
         layout = QVBoxLayout(tab)
         layout.setSpacing(16)
 
-        layout.addLayout(_section_header("$", "Vốn ban đầu & tiền tệ"))
+        layout.addLayout(_section_header("$", "Initial Capital & Currency"))
         row1 = QHBoxLayout()
         row1.setSpacing(12)
         self._prop_initial_capital = QLineEdit()
         self._prop_initial_capital.setObjectName("propInitialCapital")
-        row1.addLayout(_field_row("Vốn ban đầu", self._prop_initial_capital), 1)
+        row1.addLayout(_field_row("Initial Capital", self._prop_initial_capital), 1)
         self._prop_currency = QComboBox()
         self._prop_currency.setObjectName("propCurrency")
         self._prop_currency.addItems(["USD", "USDT", "BTC", "VND"])
-        row1.addLayout(_field_row("Đơn vị tiền tệ", self._prop_currency))
+        row1.addLayout(_field_row("Currency", self._prop_currency))
         layout.addLayout(row1)
 
-        layout.addLayout(_section_header("#", "Kích thước lệnh & Pyramiding"))
+        layout.addLayout(_section_header("#", "Order Size & Pyramiding"))
         row2 = QHBoxLayout()
         row2.setSpacing(12)
         # Marked here, at the addItem(label, data) calls it applies to: this
-        # combo's value is each item's data, not the Vietnamese label Qt's
+        # combo's value is each item's data, not the label Qt's
         # USER property would otherwise report.
         self._prop_order_size_type = mark_uses_item_data(QComboBox())
         self._prop_order_size_type.setObjectName("propOrderSizeType")
-        self._prop_order_size_type.addItem(
-            "% Vốn cổ phần (Equity)", "percent_of_equity"
-        )
-        self._prop_order_size_type.addItem("USD Cố định (Cash)", "fixed_cash")
-        self._prop_order_size_type.addItem("Hợp đồng / Coin", "fixed_contracts")
-        row2.addLayout(_field_row("Loại kích thước lệnh", self._prop_order_size_type))
+        self._prop_order_size_type.addItem("% of Equity", "percent_of_equity")
+        self._prop_order_size_type.addItem("Fixed USD (Cash)", "fixed_cash")
+        self._prop_order_size_type.addItem("Contracts / Coin", "fixed_contracts")
+        row2.addLayout(_field_row("Order Size Type", self._prop_order_size_type))
         self._prop_order_size_value = QLineEdit()
         self._prop_order_size_value.setObjectName("propOrderSizeValue")
-        row2.addLayout(_field_row("Giá trị kích thước", self._prop_order_size_value), 1)
+        row2.addLayout(_field_row("Size Value", self._prop_order_size_value), 1)
         self._prop_pyramiding = QSpinBox()
         self._prop_pyramiding.setObjectName("propPyramiding")
         self._prop_pyramiding.setRange(1, 10)
-        row2.addLayout(_field_row("Kim tự tháp (Lệnh tối đa)", self._prop_pyramiding))
+        row2.addLayout(_field_row("Pyramiding (Max Orders)", self._prop_pyramiding))
         layout.addLayout(row2)
 
-        layout.addLayout(_section_header("%", "Hoa hồng & Trượt giá"))
+        layout.addLayout(_section_header("%", "Commission & Slippage"))
         row3 = QHBoxLayout()
         row3.setSpacing(12)
         self._prop_commission_type = mark_uses_item_data(QComboBox())
         self._prop_commission_type.setObjectName("propCommissionType")
-        self._prop_commission_type.addItem("% Giá trị lệnh", "percent")
-        self._prop_commission_type.addItem("USD / Lệnh", "cash_per_order")
-        self._prop_commission_type.addItem("USD / Hợp đồng", "cash_per_contract")
-        row3.addLayout(_field_row("Loại hoa hồng", self._prop_commission_type))
+        self._prop_commission_type.addItem("% of Order Value", "percent")
+        self._prop_commission_type.addItem("USD / Order", "cash_per_order")
+        self._prop_commission_type.addItem("USD / Contract", "cash_per_contract")
+        row3.addLayout(_field_row("Commission Type", self._prop_commission_type))
         self._prop_commission_value = QLineEdit()
         self._prop_commission_value.setObjectName("propCommissionValue")
-        row3.addLayout(_field_row("Mức hoa hồng", self._prop_commission_value), 1)
+        row3.addLayout(_field_row("Commission Rate", self._prop_commission_value), 1)
         self._prop_slippage_ticks = QSpinBox()
         self._prop_slippage_ticks.setObjectName("propSlippageTicks")
         self._prop_slippage_ticks.setRange(0, 100)
-        row3.addLayout(_field_row("Trượt giá (Ticks)", self._prop_slippage_ticks))
+        row3.addLayout(_field_row("Slippage (Ticks)", self._prop_slippage_ticks))
         layout.addLayout(row3)
 
-        layout.addLayout(_section_header("x", "Đòn bẩy (Leverage)"))
+        layout.addLayout(_section_header("x", "Leverage"))
         row4 = QHBoxLayout()
         row4.setSpacing(12)
         self._prop_long_leverage = QSpinBox()
         self._prop_long_leverage.setObjectName("propLongLeverage")
         self._prop_long_leverage.setRange(1, 125)
-        row4.addLayout(_field_row("Đòn bẩy Long (x)", self._prop_long_leverage), 1)
+        row4.addLayout(_field_row("Long Leverage (x)", self._prop_long_leverage), 1)
         self._prop_short_leverage = QSpinBox()
         self._prop_short_leverage.setObjectName("propShortLeverage")
         self._prop_short_leverage.setRange(1, 125)
-        row4.addLayout(_field_row("Đòn bẩy Short (x)", self._prop_short_leverage), 1)
+        row4.addLayout(_field_row("Short Leverage (x)", self._prop_short_leverage), 1)
         layout.addLayout(row4)
 
-        layout.addLayout(_section_header("%", "Chốt lời tự động (Take Profit %)"))
+        layout.addLayout(_section_header("%", "Automatic Take Profit (Take Profit %)"))
         row5 = QHBoxLayout()
         row5.setSpacing(12)
-        self._prop_take_profit_enabled = QCheckBox("Bật Take Profit %")
+        self._prop_take_profit_enabled = QCheckBox("Enable Take Profit %")
         self._prop_take_profit_enabled.setObjectName("propTakeProfitEnabled")
         self._prop_take_profit_enabled.setStyleSheet(f"color: {Palette.TEXT_PRIMARY};")
         row5.addWidget(self._prop_take_profit_enabled)
@@ -212,7 +210,7 @@ class StrategyPropertiesDialog(Overlay):
         self._prop_take_profit_pct.setObjectName("propTakeProfitPct")
         row5.addLayout(
             _field_row(
-                "% Chốt lời (khớp take_profit_percent của strategy)",
+                "Take Profit % (matches strategy's take_profit_percent)",
                 self._prop_take_profit_pct,
             ),
             1,
@@ -280,18 +278,19 @@ class StrategyPropertiesDialog(Overlay):
 
     def _build_buttons(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        btn_reset = QPushButton("Đặt lại mặc định")
+        btn_reset = QPushButton("Reset to Default")
         btn_reset.setObjectName("btnResetBotParams")
         btn_reset.clicked.connect(self.reset_all_fields)
         row.addWidget(btn_reset)
         row.addStretch(1)
-        btn_cancel = QPushButton("Hủy")
+        btn_cancel = QPushButton("Cancel")
         btn_cancel.setObjectName("btnBotParamsCancel")
         btn_cancel.clicked.connect(self.reject)
         row.addWidget(btn_cancel)
-        # BUG-064 — was "Lưu & Chạy lại". Saving no longer starts a backtest,
-        # so the old label promised something the button stopped doing.
-        btn_save = QPushButton("Lưu")
+        # BUG-064 — was "Lưu & Chạy lại" ("Save & Re-run"). Saving no longer
+        # starts a backtest, so the old label promised something the button
+        # stopped doing.
+        btn_save = QPushButton("Save")
         btn_save.setObjectName("btnBotParamsSave")
         btn_save.setStyleSheet(
             f"background-color: {_ACCENT}; color: {Palette.BG}; font-weight: bold; "
@@ -319,9 +318,9 @@ class StrategyPropertiesDialog(Overlay):
     def open_for_strategy(self, strategy_name: str) -> None:
         self._strategy_name = strategy_name
         self.title = (
-            f"CÀI ĐẶT CHIẾN LƯỢC: {strategy_name.upper()}"
+            f"STRATEGY SETTINGS: {strategy_name.upper()}"
             if strategy_name
-            else "CÀI ĐẶT CHIẾN LƯỢC"
+            else "STRATEGY SETTINGS"
         )
         self._sync_inputs()
         # No `_sync_properties()` any more: the Properties tab is bound to the
@@ -358,7 +357,7 @@ class StrategyPropertiesDialog(Overlay):
         self._field_widgets = []
 
         if not rows:
-            empty = QLabel("Chiến lược này không có tham số đầu vào nào để cấu hình.")
+            empty = QLabel("This strategy has no input parameters to configure.")
             empty.setStyleSheet(f"color: {Palette.MUTED}; font-size: 11px;")
             self._inputs_layout.addWidget(empty)
             return

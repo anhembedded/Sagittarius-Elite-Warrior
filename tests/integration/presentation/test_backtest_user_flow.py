@@ -294,9 +294,9 @@ def test_run_button_completes_real_backtest_and_chart_render(backtest_screen, qt
     health_lines = [
         message
         for message in log_messages_before
-        if "[Health] Trạng thái hệ thống: HEALTHY" in message
+        if "[Health] System status: HEALTHY" in message
     ]
-    assert health_lines, "màn Backtest phải nhận được báo cáo sức khoẻ khi mở"
+    assert health_lines, "the Backtest screen must receive a health report on open"
     assert "Database: OK" in health_lines[-1]
     health_count_before = sum("[Health]" in message for message in log_messages_before)
 
@@ -314,7 +314,7 @@ def test_run_button_completes_real_backtest_and_chart_render(backtest_screen, qt
         sum("[Health]" in message for message in log_messages_after)
         == health_count_before
     )
-    assert any("Bắt đầu chạy Backtest" in message for message in log_messages_after)
+    assert any("Starting Backtest" in message for message in log_messages_after)
 
     view.set_chart_mode(view._chart_mode.EQUITY)
     view.set_chart_mode(view._chart_mode.BOTH)
@@ -343,7 +343,9 @@ def test_chart_toolbar_click_replaces_visible_candles_with_selected_timeframe(
     point = pill.mapToScene(pill.boundingRect().center())
 
     with qtbot.waitSignal(view.chartPreviewRendered, timeout=5000):
-        QTest.mouseClick(toolbar, Qt.MouseButton.LeftButton, pos=point.toPoint())
+        QTest.mouseClick(
+            toolbar.quick_widget, Qt.MouseButton.LeftButton, pos=point.toPoint()
+        )
 
     assert presenter._view_model.selectedTimeframe == _TOOLBAR_TIMEFRAME_INTERVAL
     assert len(chart._raw_history) == _RUNTIME_KLINE_COUNT

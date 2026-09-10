@@ -11,19 +11,18 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
 from Sagittarius_Elite_Warrior.src.domain.value_objects.position_side import (
     PositionSide,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TradeLogTable.trade_log_row import (
     TradeLogRow,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TradeLogTable.trade_log_vm import (
     TradeLogVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 _QML_FILE = Path(__file__).with_name("TradeLogTable.qml")
 
@@ -64,7 +63,7 @@ _ROWS = (
         PositionSide.LONG,
         -22.33,
         35,
-        entry_reason="EMA Crossover 12/26 cắt lên",
+        entry_reason="EMA Crossover 12/26 crosses up",
         metadata={"r_multiple": "-0.4R", "fee": "9.90 USD"},
     ),
     _row(3, PositionSide.LONG, 41.20, 18),
@@ -79,20 +78,11 @@ def build_preview() -> QWidget:
     vm = TradeLogVM(get_rows=lambda: _ROWS, get_timezone_name=lambda: "UTC")
     vm.refresh()
 
-    quick = QQuickWidget()
-    quick.setObjectName("tradeLogTablePreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    # QML context properties are borrowed references; retain for the scene
-    # lifetime, same reasoning `QmlOverlay.__init__` documents.
-    quick._trade_log_vm = vm
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(900, 420)
-    return quick
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm},
+        object_name="tradeLogTablePreview",
+    )
+    surface.resize(900, 420)
+    return surface

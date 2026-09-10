@@ -141,7 +141,7 @@ def test_limit_order_carries_the_rounded_price() -> None:
 
 
 def test_limit_order_defaults_to_good_til_canceled() -> None:
-    """`BUG-115` — `Order.time_in_force` defaulted to `None` unconditionally
+    """`BUG-116` — `Order.time_in_force` defaulted to `None` unconditionally
     (no caller ever set it), which `map_order_to_futures_params()` refuses
     to submit for a real `LIMIT` order ("LIMIT order is missing
     time_in_force."). Latent since `EPIC-021E`: the automated strategy

@@ -55,7 +55,9 @@ from Sagittarius_Elite_Warrior.src.infrastructure.binance.binance_endpoints impo
     resolve_trading_venue,
 )
 from Sagittarius_Elite_Warrior.src.main import create_app
-from Sagittarius_Elite_Warrior.src.presentation.ui.assets import Palette
+from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
+    Palette,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.common.qt_platform import (
     is_headless_qt_platform,
 )
@@ -101,10 +103,12 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.state.state_scope import Stat
 from Sagittarius_Elite_Warrior.src.presentation.ui.state.ui_state_coordinator import (
     UiStateCoordinator,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.theme_bootstrap import (
+    seed_app_theme,
+)
 from sagittarius_engine import App
 from sagittarius_engine.extensions.pyside_mvc import (
     UIWatchdog,
-    get_theme_bridge,
     setup_qt_signal_handling,
 )
 from sagittarius_engine.infrastructure.config.config_manager import ConfigManager
@@ -209,12 +213,16 @@ def build() -> AppRuntime:
     sig_timer = setup_qt_signal_handling(app)
     _apply_font(app, config_manager)
     _apply_theme(app, config_manager)
-    # EPIC-006F: no QML left in this app at all (the last consumer, the
-    # native chart, was deleted outright) — pyside_mvc.widgets' apply_role()
-    # is the only remaining reader of get_theme_bridge(), populated
-    # directly instead of as a side effect of configure_app_qml() (which no
-    # longer needs calling here).
-    get_theme_bridge(Palette.as_ui_dict())
+    # EPIC-006F removed `configure_app_qml()` here ("no QML left in this
+    # app"); EPIC-015 brought QML back as embedded widgets and nobody
+    # restored it — so for a year every host re-wired `Theme` by hand and
+    # bypassed the engine's `create_quick_widget()` factory (BUG-115 §4.1).
+    # Restored: `qml/embed/QuickSurface` builds every embedded scene through
+    # that factory, which requires this one-time registration. Also primes
+    # the theme bridge `apply_role()` reads — `get_theme_bridge()` is a
+    # first-caller-wins singleton, so the palette passed here is the one
+    # both QtWidgets QSS and QML `Theme.*` bindings render from.
+    seed_app_theme()
 
     # EPIC-021K — the global "which venue am I in" banner. Computed once,
     # here, from the same config `binance_bot_module.py` itself reads
