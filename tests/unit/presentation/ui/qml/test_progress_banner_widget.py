@@ -91,7 +91,7 @@ def test_clicking_the_qml_cancel_button_emits_cancel_requested(qapp):
 
     centre = button.mapToScene(button.boundingRect().center())
     QTest.mouseClick(
-        widget,
+        widget.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

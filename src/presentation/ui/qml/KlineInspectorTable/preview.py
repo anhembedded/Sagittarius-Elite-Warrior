@@ -10,14 +10,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.KlineInspectorTable.kline_inspector_vm import (
     KlineInspectorVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 _QML_FILE = Path(__file__).with_name("KlineInspectorTable.qml")
 
@@ -67,20 +66,11 @@ def build_preview() -> QWidget:
     )
     vm.refresh()
 
-    quick = QQuickWidget()
-    quick.setObjectName("klineInspectorTablePreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    # QML context properties are borrowed references; retain for the scene
-    # lifetime, same reasoning `QmlOverlay.__init__` documents.
-    quick._kline_inspector_vm = vm
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(900, 420)
-    return quick
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm},
+        object_name="klineInspectorTablePreview",
+    )
+    surface.resize(900, 420)
+    return surface

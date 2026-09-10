@@ -99,7 +99,7 @@ def test_progress_banner_cancel_button_in_running_and_syncing_modes(
     def click(button):
         centre = button.mapToScene(button.boundingRect().center())
         QTest.mouseClick(
-            progress_widget,
+            progress_widget.quick_widget,
             Qt.MouseButton.LeftButton,
             pos=QPoint(int(centre.x()), int(centre.y())),
         )

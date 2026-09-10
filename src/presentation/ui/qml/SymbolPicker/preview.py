@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.interfaces.i_symbol_picker_source import (
     ISymbolPickerSource,
 )
@@ -59,32 +59,21 @@ class _PreviewSource(ISymbolPickerSource):
 
 def build_preview() -> QWidget:
     """Build the SymbolPicker without an app modal or application ViewModel."""
-    quick = QQuickWidget()
-    quick.setObjectName("symbolPickerPreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.setClearColor(Qt.GlobalColor.transparent)
-
     vm = SymbolPickerVM(_PreviewSource())
     vm.refresh()
     theme = SymbolPickerTheme()
-    quick.rootContext().setContextProperty("symbolPickerPreviewVM", vm)
-    quick.rootContext().setContextProperty("symbolPickerPreviewTheme", theme)
-    # QML properties are borrowed references; retain both for the scene lifetime.
-    quick._symbol_picker_vm = vm
-    quick._symbol_picker_theme = theme
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-
-    root = quick.rootObject()
-    if root is None:  # pragma: no cover - guarded by the status check above
-        raise RuntimeError("SymbolPicker QML root object is missing")
+    # This component reads its own `theme` object, not the shared `Theme`
+    # bridge (see `symbol_picker_theme.py` for why) — both are context
+    # properties `QuickSurface` keeps alive for the scene's lifetime.
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"symbolPickerPreviewVM": vm, "symbolPickerPreviewTheme": theme},
+        object_name="symbolPickerPreview",
+    )
+    root = surface.root_object
     root.setProperty("vm", vm)
     root.setProperty("theme", theme)
     root.openPicker()
-    quick.resize(720, 620)
-    return quick
+    surface.resize(720, 620)
+    return surface

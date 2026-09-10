@@ -27,7 +27,9 @@ def _click_toolbar_pill(toolbar, code, qml_item):
     pill = qml_item(toolbar.root_object, f"timeframePill_{code}")
     assert pill is not None, code
     point = pill.mapToScene(pill.boundingRect().center())
-    QTest.mouseClick(toolbar, Qt.MouseButton.LeftButton, pos=point.toPoint())
+    QTest.mouseClick(
+        toolbar.quick_widget, Qt.MouseButton.LeftButton, pos=point.toPoint()
+    )
 
 
 def _open_dashboard(navigate):

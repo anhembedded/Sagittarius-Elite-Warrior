@@ -60,13 +60,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
-from ..style import ensure_qml_style
+from ...kit import StyleRole, apply_role
+from ..embed import QuickSurface
 from .metrics_detail_vm import MetricsDetailVM
 
 _QML_FILE = Path(__file__).with_name("MetricsDetailPanel.qml")
@@ -119,7 +118,10 @@ class MetricsDetailModal(QDialog):  # base-exempt: .qml draws its own DialogShel
         self.setObjectName("metricsDetailModal")
         self.setModal(True)
         self.resize(_WIDTH, _HEIGHT)
-        ensure_qml_style()
+        # Same two lines as `Overlay.__init__`/`SymbolPickerModal`: paint the
+        # SURFACE the body declares it sits on (`BUG-102`, `BUG-115`).
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        apply_role(self, StyleRole.SURFACE)
 
         # Named `_widget_vm`, not `_vm` — same collision this repo already
         # hit once (see `SymbolPickerModal`'s docstring): a subclass's own
@@ -129,32 +131,16 @@ class MetricsDetailModal(QDialog):  # base-exempt: .qml draws its own DialogShel
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._quick = QQuickWidget()
-        self._quick.setObjectName("qmlBody")
-        self._quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        self._quick.setClearColor(Qt.GlobalColor.transparent)
-
-        # Context properties are borrowed references; held on `self` (not
-        # just passed through) so Python keeps them alive as long as the
-        # QML scene can read them — same reasoning `QmlOverlay.__init__` and
-        # `SymbolPickerModal.__init__` both document.
-        self._theme = get_theme_bridge()
-        root_context = self._quick.rootContext()
-        root_context.setContextProperty("vm", self._widget_vm)
-        root_context.setContextProperty("Theme", self._theme)
-
-        self._quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-        if self._quick.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML_FILE}\n"
-                + "\n".join(error.toString() for error in self._quick.errors())
-            )
-        layout.addWidget(self._quick, 1)
-
-        root = self._quick.rootObject()
-        if root is None:  # pragma: no cover - status check above already raises
-            raise RuntimeError("MetricsDetailPanel QML root object is missing")
-        self._root = root
+        # `QuickSurface` holds `vm` alive, installs `Theme`, loads-or-raises,
+        # and clears to the SURFACE token this dialog paints (BUG-115).
+        self._surface = QuickSurface(
+            _QML_FILE,
+            surface=StyleRole.SURFACE,
+            context={"vm": self._widget_vm},
+            object_name="qmlBody",
+        )
+        layout.addWidget(self._surface, 1)
+        self._root = self._surface.root_object
 
         self._widget_vm.closeRequested.connect(self.close)
         self._widget_vm.copyRequested.connect(self._on_copy_requested)

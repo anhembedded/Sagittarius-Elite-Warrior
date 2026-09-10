@@ -22,7 +22,6 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QtMsgType, qInstallMessageHandler
 from PySide6.QtTest import QSignalSpy, QTest
 from PySide6.QtWidgets import QApplication
-from sagittarius_engine.extensions.pyside_mvc import configure_app_qml
 from sagittarius_engine.infrastructure.config.config_manager import ConfigManager
 
 from Sagittarius_Elite_Warrior.src.application.ports.i_market_data_repository import (
@@ -35,13 +34,12 @@ from Sagittarius_Elite_Warrior.src.config.config_keys import ConfigKeys
 from Sagittarius_Elite_Warrior.src.domain.entities.market_data import MarketData
 from Sagittarius_Elite_Warrior.src.domain.value_objects.timeframe import TimeFrame
 from Sagittarius_Elite_Warrior.src.main import create_app
-from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
-    Palette,
-    get_icon_loader,
-)
 from Sagittarius_Elite_Warrior.src.presentation.ui.main_window import MainWindow
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.backtest_presenter import (
     BackTestPresenter,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.theme_bootstrap import (
+    seed_app_theme,
 )
 
 _SYMBOL = "BTCUSDT"
@@ -242,9 +240,7 @@ def main() -> None:
     try:
         app = QApplication.instance() or QApplication([])
         app.setQuitOnLastWindowClosed(False)
-        configure_app_qml(
-            Palette.as_ui_dict(), get_icon_loader(), Palette.as_icon_dict()
-        )
+        seed_app_theme()
         with tempfile.TemporaryDirectory(prefix="sagittarius-timeframe-e2e-") as db_dir:
             engine = create_app(_load_config(project_root, db_dir))
             engine.boot()

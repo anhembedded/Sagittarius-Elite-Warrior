@@ -353,6 +353,54 @@ def semantic_colour(name: str) -> str:
     return _token(name)
 
 
+#: Which background token a role's QSS paints, for the roles whose
+#: background is a *static, opaque* token. Kept as data next to `_build_qss`
+#: so the two cannot disagree — `background_token()` below is the only way
+#: a second painter (the embedded QML scene, `qml/embed/quick_surface.py`)
+#: learns what the parent painted, and it must read the same fact this
+#: module's QSS is built from, not a hand-copied colour string.
+#:
+#: Roles are absent on purpose when their background is `transparent`,
+#: a state-dependent tint (hover/selected), or a gradient — an opaque QML
+#: scene cannot sit on those, and `background_token()` says so at
+#: construction instead of letting the mismatch reach a user's screen.
+_STATIC_BACKGROUND_TOKENS: dict[StyleRole, str] = {
+    StyleRole.SURFACE: "bgCard",
+    StyleRole.TABLE_HEADER: "bgCardHeader",
+    StyleRole.FIELD: "stateIdleBg",
+    StyleRole.BANNER_INFO: "bgCardHeader",
+    StyleRole.BANNER_WARN: "bgCardHeader",
+    StyleRole.BANNER_DANGER: "bgCardHeader",
+    StyleRole.BANNER_SUCCESS: "bgCardHeader",
+}
+
+
+def background_token(role: StyleRole) -> str:
+    """
+    @brief The colour token `apply_role(role)` paints as background — for a
+    second painter that must match it exactly.
+
+    @details `BUG-115`: an embedded `QQuickWidget` is a render-to-texture
+    widget on every real desktop session, and Qt punches a hole in the
+    widget backing store under it, so the parent's painted background is
+    *never* visible through the scene — the scene must clear to that same
+    colour itself. This function is how it learns which colour, from the
+    same table the parent's QSS reads, so the two painters cannot drift.
+
+    @raise ValueError If `role` has no static opaque background (transparent,
+        state-dependent, or gradient) — nothing opaque can be embedded on
+        it, and the failure belongs at construction, not on screen.
+    """
+    try:
+        return _STATIC_BACKGROUND_TOKENS[role]
+    except KeyError:
+        raise ValueError(
+            f"{role.name} has no static opaque background — an embedded QML "
+            "scene can only sit on a role whose background is one opaque token "
+            f"({', '.join(r.name for r in _STATIC_BACKGROUND_TOKENS)})"
+        ) from None
+
+
 def _token(name: str) -> str:
     """Reads one token value from the shared theme bridge as a string —
     every token this module reads is either a colour (already `str`) or a
@@ -369,6 +417,17 @@ def _token(name: str) -> str:
     if not bridge.contains(name):
         raise KeyError(f"no theme token named {name!r}")
     return str(bridge.value(name))
+
+
+def _background(role: StyleRole) -> str:
+    """The live colour value of `role`'s background token.
+
+    Every QSS branch whose background is one static token reads it through
+    here, so `_STATIC_BACKGROUND_TOKENS` is the single source both painters
+    use — the widget's stylesheet and an embedded QML scene's clear colour
+    (`background_token()` above, `BUG-115`).
+    """
+    return _token(background_token(role))
 
 
 def _px(name: str) -> str:
@@ -400,7 +459,7 @@ def _build_qss(role: StyleRole, state: WidgetState) -> str:
 
     if role is StyleRole.SURFACE:
         return (
-            f"background-color: {_token('bgCard')};"
+            f"background-color: {_background(role)};"
             f"border: 1px solid {_token('border')};"
             f"border-radius: {_px('radiusMd')};"
             f"color: {_token('textPrimary')};"
@@ -424,7 +483,7 @@ def _build_qss(role: StyleRole, state: WidgetState) -> str:
 
     if role is StyleRole.FIELD:
         return (
-            f"background-color: {_token('stateIdleBg')};"
+            f"background-color: {_background(role)};"
             f"color: {_token('textPrimary')};"
             f"border: 1px solid {_token('border')};"
             f"border-radius: {_px('radiusSm')};"
@@ -446,7 +505,7 @@ def _build_qss(role: StyleRole, state: WidgetState) -> str:
     if role in _BANNER_ACCENTS:
         banner_accent = _token(_BANNER_ACCENTS[role])
         return (
-            f"background-color: {_token('bgCardHeader')};"
+            f"background-color: {_background(role)};"
             f"border: 1px solid {banner_accent};"
             f"border-radius: {_px('radiusMd')};"
             f"color: {banner_accent};"
@@ -565,7 +624,7 @@ def _build_qss(role: StyleRole, state: WidgetState) -> str:
 
     if role is StyleRole.TABLE_HEADER:
         return (
-            f"background-color: {_token('bgCardHeader')};"
+            f"background-color: {_background(role)};"
             f"border-radius: {_px('radiusSm')};"
             f"color: {_token('muted')};"
         )

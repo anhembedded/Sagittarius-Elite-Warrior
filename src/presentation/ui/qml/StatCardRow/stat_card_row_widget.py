@@ -34,18 +34,16 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
-from ..style import ensure_qml_style
+from ...kit import StyleRole
+from ..embed import QuickSurface
 from .stat_card_row_vm import StatCardRowVM
 
 _QML_FILE = Path(__file__).with_name("StatCardRow.qml")
 
 
-class StatCardRowWidget(QQuickWidget):
+class StatCardRowWidget(QuickSurface):
     """@brief Inline (non-modal) host for `StatCardRow.qml`.
 
     @details `refresh()` re-pulls `get_cards()` and re-converts every card
@@ -61,43 +59,24 @@ class StatCardRowWidget(QQuickWidget):
         get_cards: Callable[[], Sequence[Mapping[str, object]]],
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(parent)
+        # Built before the scene loads — the context is handed to
+        # `QuickSurface` at construction; parented right after, so its
+        # lifetime is this widget's (BUG-115: the gaps between cards used to
+        # render black on a real screen — the row now clears to the SURFACE
+        # token `BackTestTopPanel`'s card paints).
+        vm = StatCardRowVM(get_cards)
+        super().__init__(
+            _QML_FILE,
+            surface=StyleRole.SURFACE,
+            context={"vm": vm},
+            object_name="statCardRowQuick",
+            parent=parent,
+        )
         self.setObjectName("statCardRowWidget")
-        ensure_qml_style()
-        self.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        # Transparent so the QtWidgets card (`StyleRole.SURFACE`) behind
-        # `BackTestTopPanel`'s own layout shows through — same reasoning as
-        # every other inline host in this rollout
-        # (`ProgressBannerWidget`/`DatabaseStatusPanel`).
-        self.setClearColor(Qt.GlobalColor.transparent)
-
-        self._vm = StatCardRowVM(get_cards, parent=self)
-
-        # A QML context property is a borrowed pointer; held on `self` so
-        # `Theme` stays alive for as long as this scene can read it (same
-        # note as `ProgressBannerWidget`/`DatabaseStatusPanel`).
-        self._theme = get_theme_bridge()
-        root_context = self.rootContext()
-        root_context.setContextProperty("vm", self._vm)
-        root_context.setContextProperty("Theme", self._theme)
-
-        self.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-        if self.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML_FILE}\n"
-                + "\n".join(error.toString() for error in self.errors())
-            )
-
-        root = self.rootObject()
-        if root is None:  # pragma: no cover - status check above already raises
-            raise RuntimeError("StatCardRow QML root object is missing")
-        self._root = root
+        vm.setParent(self)
+        self._vm = vm
+        self._root = self.root_object
         self.refresh()
-
-    @property
-    def root_object(self) -> QObject:
-        """The loaded QML root, for tests to reach in by `objectName`."""
-        return self._root
 
     def refresh(self) -> None:
         """Re-pulls `get_cards()` and rebuilds every `StatCard` delegate.

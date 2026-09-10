@@ -343,7 +343,9 @@ def test_chart_toolbar_click_replaces_visible_candles_with_selected_timeframe(
     point = pill.mapToScene(pill.boundingRect().center())
 
     with qtbot.waitSignal(view.chartPreviewRendered, timeout=5000):
-        QTest.mouseClick(toolbar, Qt.MouseButton.LeftButton, pos=point.toPoint())
+        QTest.mouseClick(
+            toolbar.quick_widget, Qt.MouseButton.LeftButton, pos=point.toPoint()
+        )
 
     assert presenter._view_model.selectedTimeframe == _TOOLBAR_TIMEFRAME_INTERVAL
     assert len(chart._raw_history) == _RUNTIME_KLINE_COUNT

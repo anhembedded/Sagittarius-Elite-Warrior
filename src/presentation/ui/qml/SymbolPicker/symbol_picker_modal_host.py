@@ -18,9 +18,9 @@ a `QQuickWidget` is its own `Window`, separate from any QtWidgets around it.
 So whatever contains `SymbolPicker.qml` inside a QtWidgets screen (every
 current caller) MUST itself be a real, application-modal `QDialog` — the
 `Popup` cannot supply that on its own no matter how it is configured. This
-class is exactly that shell and nothing more: a modal `QDialog`, the same
-`ensure_qml_style()` pin and load-or-raise behaviour `QmlOverlay` uses, sized
-to the picker's own 720x620 (`SymbolPicker.qml`'s `implicitWidth`/
+class is exactly that shell and nothing more: a modal `QDialog` painting the
+same SURFACE role `Overlay` does, its body a `QuickSurface` (the one embedding
+mechanism this app has — `BUG-115`), sized to the picker's own 720x620 (`SymbolPicker.qml`'s `implicitWidth`/
 `implicitHeight`). It carries no title, subtitle, or button row, because the
 `.qml` already renders all three.
 
@@ -51,12 +51,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QUrl, Signal
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QShowEvent
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget
 
-from ..style import ensure_qml_style
+from ...kit import StyleRole, apply_role
+from ..embed import QuickSurface
 from .symbol_picker_theme import SymbolPickerTheme
 from .symbol_picker_vm import SymbolPickerVM
 
@@ -89,7 +89,11 @@ class SymbolPickerModal(QDialog):  # base-exempt: SymbolPicker.qml draws its own
         self.setObjectName("symbolPickerModal")
         self.setModal(True)
         self.resize(_WIDTH, _HEIGHT)
-        ensure_qml_style()
+        # Paint the surface the body declares it sits on — `Overlay.__init__`'s
+        # own two lines (`BUG-102`): a bare `QDialog` needs the attribute for
+        # its stylesheet background to paint at all.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        apply_role(self, StyleRole.SURFACE)
 
         # Named `_widget_vm`, not `_vm` — `CapitalDialogWidget`'s convention,
         # and load-bearing here: a `SymbolPickerDialogWidget` subclass needs
@@ -110,30 +114,17 @@ class SymbolPickerModal(QDialog):  # base-exempt: SymbolPicker.qml draws its own
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._quick = QQuickWidget()
-        self._quick.setObjectName("qmlBody")
-        self._quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        self._quick.setClearColor(Qt.GlobalColor.transparent)
+        # `QuickSurface` holds the context objects alive, loads-or-raises,
+        # and clears to the SURFACE token this dialog paints (BUG-115).
+        self._surface = QuickSurface(
+            _QML_FILE,
+            surface=StyleRole.SURFACE,
+            context={"vm": self._widget_vm, "theme": self._theme},
+            object_name="qmlBody",
+        )
+        layout.addWidget(self._surface, 1)
 
-        # Context properties are borrowed references; held on `self` (not
-        # just passed through) for the same reason `QmlOverlay` holds its
-        # `_context` dict — Python must keep them alive as long as the QML
-        # scene can read them.
-        root_context = self._quick.rootContext()
-        root_context.setContextProperty("vm", self._widget_vm)
-        root_context.setContextProperty("theme", self._theme)
-
-        self._quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-        if self._quick.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML_FILE}\n"
-                + "\n".join(error.toString() for error in self._quick.errors())
-            )
-        layout.addWidget(self._quick, 1)
-
-        root = self._quick.rootObject()
-        if root is None:  # pragma: no cover - status check above already raises
-            raise RuntimeError("SymbolPicker QML root object is missing")
+        root = self._surface.root_object
         # `preview.py` sets both the context property AND the root property —
         # mirrored here for the same reason: a root-level `property var vm`
         # read before the context property is delivered would otherwise see

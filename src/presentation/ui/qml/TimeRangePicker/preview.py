@@ -11,13 +11,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeRangePicker.time_range_picker_vm import (
     TimeRangePickerVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 _QML_FILE = Path(__file__).with_name("TimeRangePicker.qml")
 
@@ -38,10 +37,6 @@ class _PreviewSeed:
 
 def build_preview() -> QWidget:
     """Build TimeRangePicker's body without `QmlOverlay` or a screen VM."""
-    quick = QQuickWidget()
-    quick.setObjectName("timeRangePickerPreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-
     seed = _PreviewSeed()
     vm = TimeRangePickerVM(
         get_now=lambda: datetime.now(UTC),
@@ -52,22 +47,15 @@ def build_preview() -> QWidget:
     )
     vm.applied.connect(seed.apply)
     vm.refresh()
-
-    # The real app palette, already seeded by `preview_qml.py`'s
-    # `_ensure_qt_theme_ready()` — not a second copy of the tokens (the
-    # drift risk `symbol_picker_theme.py` has for its own, unrelated reason
-    # not to depend on this bridge; this widget has no such reason).
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    # QML context properties are borrowed references; retain for the scene
-    # lifetime, same reasoning `QmlOverlay.__init__` documents.
-    quick._time_range_picker_vm = vm
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(760, 420)
-    return quick
+    # The real app palette reaches the scene as `Theme`, installed by the
+    # engine factory `QuickSurface` builds on — not a second copy of the
+    # tokens (the drift risk `symbol_picker_theme.py` accepts for its own,
+    # unrelated reason; this widget has no such reason).
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm},
+        object_name="timeRangePickerPreview",
+    )
+    surface.resize(760, 420)
+    return surface

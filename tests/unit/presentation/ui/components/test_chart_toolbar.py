@@ -37,9 +37,9 @@ def _click(quick_widget, root_item, object_name, qapp, qml_item):
     """@param quick_widget The actual `QQuickWidget` to click on — `Qtest`
     needs coordinates in *that* widget's own space, which is where
     `item.mapToScene()` already puts them (its Quick window is exactly this
-    widget). For `ChartToolbar` this is the toolbar itself; for
+    widget). For `ChartToolbar` this is `toolbar.quick_widget`; for
     `TimeframePickerDialog` (a `QDialog` chrome around its own embedded
-    `QQuickWidget`) it is `picker._quick`, not `picker`.
+    `QQuickWidget`) it is `picker.quick_widget`, not `picker`.
     """
     item = qml_item(root_item, object_name)
     assert item is not None, object_name
@@ -62,7 +62,9 @@ def test_clicking_a_pill_selects_it_and_emits(qapp, qml_item):
     emitted: list[str] = []
     toolbar.sig_timeframe_changed.connect(emitted.append)
 
-    _click(toolbar, toolbar.root_object, "timeframePill_1h", qapp, qml_item)
+    _click(
+        toolbar.quick_widget, toolbar.root_object, "timeframePill_1h", qapp, qml_item
+    )
 
     assert emitted == ["1h"]
     assert toolbar._vm.currentCode == "1h"
@@ -88,7 +90,9 @@ def test_the_more_button_opens_the_full_picker_sharing_this_toolbars_vm(qapp, qm
     toolbar.show()
     qapp.processEvents()
 
-    _click(toolbar, toolbar.root_object, "btnTimeframeMore", qapp, qml_item)
+    _click(
+        toolbar.quick_widget, toolbar.root_object, "btnTimeframeMore", qapp, qml_item
+    )
 
     picker = toolbar._picker
     assert picker is not None
@@ -111,9 +115,11 @@ def test_choosing_from_the_picker_emits_the_same_signal_as_a_pill(qapp, qml_item
     emitted: list[str] = []
     toolbar.sig_timeframe_changed.connect(emitted.append)
 
-    _click(toolbar, toolbar.root_object, "btnTimeframeMore", qapp, qml_item)
+    _click(
+        toolbar.quick_widget, toolbar.root_object, "btnTimeframeMore", qapp, qml_item
+    )
     picker = toolbar._picker
-    _click(picker._quick, picker.root_object, "timeframeCard_3d", qapp, qml_item)
+    _click(picker.quick_widget, picker.root_object, "timeframeCard_3d", qapp, qml_item)
 
     assert emitted == ["3d"]
     assert toolbar._vm.currentCode == "3d"
@@ -129,11 +135,13 @@ def test_pinning_from_the_picker_updates_the_toolbars_own_pills(qapp, qml_item):
     toolbar.show()
     qapp.processEvents()
 
-    _click(toolbar, toolbar.root_object, "btnTimeframeMore", qapp, qml_item)
+    _click(
+        toolbar.quick_widget, toolbar.root_object, "btnTimeframeMore", qapp, qml_item
+    )
     picker = toolbar._picker
 
     assert qml_item(toolbar.root_object, "timeframePill_4h") is None
-    _click(picker._quick, picker.root_object, "timeframeStar_4h", qapp, qml_item)
+    _click(picker.quick_widget, picker.root_object, "timeframeStar_4h", qapp, qml_item)
 
     assert qml_item(toolbar.root_object, "timeframePill_4h") is not None
     picker.close()
@@ -148,7 +156,9 @@ def test_dismissing_the_picker_leaves_the_row_as_it_was(qapp, qml_item):
     emitted: list[str] = []
     toolbar.sig_timeframe_changed.connect(emitted.append)
 
-    _click(toolbar, toolbar.root_object, "btnTimeframeMore", qapp, qml_item)
+    _click(
+        toolbar.quick_widget, toolbar.root_object, "btnTimeframeMore", qapp, qml_item
+    )
     toolbar._picker.reject()
     qapp.processEvents()
 

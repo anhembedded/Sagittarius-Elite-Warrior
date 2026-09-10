@@ -41,7 +41,7 @@ def _widget(qapp) -> StatusPillWidget:
 def test_loads_ready_with_a_real_root_object(qapp):
     widget = _widget(qapp)
 
-    assert widget.status() is QQuickWidget.Status.Ready
+    assert widget.quick_widget.status() is QQuickWidget.Status.Ready
     assert widget.root_object is not None
     widget.close()
 
