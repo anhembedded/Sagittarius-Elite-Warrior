@@ -124,3 +124,15 @@ class ConfigKeys(str, Enum):
     TRADING_LIVE_SIZING_PERCENT = "trading.live_sizing_percent"
     #: `BUG-084` — was a hardcoded `1.0` alongside `TRADING_LIVE_SIZING_PERCENT`.
     TRADING_LIVE_LEVERAGE = "trading.live_leverage"
+    #: `BUG-117` — how often `PositionRefreshService` re-polls
+    #: `GetOpenPositionsQuery` to keep the Positions table's mark
+    #: price/unrealized PnL from going stale between exchange-driven
+    #: `ACCOUNT_UPDATE` events. Clamped at read time to
+    #: `_MIN_POSITION_REFRESH_INTERVAL_SECONDS`
+    #: (`binance_bot_module.py`) — a value below that floor is silently
+    #: raised to it, with a one-line log saying so, rather than let a
+    #: misconfigured near-zero interval spend this account's Binance
+    #: request-weight budget (default 2400/min) on nothing else.
+    TRADING_POSITION_REFRESH_INTERVAL_SECONDS = (
+        "trading.position_refresh_interval_seconds"
+    )

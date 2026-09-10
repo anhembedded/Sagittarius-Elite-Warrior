@@ -68,6 +68,25 @@ không phải một object mới dựng riêng cho từng màn hình. `refresh_o
 
 Một poll, N màn hình — không phải N poll độc lập.
 
+**Theo yêu cầu review tiếp theo của user** ("5s mới GetOpenPositionsQuery 1
+lần sao, để nó vào cơ chế config đi, có giới hạn thấp nhất theo spec của
+Binance nhé") — chu kỳ 5s không còn hard-code:
+
+- `ConfigKeys.TRADING_POSITION_REFRESH_INTERVAL_SECONDS` (`trading.
+  position_refresh_interval_seconds`) — đọc qua `IConfig`, mặc định vẫn
+  5.0s.
+- `BinanceBotModule._MIN_POSITION_REFRESH_INTERVAL_SECONDS = 1.0` — sàn
+  chặn dưới. `futures_position_information()` (`python-binance`) gọi đúng
+  endpoint Binance tài liệu hoá "Position Information V3"
+  (`GET /fapi/v3/positionRisk`), weight 5 theo bảng weight USDⓈ-M Futures
+  API công khai của Binance (**chưa re-verify qua lệnh gọi thật** — egress
+  `*.binance.*` bị chặn trong sandbox, cùng disclosure
+  `futures_account_reader.py` đã ghi). Ngân sách weight mặc định theo IP
+  là 2400/phút; ở 1 lần/giây, riêng poll này tốn `60 × 5 = 300` weight/phút
+  (12,5% ngân sách đó) — còn đủ chỗ cho mọi request khác của app. Một giá
+  trị config dưới ngưỡng này bị nâng lên đúng ngưỡng, kèm 1 dòng log
+  `WARNING` nêu rõ key + giá trị bị nâng (không âm thầm bỏ qua).
+
 ## 4. Regression test
 
 `tests/unit/application/services/test_position_refresh_service.py` (5
@@ -75,6 +94,12 @@ test): no-op khi tắt trading; dispatch + publish `PositionChangedEvent` khi
 bật; publish `PositionClosedEvent` cho symbol không còn xuất hiện ở lần
 fetch sau; một lỗi dispatch không văng exception; tắt trading giữa chừng
 dừng hẳn các lần dispatch tiếp theo.
+
+`tests/unit/test_binance_bot_module_position_refresh_interval.py` (4
+test, thêm theo yêu cầu review về config): không có config → mặc định
+5.0s; giá trị trên ngưỡng được giữ nguyên; giá trị dưới ngưỡng bị nâng lên
+đúng `_MIN_POSITION_REFRESH_INTERVAL_SECONDS`; việc nâng lên có log
+`WARNING` nêu tên key.
 
 ## 5. Xác minh
 
