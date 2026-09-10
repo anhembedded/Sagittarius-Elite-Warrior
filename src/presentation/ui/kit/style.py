@@ -390,6 +390,11 @@ def background_token(role: StyleRole) -> str:
     @raise ValueError If `role` has no static opaque background (transparent,
         state-dependent, or gradient) — nothing opaque can be embedded on
         it, and the failure belongs at construction, not on screen.
+
+    @details The caller is `qml/embed/quick_surface.py`; a widget author does
+        not call this directly, they pass a `StyleRole` to `QuickSurface` and
+        it resolves the colour. Adding a role here means declaring that an
+        embedded QML scene may sit on it.
     """
     try:
         return _STATIC_BACKGROUND_TOKENS[role]

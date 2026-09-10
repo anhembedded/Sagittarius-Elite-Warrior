@@ -41,11 +41,14 @@ patterns have been measured to actually work (`EPIC-015` spikes A/B/C):
 > `QFrame` already obeys.
 
 `src/presentation/ui/qml/embed/` is the **only** place in this app that constructs a
-`QQuickWidget`. Every host — modal body, inline panel, compact toolbar — builds a
+`QQuickWidget`, and `theme_bootstrap.seed_app_theme()` is the only way the theme gets seeded
+(`BOT-133`). Every host — modal body, inline panel, compact toolbar — builds a
 `QuickSurface(qml_file, surface=StyleRole.X, context={...}, size_policy=...)`, or subclasses it
 when the widget *is* the scene (`ProgressBannerWidget`, `StatusPillWidget`, `StatCardRowWidget`,
 `ChartToolbar`). `tests/unit/presentation/ui/qml/test_quick_widget_only_in_embed.py` fails the
-build on a `QQuickWidget()` or `setClearColor(` anywhere else.
+build on a `QQuickWidget()`, a `setClearColor(`, or a second theme-seeding call anywhere else —
+reading the syntax tree, so documenting these APIs stays allowed while *using* them elsewhere does
+not. Each failure names the API to use instead.
 
 **Why it is a mechanism and not advice.** `QQuickWidget` renders two different ways and they
 disagree about what a transparent clear colour means:

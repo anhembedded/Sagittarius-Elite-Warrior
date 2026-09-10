@@ -15,7 +15,11 @@
 # This project is run from source, never installed as a distribution; there is
 # deliberately no [build-system] table, so this block is metadata only.
 name = "sagittarius-elite-warrior"
-version = "0.0.0"
+# First tracked version. `0.0.0` was the placeholder this project carried
+# through 130 completed tasks; nothing in the code reads it, so it stated
+# nothing. `0.1.x` rather than `1.0.0` on purpose: the roadmap still gates
+# live trading (`Tasks/ROADMAP.md`), and a 1.0 would claim otherwise.
+version = "0.1.0"
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
