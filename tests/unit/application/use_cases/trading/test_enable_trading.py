@@ -44,14 +44,19 @@ def _ready_status() -> ExchangeConnectionStatus:
 
 
 def _position_payload(symbol: str = "BTCUSDT") -> dict:
+    # `BUG-114` — real `/fapi/v3/positionRisk` carries no `leverage`/
+    # `marginType` field; `notional`/`initialMargin`/`isolatedMargin` are
+    # what the mapper actually derives them from now (see
+    # `futures_order_payload_mapper.py`). Not asserted in this file.
     return {
         "symbol": symbol,
         "positionAmt": "0.5",
         "entryPrice": "60000",
         "markPrice": "60100",
         "unRealizedProfit": "50",
-        "leverage": "10",
-        "marginType": "cross",
+        "notional": "30050",
+        "initialMargin": "3005",
+        "isolatedMargin": "0",
         "liquidationPrice": "45000",
     }
 

@@ -159,6 +159,45 @@ def map_futures_order_payload_to_order(payload: dict[str, Any]) -> Order:
     )
 
 
+def _leverage_from_margin(payload: dict[str, Any]) -> int:
+    """`BUG-114` — `/fapi/v1(v2)/positionRisk`'s documented `leverage`
+    field does not exist on the real `/fapi/v3/positionRisk` response
+    `futures_position_information()` actually calls: a real Testnet
+    account hit `KeyError: 'leverage'` on every position, every time.
+    Binance's own margin formula (`initialMargin = notional / leverage`)
+    is reported to hold in cross margin's base tier; recovers `20` here
+    against a real payload independently confirmed as 20x on Binance's
+    own Testnet UI. Deliberately deviates from this module's own
+    "never computes, only parses" rule (see module docstring) — the field
+    this app depended on for years turned out to not exist on the wire at
+    all, and no other already-verified field reports it directly.
+    """
+    notional = Decimal(str(payload["notional"]))
+    initial_margin = Decimal(str(payload["initialMargin"]))
+    if initial_margin == 0:
+        # A real open position (`positionAmt != 0`, already filtered by
+        # the caller) always carries a non-zero initial margin requirement
+        # — reaching here means the exchange sent a shape this formula
+        # cannot make sense of. Refusing loudly beats reporting a
+        # fabricated leverage number (`domain-truth-rule.md`).
+        raise KeyError("leverage")
+    return int((notional / initial_margin).to_integral_value())
+
+
+def _margin_type_from_isolation(payload: dict[str, Any]) -> MarginType:
+    """`BUG-114` — same defunct-field problem as `_leverage_from_margin`:
+    real `/fapi/v3/positionRisk` carries no `marginType` string either.
+    `isolatedMargin` (and `isolatedWallet`) are non-zero only for an
+    isolated position — real Cross-margin payloads observed report both
+    as `"0"`."""
+    isolated_margin = _decimal_or_none(payload.get("isolatedMargin"))
+    return (
+        MarginType.ISOLATED
+        if isolated_margin is not None and isolated_margin != 0
+        else MarginType.CROSSED
+    )
+
+
 def map_futures_position_payload_to_live_position(
     payload: dict[str, Any],
 ) -> LivePosition:
@@ -181,12 +220,8 @@ def map_futures_position_payload_to_live_position(
         entry_price=Decimal(str(payload["entryPrice"])),
         mark_price=Decimal(str(payload["markPrice"])),
         unrealized_pnl=Decimal(str(payload["unRealizedProfit"])),
-        leverage=int(payload["leverage"]),
-        margin_type=(
-            MarginType.ISOLATED
-            if str(payload.get("marginType", "")).lower() == "isolated"
-            else MarginType.CROSSED
-        ),
+        leverage=_leverage_from_margin(payload),
+        margin_type=_margin_type_from_isolation(payload),
         liquidation_price=(
             LiquidationPrice(liquidation_price_raw)
             if liquidation_price_raw is not None
