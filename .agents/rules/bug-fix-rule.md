@@ -1,6 +1,6 @@
 ---
 name: Bug Fix Rule
-description: Mandatory workflow for diagnosing and fixing a reported bug — root cause first, log evidence for both reproduction and fix, regression test before the fix, correct test tier, permanent test, documented report.
+description: Mandatory workflow for diagnosing and fixing a reported bug — root cause first, never a hotfix (redesign the mechanism when it can recur elsewhere), log evidence for both reproduction and fix, regression test before the fix, correct test tier, permanent test, documented report.
 trigger: always_on
 ---
 
@@ -16,7 +16,40 @@ This file owns the whole bug-fix workflow — the single source of truth.
 - State the root cause explicitly before touching the fix — what causes the bug, and why
   the planned fix resolves it cleanly without crossing architectural layer boundaries.
 
-## 2. Prove the reproduction and the fix with log evidence
+## 2. Never hotfix — investigate the mechanism, prioritize redesigning it to scale
+
+Root-causing a bug means investigating the *mechanism* behind it, not stopping at the one
+call site the report happened to surface. Every fix must weigh scalability before a line of
+code is written: **prioritize fixing the mechanism, redesign it if that's what it takes** —
+a hotfix is the fallback only once a redesign is genuinely not warranted, never the default.
+
+- A fix that patches only the one call site the report surfaced, while the same defect
+  stays free to recur at every other call site of the same shape, is a hotfix — forbidden
+  even when it makes the reported symptom disappear.
+- Before writing the fix, ask: does this class of problem already exist at more than one
+  place, or will it recur as the app grows (a second screen, a third caller, a new symbol)?
+  If yes, the fix must redesign the shared mechanism, not duplicate a patch per call site.
+- Concrete tell: if the natural fix is "add the same timer/toggle/wiring to every Presenter
+  that has this problem," stop — that is N copies of one concern, the exact duplication
+  class this repo has already paid for and extracted away more than once (`OrderFeed`,
+  `EquityFeed`, `HealthCheckCoordinator`, `LiveOrderBookCoordinator` all exist because two
+  Presenters once carried byte-identical logic). Move the mechanism to the one layer that
+  serves every current and future consumer for free — typically one application-layer
+  service publishing through the existing event pipeline, not a UI-layer object constructed
+  once per screen.
+- Worked example (`BUG-117`): the Positions table's mark price/PnL only ever refreshed on an
+  `ACCOUNT_UPDATE` event, so it went stale between fills while the live chart kept ticking.
+  The first pass added a `QTimer`-based controller to *each* Presenter (Trading, Dev Board)
+  — it did fix the reported symptom, but as two independent timers polling the same
+  endpoint, with a third future screen needing a third copy. Corrected to one
+  `PositionRefreshService`, started once at boot, gated on `TradingSessionState.enabled`,
+  republishing through the same `PositionChangedEvent`/`PositionClosedEvent` every screen
+  already listens to — one poll, zero added Presenter wiring, any number of screens.
+- This rule does not license scope creep the report never asked for. A redesign stays
+  bounded to the mechanism the bug actually lives in — replace the duplicated/patched piece
+  with the shared one, do not also refactor unrelated code nearby.
+
+## 3. Prove the reproduction and the fix with log evidence
 
 - When static reading isn't conclusive, add **temporary** debug logging at *each* layer the
   failure could plausibly cross — input, business logic, render/adapter boundary — not just
@@ -46,7 +79,7 @@ This file owns the whole bug-fix workflow — the single source of truth.
     detail is genuinely needed use `TRACE` ([`logging-rule.md`](./logging-rule.md) §6-7),
     which only emits under `--debug`, so it never has to be discarded for being expensive.
 
-## 3. Write a regression test first, and confirm it actually fails
+## 4. Write a regression test first, and confirm it actually fails
 
 - Before fixing the code, write a test reproducing the reported failure, then **run it and
   confirm it fails for the right reason** — not just that it exists. A test that passes
@@ -59,24 +92,24 @@ This file owns the whole bug-fix workflow — the single source of truth.
   real native host. See [`ci-rule.md`](./ci-rule.md) §6 for the four-level test contract
   this maps onto.
 - Only after the test is confirmed red, apply the fix, then confirm the same test goes
-  green — alongside step 2's log evidence, not the test in isolation.
+  green — alongside step 3's log evidence, not the test in isolation.
 
-## 4. Keep the regression test permanently
+## 5. Keep the regression test permanently
 
 The regression test is the executable record of the reported failure. It MUST NOT be
 deleted, skipped, weakened, or rewritten into something that no longer reaches the original
 failure path, unless explicitly replaced by stronger coverage of that exact same path.
 
-## 5. Commit content
+## 6. Commit content
 
-- The fixing commit MUST include step 3's regression test — never fix without it, never
+- The fixing commit MUST include step 4's regression test — never fix without it, never
   commit the test as a separate later commit.
 - State the root cause clearly in the commit body: what caused the bug, and why the fix
   resolves it cleanly.
 - `fix:` commit type per [`commit-rule.md`](./commit-rule.md), referencing the root cause
   or issue ID (`BOT-xxx`/`BUG-xxx`).
 
-## 6. Document it as a bug report
+## 7. Document it as a bug report
 
 Every bug worth this workflow gets `Tasks/bug_report/incomplete/BUG-XXX_description.md`
 (next number after the highest across *both* subdirectories), structured as from `BUG-006`

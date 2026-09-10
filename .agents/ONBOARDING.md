@@ -255,7 +255,7 @@ Note: **every rule file in both repos only lists PowerShell commands**. On Linux
 ## 11. Reporting to the user — project-lead level, not implementation level
 
 - When reporting progress, task/epic status, an investigation summary, or test results to the user in conversation, write as if reporting to a **project lead**: conclusion, current state, decisions the user needs to make, risks/blockers. Do **not** go into implementation detail (function names, lines of code, internal data types, C++ symbol names…) unless the user asks directly, or that detail **directly determines** the next action. Example: "F4 is blocked by BUG-015 (Windows: geometry rebuilt on pointer move), root-cause hypothesis under investigation" is enough; there is no need to list `QSizeF` or `.cpp` file names.
-- **This does not apply to long-lived documents** — task files, bug reports (`Tasks/bug_report/`), and reports (`Tasks/reports/`) must still carry full root cause/file:line/evidence per `bug-fix-rule.md` and §3/§4. The "project-lead level" rule applies only to answers in conversation.
+- **This does not apply to long-lived documents** — task files, bug reports (`Tasks/bug_report/`), and reports (`Tasks/reports/`) must still carry full root cause/file:line/evidence per `bug-fix-rule.md` and §4/§5. The "project-lead level" rule applies only to answers in conversation.
 
 ---
 
