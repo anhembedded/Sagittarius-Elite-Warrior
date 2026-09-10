@@ -15,7 +15,6 @@ import time
 
 from PySide6.QtCore import QPointF, qInstallMessageHandler
 from PySide6.QtWidgets import QApplication
-from sagittarius_engine.extensions.pyside_mvc import configure_app_qml
 
 from Sagittarius_Elite_Warrior.scripts.benchmarking.backtest_chart_interaction import (
     _CANDLE_COUNT,
@@ -26,15 +25,14 @@ from Sagittarius_Elite_Warrior.scripts.benchmarking.backtest_chart_interaction i
     _markers,
     _volume,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
-    Palette,
-    get_icon_loader,
-)
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.backtest_view import (
     BackTestView,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.screens.backtest.backtest_view_model import (
     BackTestViewModel,
+)
+from Sagittarius_Elite_Warrior.src.presentation.ui.theme_bootstrap import (
+    seed_app_theme,
 )
 
 _FORBIDDEN_RENDER_MESSAGES = (
@@ -73,7 +71,7 @@ def main() -> None:
     previous_handler = qInstallMessageHandler(capture_message)
     app = QApplication.instance() or QApplication([])
     app.setQuitOnLastWindowClosed(False)
-    configure_app_qml(Palette.as_ui_dict(), get_icon_loader(), Palette.as_icon_dict())
+    seed_app_theme()
     view = BackTestView()
     try:
         view.resize(1600, 1000)

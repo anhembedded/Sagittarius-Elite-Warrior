@@ -156,7 +156,7 @@ def test_database_cancel_button_cancels_active_sync_flow(
     # Click Cancel
     centre = cancel_btn.mapToScene(cancel_btn.boundingRect().center())
     QTest.mouseClick(
-        view._progress_banner,
+        view._progress_banner.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

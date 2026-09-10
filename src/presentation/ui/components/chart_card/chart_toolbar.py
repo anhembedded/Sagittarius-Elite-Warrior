@@ -85,13 +85,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QUrl, Signal
-from PySide6.QtQuickWidgets import QQuickWidget
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.components.timeframe_picker import (
     all_options,
 )
-from Sagittarius_Elite_Warrior.src.presentation.ui.qml.style import ensure_qml_style
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import (
+    QuickSizePolicy,
+    QuickSurface,
+)
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeframePicker.timeframe_picker_dialog import (
     PinnedTimeframes,
     TimeframePickerDialog,
@@ -99,7 +102,6 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeframePicker.timeframe
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.TimeframePicker.timeframe_vm import (
     TimeframeVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 #: Re-exported for existing callers/tests (`from ...chart_toolbar import
 #: DEFAULT_TIMEFRAMES`) — the value itself now lives in
@@ -116,7 +118,25 @@ _QML_FILE = (
 )
 
 
-class ChartToolbar(QQuickWidget):
+class _ActiveTimeframe:
+    """The interval this toolbar currently highlights, in one mutable box.
+
+    A `QWidget` subclass may not set instance attributes before its Qt base
+    is constructed, and `QuickSurface` takes its context objects *at*
+    construction — so the `TimeframeVM` below has to exist before
+    `super().__init__()`, while the value its `get_current` callback reads
+    keeps changing afterwards. One shared box is the honest way to say that:
+    the closure and the toolbar read and write the same object, so there is
+    no second copy of "which interval is active" to drift.
+    """
+
+    __slots__ = ("code",)
+
+    def __init__(self, code: str | None) -> None:
+        self.code = code
+
+
+class ChartToolbar(QuickSurface):
     """
     @brief Compact timeframe pill row for a `ChartCard` header, plus the
     full picker its "…" affordance opens.
@@ -148,40 +168,26 @@ class ChartToolbar(QQuickWidget):
         `ChartToolbar()` caller: previews, unit tests) falls back to the
         private, unpersisted `PinnedTimeframes` this class has always used —
         seeded from `timeframes`, exactly as before persistence existed."""
-        super().__init__(parent)
-        self.setObjectName("chartToolbar")
-        ensure_qml_style()
-        # A compact row must hug its pills' natural width, not stretch to
-        # fill whatever space `ChartCard`'s header row leaves — the opposite
-        # need from every fill-the-panel host in this app
-        # (`DatabaseStatusPanel`/`ProgressBannerWidget`/`StatusPillWidget`
-        # all use `SizeRootObjectToView`). Set explicitly rather than relied
-        # on as Qt's default, so the choice reads as deliberate here too.
-        self.setResizeMode(QQuickWidget.ResizeMode.SizeViewToRootObject)
-        # Transparent so `ChartCard`'s own header background shows behind
-        # the QML pills — same reasoning every other host in this app
-        # documents for its own `QQuickWidget`.
-        self.setClearColor(Qt.GlobalColor.transparent)
-
-        self._active: str | None = active or (timeframes[0] if timeframes else None)
-        self._symbol = symbol
+        active_state = _ActiveTimeframe(
+            active or (timeframes[0] if timeframes else None)
+        )
         # See this module's docstring, design-decision §1/§2 (RESOLVED):
         # scoped to this chart's own symbol through the injected store when
         # both are given; otherwise the same private, in-memory
         # `PinnedTimeframes` this class always used, seeded with the
         # constructor's own `timeframes` so a fresh chart header is not an
         # empty row plus a lone "…" button.
+        # Locals until after `super().__init__()`: a `QWidget` subclass may
+        # not take instance attributes before its Qt base is constructed,
+        # and `QuickSurface` needs the two callbacks below to build the VM
+        # it is handed.
+        pin_preferences: TimeframePinPreferences | None = None
         if timeframe_pin_preferences is not None and symbol is not None:
-            self._pin_preferences: TimeframePinPreferences | None = (
-                timeframe_pin_preferences
-            )
+            pin_preferences = timeframe_pin_preferences
             get_pinned, set_pinned = timeframe_pin_preferences.bound_to(symbol)
         else:
-            self._pin_preferences = None
             fallback = PinnedTimeframes(initial=timeframes)
             get_pinned, set_pinned = fallback.get, fallback.set
-        self._picker: TimeframePickerDialog | None = None
-
         # ONE VM for both this embedded toolbar and the picker modal it
         # opens — see this module's docstring, "the one hard requirement".
         # `get_codes` offers every domain timeframe (matches the old
@@ -189,51 +195,50 @@ class ChartToolbar(QQuickWidget):
         # for option in all_options()]`), not just the pinned/default
         # subset — pinning and choosing both reach codes outside
         # `DEFAULT_TIMEFRAMES`.
-        self._vm = TimeframeVM(
+        #
+        # Built before `super().__init__()`, because `QuickSurface` takes its
+        # context properties at construction — hence `_ActiveTimeframe`, the
+        # one box both this closure and the toolbar itself read (see that
+        # class). `refresh()` runs first so the very first rendered frame
+        # already shows the seeded pills instead of an empty row that fills
+        # in a moment later, avoiding exactly the chart-adjacent flicker
+        # `qml-rule.md` §6 warns this phase to watch for.
+        vm = TimeframeVM(
             get_codes=lambda: [option.code for option in all_options()],
-            get_current=lambda: self._active or "",
+            get_current=lambda: active_state.code or "",
             get_pinned=get_pinned,
             set_pinned=set_pinned,
         )
+        vm.refresh()
+        # `HUG`: a compact row must hug its pills' natural width, not stretch
+        # to fill whatever space `ChartCard`'s header row leaves — the
+        # opposite need from every fill-the-panel host in this app. The row
+        # sits on `ChartCard`'s own SURFACE, and `QuickSurface` clears the
+        # scene to that token instead of to a transparent colour that renders
+        # black on a real screen (`BUG-115`).
+        super().__init__(
+            _QML_FILE,
+            surface=StyleRole.SURFACE,
+            context={"vm": vm},
+            size_policy=QuickSizePolicy.HUG,
+            object_name="chartToolbarQuick",
+            parent=parent,
+        )
+        self.setObjectName("chartToolbar")
+        self._active_state = active_state
+        self._symbol = symbol
+        self._pin_preferences = pin_preferences
+        self._vm = vm
         self._vm.chosen.connect(self._on_chosen)
-        # Populates `pinnedRows`/`groups` before the QML binds to them, so
-        # the very first rendered frame already shows the seeded pills
-        # instead of an empty row that fills in a moment later — avoiding
-        # exactly the kind of chart-adjacent flicker `qml-rule.md` §6 warns
-        # this phase to watch for.
-        self._vm.refresh()
-
-        # A QML context property is a borrowed pointer; held on `self` so
-        # `Theme` stays alive for as long as this scene can read it (same
-        # note as every other host in this app).
-        self._theme = get_theme_bridge()
-        root_context = self.rootContext()
-        root_context.setContextProperty("Theme", self._theme)
-        root_context.setContextProperty("vm", self._vm)
-
-        self.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-        if self.status() is not QQuickWidget.Status.Ready:
-            raise RuntimeError(
-                f"QML failed to load: {_QML_FILE}\n"
-                + "\n".join(error.toString() for error in self.errors())
-            )
-        root = self.rootObject()
-        if root is None:  # pragma: no cover - status check above already raises
-            raise RuntimeError("ChartToolbar QML root object is missing")
-        self._root = root
-        root.moreRequested.connect(self._open_picker)
-
-    @property
-    def root_object(self) -> QObject:
-        """The loaded QML root, for tests to reach in by `objectName`."""
-        return self._root
+        self._picker: TimeframePickerDialog | None = None
+        self.root_object.moreRequested.connect(self._open_picker)
 
     def _on_chosen(self, code: str) -> None:
         """`vm.chosen` fires from either view — a pill clicked here, or a
         card chosen in the picker modal — so connecting once here, rather
         than also connecting to `self._picker.chosen`, is what keeps a
         picker choice from re-emitting `sig_timeframe_changed` twice."""
-        self._active = code
+        self._active_state.code = code
         self.sig_timeframe_changed.emit(code)
 
     def set_active(self, timeframe: str | None) -> None:
@@ -247,7 +252,7 @@ class ChartToolbar(QQuickWidget):
         (`choose()` cannot be reused here: it always emits `chosen`, which
         would loop straight back into `_on_chosen`).
         """
-        self._active = timeframe
+        self._active_state.code = timeframe
         self._vm.set_current(timeframe)
 
     def _open_picker(self) -> None:

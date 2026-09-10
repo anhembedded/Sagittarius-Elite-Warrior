@@ -6,20 +6,19 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
 from Sagittarius_Elite_Warrior.src.domain.trading.live_position import LivePosition
 from Sagittarius_Elite_Warrior.src.domain.value_objects.exchange_connection_status import (
     MarginType,
 )
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_row import (
     build_position_row,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.PositionsTable.positions_vm import (
     PositionsVM,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 _QML_FILE = Path(__file__).with_name("PositionsTable.qml")
 
@@ -54,17 +53,11 @@ def build_preview() -> QWidget:
     vm = PositionsVM()
     vm.set_rows([build_position_row(position) for position in _SAMPLE_POSITIONS])
 
-    quick = QQuickWidget()
-    quick.setObjectName("positionsTablePreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(760, 320)
-    return quick
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm},
+        object_name="positionsTablePreview",
+    )
+    surface.resize(760, 320)
+    return surface

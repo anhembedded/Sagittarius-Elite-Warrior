@@ -59,6 +59,7 @@ from .style import (
     Tone,
     WidgetState,
     apply_role,
+    background_token,
     semantic_colour,
     tone_colour,
 )
@@ -115,6 +116,7 @@ __all__ = [
     "Tone",
     "WidgetState",
     "apply_role",
+    "background_token",
     "find_bare_qt_base_widgets",
     "find_inline_stylesheets",
     "find_unscoped_container_stylesheets",

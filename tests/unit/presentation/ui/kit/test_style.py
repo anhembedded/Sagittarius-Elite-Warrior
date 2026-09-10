@@ -5,11 +5,12 @@ for why no such base exists)."""
 from __future__ import annotations
 
 import pytest
-from PySide6.QtWidgets import QFrame
+from PySide6.QtWidgets import QFrame, QWidget
 from Sagittarius_Elite_Warrior.src.presentation.ui.kit import (
     StyleRole,
     WidgetState,
     apply_role,
+    background_token,
 )
 from sagittarius_engine.extensions.pyside_mvc.tokens import get_theme_bridge
 
@@ -270,3 +271,30 @@ def test_progress_disabled_chunk_uses_the_muted_token(qtbot, fake_theme_bridge):
     apply_role(widget, StyleRole.PROGRESS, state=WidgetState.DISABLED)
 
     assert "<muted>" in widget.styleSheet()
+
+
+def test_every_embeddable_role_paints_the_background_token_it_advertises(qtbot):
+    """`background_token(role)` is what an embedded QML scene clears to
+    (`BUG-115`); the parent widget's own QSS must paint the same colour, or
+    the seam between them shows on screen and nothing in a headless test can
+    see it. `_build_qss` reads the table through `_background()`, so this is
+    the guard that the two never drift apart again.
+    """
+    from Sagittarius_Elite_Warrior.src.presentation.ui.kit.style import (
+        _STATIC_BACKGROUND_TOKENS,
+        _token,
+    )
+
+    for role in _STATIC_BACKGROUND_TOKENS:
+        widget = QWidget()
+        qtbot.addWidget(widget)
+        apply_role(widget, role)
+        expected = _token(background_token(role))
+        assert f"background-color: {expected};" in widget.styleSheet(), role.name
+
+
+def test_a_role_with_no_static_background_refuses_to_name_a_token():
+    """A hover/selected/transparent/gradient role cannot host an opaque
+    scene, and says so at construction rather than on a user's screen."""
+    with pytest.raises(ValueError, match="no static opaque background"):
+        background_token(StyleRole.SELECTABLE_CARD)

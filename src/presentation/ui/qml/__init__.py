@@ -4,11 +4,21 @@
 widget viewmodel sẽ được test riêng"*:
 
     qml/
+      embed/                      the ONLY place this app builds a QQuickWidget
+        quick_surface.py          QuickSurface — every embedded scene, opaque
+        size_policy.py            FILL / HUG
       host.py                     QmlOverlay — widget chrome, QML body
       <Widget>/
         <Widget>.qml              layout and bindings only
         <widget>_vm.py            all state and rules — tested with no GUI
         NOTES.md                  why this widget exists
+
+**Embedding a new `.qml`? Build a `QuickSurface`** (`embed/`), or subclass it
+when the widget *is* the scene. Never construct a `QQuickWidget` here: a
+scene must clear to the token of the `StyleRole` it sits on, or it renders
+black on X11 and see-through on Wayland while every headless test stays green
+(`BUG-115`). `tests/unit/presentation/ui/qml/test_quick_widget_only_in_embed.py`
+fails the build on a second way of doing it.
 
 The split is load-bearing, not cosmetic. Everything that can be wrong lives
 in the `.py`, where `mypy`, `ruff` and `pytest` can see it; the `.qml` holds

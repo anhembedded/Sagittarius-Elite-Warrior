@@ -30,11 +30,8 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from sagittarius_engine.extensions.pyside_mvc import configure_app_qml, get_theme_bridge
-
-from Sagittarius_Elite_Warrior.src.presentation.ui.assets import (
-    Palette,
-    get_icon_loader,
+from Sagittarius_Elite_Warrior.src.presentation.ui.theme_bootstrap import (
+    seed_app_theme,
 )
 
 _UI_ROOT = _REPO_ROOT / "src" / "presentation" / "ui"
@@ -85,40 +82,17 @@ def discover_previews() -> dict[str, Callable[[], QWidget]]:
 
 
 def _ensure_qt_theme_ready() -> None:
-    """Boots just enough of the app's theming for a `kit`-based widget
-    (`Overlay`/`Panel`/`apply_role`, or a `.qml` reading `Theme.*`) to
-    construct without raising.
+    """Seeds the app's theme so a `kit`-based widget (`Overlay`/`Panel`/
+    `apply_role`) or a `.qml` reading `Theme.*` constructs without raising.
 
-    @details `configure_app_qml()` alone is NOT enough — `get_theme_bridge()`
-    is a separate singleton `app_bootstrapper.py` seeds in its own call, and
-    any widget touching `apply_role()` before that seed raises `ValueError:
-    get_theme_bridge() has no palette yet`. This was a real, pre-existing
-    gap in this script (reproduces today on `--list`-discovered `settings`,
-    unrelated to `--dir`) — fixed here once for every target, not
-    special-cased for QML-widget previews.
+    @details One call, shared with the bootstrapper and every probe script —
+    `src/presentation/ui/theme_bootstrap.py` explains why that is one
+    function and not a snippet each entry point keeps its own copy of. The
+    `"Basic"` Qt Quick Controls pin used to be repeated here too; it now
+    lives in the engine's `create_quick_widget()`, which every embedded
+    scene goes through (`BOT-132`).
     """
-    # `as_ui_dict()` returns `dict[str, str | float]` since `EPIC-007F` gave
-    # this app its own size tokens; the engine still annotates the parameter
-    # `dict[str, str]`. Runtime is fine — it feeds a `QQmlPropertyMap`, which
-    # takes any value, and production does exactly this on every launch
-    # (`app_bootstrapper.py`, unchecked only because `presentation/` is
-    # excluded from the mypy gate). The narrow annotation is the engine's to
-    # widen; ignored here rather than converting the sizes to strings, which
-    # would change what the UI actually renders.
-    # QML previews customize Controls backgrounds. Native platform styles do
-    # not permit that customization, so pin the preview process to Basic
-    # before any QQuickWidget is constructed.
-    from PySide6.QtQuickControls2 import QQuickStyle
-
-    if QQuickStyle.name() != "Basic":
-        QQuickStyle.setStyle("Basic")
-
-    configure_app_qml(
-        Palette.as_ui_dict(),  # type: ignore[arg-type]
-        get_icon_loader(),
-        Palette.as_icon_dict(),
-    )
-    get_theme_bridge(Palette.as_ui_dict())  # type: ignore[arg-type]
+    seed_app_theme()
 
 
 def _build_preview_for_dir(raw_dir: str) -> QWidget:

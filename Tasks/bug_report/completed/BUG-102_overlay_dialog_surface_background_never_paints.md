@@ -66,3 +66,29 @@ Sandbox này không có màn hình thật (`QT_QPA_PLATFORM=offscreen` only) —
 thật để xác nhận trực quan trên Wayland được. Test unit xác nhận đúng CƠ CHẾ Qt tài liệu hoá (cờ
 được set), nhưng **user nên tự mở lại app thật** (`scripts/run-ui.ps1 -dev` hoặc tương đương) và mở
 lại `TimeframePicker`/`SymbolPicker`/bất kỳ dialog QML nào khác để xác nhận nền đã đặc trở lại.
+
+
+---
+
+## 6. Phụ lục 2026-09-10 — fix này đúng, nhưng **chưa đủ**; phần còn lại là `BUG-115`
+
+Fix ở §3 (`WA_StyledBackground` cho `Overlay`) **đúng và vẫn cần**: không có nó, phần chrome của
+dialog (tiêu đề, phụ đề, hàng nút footer) không có nền. Nhưng nó **không thể** chạm tới vùng thân
+QML, và §5 của hồ sơ này đã tự ghi "user nên tự mở lại app thật để xác nhận" — lần xác nhận đó
+(2026-09-10, X11 thật qua Xvfb) cho thấy thân modal **vẫn sai**.
+
+Lý do: `QQuickWidget` trên đường vẽ texture (mọi phiên desktop thật) là *render-to-texture widget*;
+Qt **đục lỗ** backing store ngay dưới nó (`qwidget.cpp`, `QWidgetPrivate::drawWidget`) *sau khi*
+widget cha đã vẽ, rồi ghép texture **không blend** lên nền clear đen. Nền cha có được vẽ hay không
+cũng không lộ ra — nên `WA_StyledBackground` không phải là root cause đầy đủ của triệu chứng user
+chụp, chỉ là một nửa.
+
+Nửa còn lại: [`BUG-115`](../completed/BUG-115_qquickwidget_transparent_clear_colour_black_or_see_through_on_hardware_compositor.md)
+— `setClearColor(transparent)` ở cả 10 host. Sửa bằng `QuickSurface` (`BOT-132`): scene QML tự
+clear bằng token nền của `StyleRole` nó ngồi lên.
+
+**Bài học đáng giữ, không phải trách người sửa `BUG-102`:** regression test của hồ sơ này assert
+đúng cơ chế Qt tài liệu hoá (`testAttribute(WA_StyledBackground) is True`) và xanh — nhưng
+**không tái hiện triệu chứng**. Một test khoá cơ chế mà không ai đo lại triệu chứng thì đóng hồ sơ
+sớm được. Từ `BUG-115`, tầng Desktop (`scripts/quick_surface_desktop_probe.py`) là nơi triệu chứng
+này đo được thật.

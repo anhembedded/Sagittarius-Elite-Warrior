@@ -3,6 +3,9 @@ import sys
 from contextlib import suppress
 
 from Sagittarius_Elite_Warrior.src.binance_bot_module import BinanceBotModule
+from Sagittarius_Elite_Warrior.src.infrastructure.engine_adapters.engine_capability_validator_extension import (
+    EngineCapabilityValidatorExtension,
+)
 from Sagittarius_Elite_Warrior.src.presentation.cli.cli_parser import build_parser
 from Sagittarius_Elite_Warrior.src.presentation.cli.exchange_status_cmd import (
     execute_exchange_status,
@@ -79,6 +82,11 @@ def create_app(config_manager: ConfigManager) -> App:
             ["PySide6", "pyqtgraph", "qdarktheme", "sqlalchemy"]
         )
     )
+    # Presence first (above), then capability: the engine can be installed and
+    # still predate an API this app's source calls, which is the failure
+    # `pip show` cannot see and that has misled this project four times —
+    # see `engine_capabilities.py` for the list and BOT-133.
+    app.use(EngineCapabilityValidatorExtension())
     app.use(AssetValidatorExtension())
 
     app.use(LoggerExtension())

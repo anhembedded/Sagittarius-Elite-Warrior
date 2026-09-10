@@ -288,7 +288,7 @@ def test_clicking_the_progress_banners_cancel_button_requests_stop(
     button = _progress_cancel_button(panel)
     centre = button.mapToScene(button.boundingRect().center())
     QTest.mouseClick(
-        panel._progress_banner,
+        panel._progress_banner.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

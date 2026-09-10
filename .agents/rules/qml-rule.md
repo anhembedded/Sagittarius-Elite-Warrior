@@ -33,6 +33,46 @@ patterns have been measured to actually work (`EPIC-015` spikes A/B/C):
 | A whole route in QML | `QStackedWidget` holds one `QQuickWidget` as the entire screen | not used yet — Settings/Data Management |
 | QML modal | `QDialog`/`Overlay` holds a `QQuickWidget` as its body | `QmlOverlay` (`src/presentation/ui/qml/host.py`) — in use |
 
+### 0.0 Every embedded scene goes through `QuickSurface` — and is **opaque**
+
+> **`BUG-115`/`BOT-132` (2026-09-10).** The one hard rule of the QtWidgets↔QML boundary, and the
+> one that cost this app ten broken screens: **an embedded QML scene is opaque, and its background
+> is the token of the `StyleRole` it is embedded in** — exactly the rule a child `QWidget` on a
+> `QFrame` already obeys.
+
+`src/presentation/ui/qml/embed/` is the **only** place in this app that constructs a
+`QQuickWidget`, and `theme_bootstrap.seed_app_theme()` is the only way the theme gets seeded
+(`BOT-133`). Every host — modal body, inline panel, compact toolbar — builds a
+`QuickSurface(qml_file, surface=StyleRole.X, context={...}, size_policy=...)`, or subclasses it
+when the widget *is* the scene (`ProgressBannerWidget`, `StatusPillWidget`, `StatCardRowWidget`,
+`ChartToolbar`). `tests/unit/presentation/ui/qml/test_quick_widget_only_in_embed.py` fails the
+build on a `QQuickWidget()`, a `setClearColor(`, or a second theme-seeding call anywhere else —
+reading the syntax tree, so documenting these APIs stays allowed while *using* them elsewhere does
+not. Each failure names the API to use instead.
+
+**Why it is a mechanism and not advice.** `QQuickWidget` renders two different ways and they
+disagree about what a transparent clear colour means:
+
+| Path | When | A region the QML does not paint |
+| :--- | :--- | :--- |
+| Software | `offscreen`, `QT_QUICK_BACKEND=software`, and **every `widget.grab()`** — i.e. this repo's whole test tier | shows the parent widget's background |
+| Texture (RHI) | **every real desktop session** — xcb, wayland, windows | Qt punches a hole in the backing store under the widget (`qwidget.cpp`, *"punch a hole in the backingstore"*) and composites the scene, unblended, over a clear of `Qt::black` — **black** on X11, **see-through** on Wayland |
+
+So `setClearColor(Qt.GlobalColor.transparent)` + the comment *"so the parent SURFACE shows
+through"* was true only where nobody looks. Ten hosts carried that copy-paste, every test was
+green, and the user saw black modal bodies and black tables on Ubuntu. `QuickSurface` resolves the
+clear colour from `kit.style.background_token(role)` — the same table `apply_role()` paints the
+parent from — so the two painters cannot drift, and both rendering paths produce the same pixels.
+
+`background_token()` raises for a role whose background is transparent, state-dependent
+(hover/selected) or a gradient: nothing opaque can sit on those, and the failure belongs at
+construction rather than on a user's screen.
+
+**Verifying it is a Desktop-tier job, not a unit-test job.** `scripts/quick_surface_desktop_probe.py`
+compares `QScreen.grabWindow` against `widget.grab()` in an empty scene region; it refuses to run
+under `offscreen` (where the defect is invisible). On Linux: `QT_QPA_PLATFORM=xcb xvfb-run -a -s
+"-screen 0 800x600x24" .venv/bin/python scripts/quick_surface_desktop_probe.py`.
+
 ### 0.1 QML modals — two shapes, not one
 
 The technical reason (measured from Qt itself): `QtQuick.Controls`' `Popup`/`Dialog` dims and
@@ -179,9 +219,11 @@ moment (the user's machine); (3) this repo has caught the "every widget paints i
 twice already (`EPIC-005` left 8 separate `setStyleSheet` calls; `EPIC-006B` had to clean them up).
 **Mandatory for every new `.qml`, no "later":**
 
-- Call `ensure_qml_style()` (pinning the `"Basic"` style) inside `QmlOverlay.__init__`/the shared
-  host, **not only at app bootstrap**: tests construct dialogs directly without going through the
-  bootstrapper, so pinning only at bootstrap makes tests pass on native chrome that users never see.
+- The `"Basic"` style pin happens inside the engine's `create_quick_widget()`, which `QuickSurface`
+  builds on — so it applies to every scene, including ones a test constructs directly without going
+  through the bootstrapper (pinning only at bootstrap would make tests pass on native chrome users
+  never see). The app's own `qml/style.py` copy of `ensure_qml_style()` was deleted in `BOT-132`;
+  do not write a second one.
 - Every colour **must** be a `Theme.<token>` (`register_theme()` installs the `Theme` context
   property). **Hex literals (`"#..."`) and literal colour names (except `"transparent"`) are
   forbidden in `.qml`** — the guard already exists, see `test_qml_style_discipline.py`; it mirrors

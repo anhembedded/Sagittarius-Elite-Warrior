@@ -78,7 +78,7 @@ def _click(view: DataManagementView, qapp) -> None:
     button = _cancel_button(view)
     centre = button.mapToScene(button.boundingRect().center())
     QTest.mouseClick(
-        view._progress_banner,
+        view._progress_banner.quick_widget,
         Qt.MouseButton.LeftButton,
         pos=QPoint(int(centre.x()), int(centre.y())),
     )

@@ -9,17 +9,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
-from PySide6.QtQuickWidgets import QQuickWidget
 from PySide6.QtWidgets import QWidget
-from Sagittarius_Elite_Warrior.src.presentation.ui.kit import Tone
+from Sagittarius_Elite_Warrior.src.presentation.ui.kit import StyleRole, Tone
+from Sagittarius_Elite_Warrior.src.presentation.ui.qml.embed import QuickSurface
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.MetricsDetailPanel.metrics_detail_vm import (
     MetricsDetailVM,
 )
 from Sagittarius_Elite_Warrior.src.presentation.ui.qml.MetricsDetailPanel.performance_metrics_view import (
     StatCardData,
 )
-from sagittarius_engine.extensions.pyside_mvc import get_theme_bridge
 
 _QML_FILE = Path(__file__).with_name("MetricsDetailPanel.qml")
 
@@ -56,20 +54,11 @@ def build_preview() -> QWidget:
     )
     vm.refresh()
 
-    quick = QQuickWidget()
-    quick.setObjectName("metricsDetailPanelPreview")
-    quick.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-    quick.rootContext().setContextProperty("vm", vm)
-    quick.rootContext().setContextProperty("Theme", get_theme_bridge())
-    # QML context properties are borrowed references; retain for the scene
-    # lifetime, same reasoning `QmlOverlay.__init__` documents.
-    quick._metrics_detail_vm = vm
-
-    quick.setSource(QUrl.fromLocalFile(str(_QML_FILE)))
-    if quick.status() is not QQuickWidget.Status.Ready:
-        raise RuntimeError(
-            f"QML failed to load: {_QML_FILE}\n"
-            + "\n".join(error.toString() for error in quick.errors())
-        )
-    quick.resize(660, 700)
-    return quick
+    surface = QuickSurface(
+        _QML_FILE,
+        surface=StyleRole.SURFACE,
+        context={"vm": vm},
+        object_name="metricsDetailPanelPreview",
+    )
+    surface.resize(660, 700)
+    return surface
