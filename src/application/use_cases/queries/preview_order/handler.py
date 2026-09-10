@@ -18,6 +18,7 @@ from Sagittarius_Elite_Warrior.src.domain.trading.client_order_id import (
 )
 from Sagittarius_Elite_Warrior.src.domain.trading.order import Order
 from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+from Sagittarius_Elite_Warrior.src.domain.trading.time_in_force import TimeInForce
 
 logger = logging.getLogger("App.QueryHandler")
 
@@ -56,6 +57,12 @@ class PreviewOrderQueryHandler(IQueryHandler[PreviewOrderQuery, OrderPreview]):
             rounded_quantity, rounded_price, metadata.min_notional
         )
 
+        # `BUG-115` — `time_in_force` is only meaningful for `LIMIT`
+        # (`Order`'s own docstring); left unset here, every real `LIMIT`
+        # submission was refused by `map_order_to_futures_params()`
+        # ("LIMIT order is missing time_in_force."). GTC is the correct
+        # default for a plain Limit order — no caller anywhere in this
+        # app exposes a choice of time-in-force yet.
         order = Order(
             client_order_id=generate_client_order_id(),
             symbol=query.symbol,
@@ -63,6 +70,9 @@ class PreviewOrderQueryHandler(IQueryHandler[PreviewOrderQuery, OrderPreview]):
             order_type=query.order_type,
             quantity=rounded_quantity,
             price=rounded_price if query.order_type is OrderType.LIMIT else None,
+            time_in_force=(
+                TimeInForce.GTC if query.order_type is OrderType.LIMIT else None
+            ),
             reduce_only=query.reduce_only,
         )
 
