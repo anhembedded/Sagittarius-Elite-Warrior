@@ -93,14 +93,20 @@ def _open_order_payload(
 
 
 def _position_payload(symbol: str = "BTCUSDT", amt: str = "0.002") -> dict:
+    # `BUG-114` — real `/fapi/v3/positionRisk` carries no `leverage`/
+    # `marginType` field; `notional`/`initialMargin`/`isolatedMargin` are
+    # what the mapper actually derives them from now (see
+    # `futures_order_payload_mapper.py`). Values here are not meant to
+    # reflect `amt` — this file never asserts leverage/margin type.
     return {
         "symbol": symbol,
         "positionAmt": amt,
         "entryPrice": "64000.00",
         "markPrice": "64500.00",
         "unRealizedProfit": "1.00",
-        "leverage": "10",
-        "marginType": "cross",
+        "notional": "128.00",
+        "initialMargin": "12.80",
+        "isolatedMargin": "0",
         "liquidationPrice": "0",
         "updateTime": 0,
     }

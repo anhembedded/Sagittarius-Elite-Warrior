@@ -18,14 +18,18 @@ _CREDENTIALS = ResolvedCredentials(
     ExchangeCredentials(api_key="key", api_secret="secret"), CredentialsSource.FILE
 )
 
+#: `BUG-114` — real `/fapi/v3/positionRisk` carries no `leverage`/`marginType`
+#: field; `notional`/`initialMargin`/`isolatedMargin` are what the mapper
+#: actually derives them from now (see `futures_order_payload_mapper.py`).
 _POSITION_PAYLOAD = {
     "symbol": "BTCUSDT",
     "positionAmt": "0.01",
     "entryPrice": "64000",
     "markPrice": "64100",
     "unRealizedProfit": "1",
-    "leverage": "10",
-    "marginType": "cross",
+    "notional": "641.00",
+    "initialMargin": "64.10",
+    "isolatedMargin": "0",
 }
 
 
