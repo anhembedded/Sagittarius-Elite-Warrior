@@ -190,6 +190,35 @@ class TestReverseOrderMapping:
         assert order.quantity == Decimal("0.002")
 
 
+#: `BUG-114` — real `/fapi/v3/positionRisk` payload a user's own Testnet
+#: account sent back, captured verbatim by the diagnostic log this bug's
+#: own fix temporarily added (`futures_trading_client.py`). No
+#: `leverage`/`marginType` keys at all — confirmed 20x on Binance's own
+#: Testnet UI at the time this was captured.
+_REAL_V3_PAYLOAD_20X_CROSS = {
+    "symbol": "ETHUSDT",
+    "positionSide": "BOTH",
+    "positionAmt": "0.010",
+    "entryPrice": "2489.88",
+    "breakEvenPrice": "2490.8759520000003",
+    "markPrice": "2492.02649225",
+    "unRealizedProfit": "0.02146492",
+    "liquidationPrice": "0",
+    "isolatedMargin": "0",
+    "notional": "24.92026492",
+    "marginAsset": "USDT",
+    "isolatedWallet": "0",
+    "initialMargin": "1.24601325",
+    "maintMargin": "0.12460132",
+    "positionInitialMargin": "1.24601325",
+    "openOrderInitialMargin": "0",
+    "adl": 1,
+    "bidNotional": "0",
+    "askNotional": "0",
+    "updateTime": 1788967154080,
+}
+
+
 class TestPositionMapping:
     def test_maps_a_long_position(self) -> None:
         payload = {
@@ -198,8 +227,9 @@ class TestPositionMapping:
             "entryPrice": "60000",
             "markPrice": "60100",
             "unRealizedProfit": "50",
-            "leverage": "10",
-            "marginType": "cross",
+            "notional": "30050",
+            "initialMargin": "3005",
+            "isolatedMargin": "0",
             "liquidationPrice": "45000",
             "updateTime": 1735689600000,
         }
@@ -217,11 +247,31 @@ class TestPositionMapping:
             "entryPrice": "60000",
             "markPrice": "60100",
             "unRealizedProfit": "50",
-            "leverage": "10",
-            "marginType": "isolated",
+            "notional": "30050",
+            "initialMargin": "3005",
+            "isolatedMargin": "30050",
             "liquidationPrice": "0",
         }
         position = map_futures_position_payload_to_live_position(payload)
 
         assert position.liquidation_price is None
         assert position.margin_type is MarginType.ISOLATED
+
+    def test_real_v3_payload_with_no_leverage_or_margin_type_fields_maps_cleanly(
+        self,
+    ) -> None:
+        """`BUG-114` — `map_futures_position_payload_to_live_position`
+        used to raise `KeyError('leverage')` on this exact real payload,
+        breaking `GetOpenPositionsQuery`/`EnableTradingCommand` for any
+        account with a real open position. Leverage recovered from
+        `notional`/`initialMargin`'s own ratio (Binance's own margin
+        formula), independently confirmed as 20x on Binance's Testnet UI
+        at capture time."""
+        position = map_futures_position_payload_to_live_position(
+            _REAL_V3_PAYLOAD_20X_CROSS
+        )
+
+        assert position.leverage == 20
+        assert position.margin_type is MarginType.CROSSED
+        assert position.symbol == "ETHUSDT"
+        assert position.position_amt == Decimal("0.010")
