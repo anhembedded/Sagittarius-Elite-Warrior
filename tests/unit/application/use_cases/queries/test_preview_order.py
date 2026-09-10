@@ -19,6 +19,7 @@ from Sagittarius_Elite_Warrior.src.domain.policies.order_quantity_rounding_polic
 )
 from Sagittarius_Elite_Warrior.src.domain.trading.order_status import OrderStatus
 from Sagittarius_Elite_Warrior.src.domain.trading.order_type import OrderType
+from Sagittarius_Elite_Warrior.src.domain.trading.time_in_force import TimeInForce
 from Sagittarius_Elite_Warrior.src.domain.value_objects.order_side import OrderSide
 
 
@@ -137,6 +138,43 @@ def test_limit_order_carries_the_rounded_price() -> None:
 
     # BUY rounds its price down to the tick (OrderQuantityRoundingPolicy).
     assert preview.order.price == Decimal("64000.00")
+
+
+def test_limit_order_defaults_to_good_til_canceled() -> None:
+    """`BUG-116` — `Order.time_in_force` defaulted to `None` unconditionally
+    (no caller ever set it), which `map_order_to_futures_params()` refuses
+    to submit for a real `LIMIT` order ("LIMIT order is missing
+    time_in_force."). Latent since `EPIC-021E`: the automated strategy
+    path only ever sends `MARKET` orders, so nothing exercised this until
+    a user's real click on the manual order card's "Limit" option — the
+    first real caller ever to reach a live `LIMIT` submission — hit it
+    directly. GTC is the correct default for a plain Limit order with no
+    other time-in-force choice exposed anywhere in the UI."""
+    preview = _handler().execute(
+        PreviewOrderQuery(
+            symbol="BTCUSDT",
+            side=OrderSide.BUY,
+            order_type=OrderType.LIMIT,
+            quantity=Decimal("0.0137"),
+            reference_price=Decimal("64000.005"),
+        )
+    )
+
+    assert preview.order.time_in_force is TimeInForce.GTC
+
+
+def test_market_order_has_no_time_in_force() -> None:
+    preview = _handler().execute(
+        PreviewOrderQuery(
+            symbol="BTCUSDT",
+            side=OrderSide.BUY,
+            order_type=OrderType.MARKET,
+            quantity=Decimal("0.0137"),
+            reference_price=Decimal(64000),
+        )
+    )
+
+    assert preview.order.time_in_force is None
 
 
 def test_unknown_symbol_raises_value_error() -> None:
