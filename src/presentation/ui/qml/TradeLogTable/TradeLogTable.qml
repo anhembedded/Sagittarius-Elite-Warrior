@@ -68,16 +68,16 @@ ColumnLayout {
         headerLetterSpacing: 0.5
         reuseItems: true
         columns: [
-            { key: "time", label: "STT / THỜI GIAN", width: root.timeColumnWidth },
-            { key: "side", label: "LOẠI", width: root.sideColumnWidth },
-            { key: "price", label: "GIÁ VÀO  ➔  GIÁ THOÁT", width: root.priceColumnWidth },
-            { key: "size", label: "QUY MÔ / KHỐI LƯỢNG", width: root.sizeColumnWidth, align: "right" },
-            { key: "pnl", label: "LÃI / LỖ RÒNG", fillWidth: true, align: "right" },
+            { key: "time", label: "# / TIME", width: root.timeColumnWidth },
+            { key: "side", label: "TYPE", width: root.sideColumnWidth },
+            { key: "price", label: "ENTRY PRICE  ➔  EXIT PRICE", width: root.priceColumnWidth },
+            { key: "size", label: "SIZE / VOLUME", width: root.sizeColumnWidth, align: "right" },
+            { key: "pnl", label: "NET PROFIT / LOSS", fillWidth: true, align: "right" },
             { key: "return", label: "RETURN", width: root.returnColumnWidth, align: "right" },
         ]
         rowsModel: vm ? vm.rows : null
         isEmpty: vm ? vm.rows.length === 0 : false
-        emptyText: "Chưa có dữ liệu lệnh giao dịch"
+        emptyText: "No trade log data yet"
         rowDelegate: Component {
             TradeLogRow {
                 width: ListView.view.width

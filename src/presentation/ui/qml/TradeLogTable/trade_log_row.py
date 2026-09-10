@@ -30,8 +30,8 @@ _THOUSAND = 1000.0
 #: BOT-050 — `Trade.side` now exists; label reads it instead of assuming
 #: every trade is a long ("vị thế mua"/"vị thế bán").
 _POSITION_LABEL: dict[PositionSide, str] = {
-    PositionSide.LONG: "vị thế mua",
-    PositionSide.SHORT: "vị thế bán",
+    PositionSide.LONG: "long position",
+    PositionSide.SHORT: "short position",
 }
 
 #: `STOP_LOSS`/`TAKE_PROFIT`/`LIQUIDATION` are declared but unreachable until
@@ -40,11 +40,11 @@ _POSITION_LABEL: dict[PositionSide, str] = {
 _EXIT_REASON_LABELS = EnumLabels(
     ExitReason,
     {
-        ExitReason.STRATEGY_SIGNAL: "Tín hiệu chiến lược",
-        ExitReason.END_OF_BACKTEST: "Kết thúc backtest",
-        ExitReason.STOP_LOSS: "Chạm Stop Loss (SL)",
-        ExitReason.TAKE_PROFIT: "Chạm Take Profit (TP)",
-        ExitReason.LIQUIDATION: "Thanh lý (Liquidation)",
+        ExitReason.STRATEGY_SIGNAL: "Strategy signal",
+        ExitReason.END_OF_BACKTEST: "End of backtest",
+        ExitReason.STOP_LOSS: "Hit Stop Loss (SL)",
+        ExitReason.TAKE_PROFIT: "Hit Take Profit (TP)",
+        ExitReason.LIQUIDATION: "Liquidation",
     },
 )
 

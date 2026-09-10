@@ -80,8 +80,8 @@ def test_refresh_builds_split_symbol_rows_and_status():
     ]
     assert vm.rows[0]["base"] == "ETH"
     assert vm.rows[0]["quote"] == "USDT"
-    assert vm.rows[0]["subtitle"] == "Đang dùng"
-    assert vm.rows[2]["subtitle"] == "Gần đây"
+    assert vm.rows[0]["subtitle"] == "Current"
+    assert vm.rows[2]["subtitle"] == "Recent"
     assert vm.resultCount == 4
     assert vm.statusMessage == ""
 
@@ -126,13 +126,13 @@ def test_favourites_are_split_from_other_results():
 def test_no_symbols_and_no_match_have_distinct_statuses():
     empty = _vm(_Source(symbols=()))
     assert empty.hasSymbols is False
-    assert "Đang tải" in empty.statusMessage
+    assert "Loading" in empty.statusMessage
 
     no_match = _vm()
     no_match.setQuery("ZZZ")
     assert no_match.hasSymbols is True
     assert no_match.hasResults is False
-    assert "Không có symbol" in no_match.statusMessage
+    assert "No symbols" in no_match.statusMessage
 
 
 def test_choice_and_favourite_emit_host_commands_and_update_local_state():

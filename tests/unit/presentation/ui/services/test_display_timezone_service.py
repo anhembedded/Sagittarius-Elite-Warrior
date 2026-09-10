@@ -81,7 +81,7 @@ def test_get_utc_offset_seconds() -> None:
 
 def test_get_display_timezone_label() -> None:
     assert get_display_timezone_label(DEFAULT_TIMEZONE) == "UTC"
-    assert "Hệ thống" in get_display_timezone_label(SYSTEM_TIMEZONE_KEY)
+    assert "System" in get_display_timezone_label(SYSTEM_TIMEZONE_KEY)
     assert get_display_timezone_label("Asia/Ho_Chi_Minh") == "Asia/Ho_Chi_Minh"
 
 

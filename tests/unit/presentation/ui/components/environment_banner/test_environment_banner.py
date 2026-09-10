@@ -14,11 +14,11 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.kit.surfaces.banner import Se
 def test_renders_the_given_content(qapp) -> None:
     banner = EnvironmentBanner(
         EnvironmentBannerContent(
-            icon="⚠", message="Chart MAINNET, lệnh TESTNET.", severity=Severity.DANGER
+            icon="⚠", message="Chart MAINNET, orders TESTNET.", severity=Severity.DANGER
         )
     )
 
     assert banner.objectName() == "environmentBanner"
-    assert banner.message == "Chart MAINNET, lệnh TESTNET."
+    assert banner.message == "Chart MAINNET, orders TESTNET."
     assert banner.icon == "⚠"
     assert banner.severity is Severity.DANGER

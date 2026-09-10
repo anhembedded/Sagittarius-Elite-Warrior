@@ -25,7 +25,7 @@ def test_backtest_event_logger_lifecycle_methods() -> None:
     mock_log_model.reset_mock()
     logger.log_klines_loaded(2000, "BTCUSDT", "2026-01-01", "2026-02-01")
     mock_log_model.append.assert_called_once()
-    assert "2,000 nến" in mock_log_model.append.call_args[0][0]
+    assert "2,000" in mock_log_model.append.call_args[0][0]
 
     mock_log_model.reset_mock()
     logger.log_backtest_completed(
@@ -36,18 +36,18 @@ def test_backtest_event_logger_lifecycle_methods() -> None:
         currency="USDT",
     )
     mock_log_model.append.assert_called_once()
-    assert "Hoàn thành" in mock_log_model.append.call_args[0][0]
+    assert "completed" in mock_log_model.append.call_args[0][0]
     assert "+1,250.50 USDT" in mock_log_model.append.call_args[0][0]
 
     mock_log_model.reset_mock()
     logger.log_backtest_failed("Missing Kline Data")
     mock_log_model.append.assert_called_once()
-    assert "Lỗi Backtest" in mock_log_model.append.call_args[0][0]
+    assert "Backtest error" in mock_log_model.append.call_args[0][0]
 
     mock_log_model.reset_mock()
     logger.log_backtest_empty("No matching range")
     mock_log_model.append.assert_called_once()
-    assert "không phát sinh lệnh" in mock_log_model.append.call_args[0][0]
+    assert "produced no trades" in mock_log_model.append.call_args[0][0]
 
 
 def test_backtest_event_logger_dev_mode_traces() -> None:
@@ -82,36 +82,36 @@ def test_backtest_event_logger_user_selection_methods() -> None:
 
     logger.log_strategy_selected("Ema Crossover", "ema_crossover")
     mock_log_model.append.assert_called_once_with(
-        "Đã chọn chiến lược: Ema Crossover (ema_crossover)", level="info"
+        "Selected strategy: Ema Crossover (ema_crossover)", level="info"
     )
 
     mock_log_model.reset_mock()
     logger.log_timeframe_selected("15m")
     mock_log_model.append.assert_called_once_with(
-        "Đã đổi khung thời gian: 15m", level="info"
+        "Changed timeframe: 15m", level="info"
     )
 
     mock_log_model.reset_mock()
     logger.log_time_range_selected("1_month", "2026-01-01", "2026-02-01")
     mock_log_model.append.assert_called_once_with(
-        "Đã chọn khoảng thời gian: 1_month (2026-01-01 -> 2026-02-01)", level="info"
+        "Selected time range: 1_month (2026-01-01 -> 2026-02-01)", level="info"
     )
 
     mock_log_model.reset_mock()
     logger.log_capital_updated(100000.0, "USDT")
     mock_log_model.append.assert_called_once_with(
-        "Đã cập nhật vốn ban đầu: 100,000 USDT", level="info"
+        "Updated initial capital: 100,000 USDT", level="info"
     )
 
     mock_log_model.reset_mock()
     logger.log_bot_params_saved("Ema Crossover", {"fast_period": 9, "slow_period": 21})
     mock_log_model.append.assert_called_once_with(
-        "Đã lưu thông số chiến lược (Ema Crossover): fast_period=9, slow_period=21",
+        "Saved strategy parameters (Ema Crossover): fast_period=9, slow_period=21",
         level="info",
     )
 
     mock_log_model.reset_mock()
     logger.log_indicator_toggled("EMA 20", True)
     mock_log_model.append.assert_called_once_with(
-        "Bật chỉ báo tham chiếu: EMA 20", level="info"
+        "Enabled reference indicator: EMA 20", level="info"
     )

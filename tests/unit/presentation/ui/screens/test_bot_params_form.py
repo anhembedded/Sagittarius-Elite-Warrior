@@ -234,7 +234,7 @@ def test_ignores_keys_the_schema_does_not_declare():
 
 
 def test_unparseable_int_raises_with_the_fields_label():
-    with pytest.raises(ValueError, match="Period: giá trị không hợp lệ"):
+    with pytest.raises(ValueError, match="Period: invalid value"):
         parse_bot_params(_schema(), {"period": "abc"})
 
 

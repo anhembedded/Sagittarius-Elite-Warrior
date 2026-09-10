@@ -150,10 +150,10 @@ _TRACE_PREFIX = "BACKTEST_TRACE"
 _FALLBACK_SYMBOL = "ETHUSDT"
 
 
-_RUNNING_MESSAGE = "Đang chạy backtest..."
-_CANCELLING_MESSAGE = "Đang hủy backtest..."
-_CANCELLING_SYNC_MESSAGE = "Đang hủy đồng bộ..."
-_SYNCING_MESSAGE = "Đang đồng bộ dữ liệu..."
+_RUNNING_MESSAGE = "Running backtest..."
+_CANCELLING_MESSAGE = "Cancelling backtest..."
+_CANCELLING_SYNC_MESSAGE = "Cancelling sync..."
+_SYNCING_MESSAGE = "Syncing data..."
 #: BOT-111 — matches IndicatorManager.add_overlay()'s own pre-existing
 #: default, so a strategy that never overrides chart_line_widths() draws
 #: exactly like it did before this feature existed.
@@ -164,10 +164,10 @@ _DEFAULT_STRATEGY_LINE_WIDTH = 2
 #: user-picked script), so this never needs to vary.
 _STRATEGY_TREND_ZONE_KEY = "strategy_trend_zone"
 _ZERO_TRADES_MESSAGE = (
-    "Backtest chạy xong nhưng không có giao dịch nào trong khoảng thời gian đã chọn."
+    "Backtest completed but there were no trades in the selected time range."
 )
 
-_EXPORT_DIALOG_TITLE = "Xuất Trade Logs"
+_EXPORT_DIALOG_TITLE = "Export Trade Logs"
 _EXPORT_DEFAULT_FILENAME = "trade_logs.csv"
 _EXPORT_FILE_FILTER = "CSV Files (*.csv)"
 
@@ -518,7 +518,7 @@ class BackTestPresenter(BasePresenter):
         trades_count = len(result.trades) if result and hasattr(result, "trades") else 0
         duration = getattr(result, "duration", 0.0) if result else 0.0
         self._emit_ui_log(
-            f"[EventBus] Backtest hoàn tất: {trades_count} lệnh (thời gian: {duration:.2f}s)",
+            f"[EventBus] Backtest completed: {trades_count} trades (duration: {duration:.2f}s)",
             "info",
             is_dev=True,
         )
@@ -526,7 +526,7 @@ class BackTestPresenter(BasePresenter):
     def _handle_backtest_failed_event(self, event: BacktestFailedEvent) -> None:
         reason = getattr(event, "reason", str(event))
         self._emit_ui_log(
-            f"[EventBus] Backtest thất bại: {reason}",
+            f"[EventBus] Backtest failed: {reason}",
             "error",
             is_dev=False,
         )
@@ -537,7 +537,7 @@ class BackTestPresenter(BasePresenter):
         side = getattr(sig, "side", "") if sig else ""
         price = getattr(sig, "price", 0.0) if sig else 0.0
         self._emit_ui_log(
-            f"[Signal] Tín hiệu: {str(side).upper()} {symbol} @ {price:,.2f}",
+            f"[Signal] Signal: {str(side).upper()} {symbol} @ {price:,.2f}",
             "info",
             is_dev=True,
         )
@@ -857,12 +857,12 @@ class BackTestPresenter(BasePresenter):
             self._view_model.run_result.set_result(
                 _CANCELLING_SYNC_MESSAGE, is_error=False
             )
-            self._emit_ui_log("Đang gửi yêu cầu hủy đồng bộ...", "info")
+            self._emit_ui_log("Sending sync cancel request...", "info")
         else:
             if self._backtest_cancellation_token is not None:
                 self._backtest_cancellation_token.cancel()
             self._view_model.run_result.set_result(_CANCELLING_MESSAGE, is_error=False)
-            self._emit_ui_log("Đang gửi yêu cầu hủy Backtest...", "info")
+            self._emit_ui_log("Sending backtest cancel request...", "info")
         self._log_dev_trace("cancel_requested", action_id=action_id, kind=kind.value)
         self._log_dev_trace("cancel_requested", action_id=action_id)
 
@@ -899,11 +899,11 @@ class BackTestPresenter(BasePresenter):
         if kind is BacktestActionKind.SYNC:
             self._sync_cancellation_token = None
             self._view_model.run_progress.reset_sync_progress()
-            message = "Đã hủy đồng bộ dữ liệu."
+            message = "Data sync cancelled."
         else:
             self._backtest_cancellation_token = None
             self._view_model.run_progress.reset_backtest_progress()
-            message = "Đã hủy Backtest. Kết quả trước đó được giữ nguyên."
+            message = "Backtest cancelled. Previous results are kept."
         self._view_model.run_result.set_result(message, is_error=False)
         self._emit_ui_log(message, "info")
         event = self._cancel_restore_event(previous_state)
@@ -1003,10 +1003,10 @@ class BackTestPresenter(BasePresenter):
             else None
         )
         phase_label = {
-            "in_sample": "Kiểm tra in-sample",
-            "out_of_sample": "Kiểm tra out-of-sample",
-            "full": "Chạy toàn bộ dữ liệu",
-        }.get(phase, "Đang chạy")
+            "in_sample": "Testing in-sample",
+            "out_of_sample": "Testing out-of-sample",
+            "full": "Running full dataset",
+        }.get(phase, "Running")
         eta_label = f" · ETA ~{eta_seconds}s" if eta_seconds is not None else ""
         self._view_model.run_progress.set_backtest_progress(
             percent, f"{phase_label}: {percent:.0f}%{eta_label}"
@@ -1182,7 +1182,7 @@ class BackTestPresenter(BasePresenter):
         self._view_model.run_result.set_extended_metrics_snapshot(None)
         self._view_model.run_result.set_result_warning_text("")
         self._view_model.run_result.set_limitations([])
-        self._view_model.run_result.set_result(f"Lỗi: {message}", is_error=True)
+        self._view_model.run_result.set_result(f"Error: {message}", is_error=True)
         self._all_trades = []
         self._refresh_trade_log()
         self._logger.log_backtest_failed(message)
@@ -1305,7 +1305,7 @@ class BackTestPresenter(BasePresenter):
     @Slot(str)
     def _on_symbol_options_failed(self, message: str) -> None:
         self._emit_ui_log(
-            f"Không tải được danh sách symbol từ sàn: {message}", level="error"
+            f"Failed to load symbol list from exchange: {message}", level="error"
         )
 
     @Slot()
@@ -1329,7 +1329,7 @@ class BackTestPresenter(BasePresenter):
         self.view.render_symbol_cards([self._symbol])
         self._reset_indicator_bookkeeping_after_host_rebuild()
         connect_chart_controls(self)
-        self._emit_ui_log(f"Đã đổi symbol sang {self._symbol}.")
+        self._emit_ui_log(f"Changed symbol to {self._symbol}.")
         self._on_config_input_changed()
         self._request_chart_preview()
 
@@ -1527,7 +1527,7 @@ class BackTestPresenter(BasePresenter):
         percent = min(100.0, max(0.0, current / total * 100.0)) if total > 0 else 0.0
         self._view_model.run_progress.set_sync_progress(
             percent,
-            f"Đang đồng bộ nến: {current:,}/{total:,} ({percent:.0f}%)",
+            f"Syncing candles: {current:,}/{total:,} ({percent:.0f}%)",
         )
 
     @Slot(int)
@@ -1580,7 +1580,7 @@ class BackTestPresenter(BasePresenter):
     @safe_ui_action
     def _on_sync_succeeded(self) -> None:
         self._log_dev_trace("sync_succeeded")
-        self._logger.log_sync_event("Đồng bộ dữ liệu thành công.")
+        self._logger.log_sync_event("Data sync successful.")
         self._view_model.run_progress.reset_sync_progress()
         # Sync is just an inserted precondition, not an independent user
         # action — the user already asked to run a backtest, "no data" got
@@ -1605,16 +1605,14 @@ class BackTestPresenter(BasePresenter):
     @safe_ui_action
     def _on_sync_failed(self, message: str) -> None:
         self._log_dev_trace("sync_failed", message=message)
-        self._logger.log_sync_event(f"Đồng bộ thất bại: {message}", is_error=True)
+        self._logger.log_sync_event(f"Sync failed: {message}", is_error=True)
         self._view_model.run_progress.reset_sync_progress()
         # needsDataSync / _last_no_data_config are left untouched — the sync
         # that just failed was for genuinely missing data, so "Đồng bộ ngay"
         # should stay offered for the user to retry.
         if self.fsm.can_dispatch(BacktestUiEvent.SYNC_FAILED):
             self.fsm.dispatch(BacktestUiEvent.SYNC_FAILED)
-        self._view_model.run_result.set_result(
-            f"Đồng bộ thất bại: {message}", is_error=True
-        )
+        self._view_model.run_result.set_result(f"Sync failed: {message}", is_error=True)
 
     @Slot()
     @safe_ui_action

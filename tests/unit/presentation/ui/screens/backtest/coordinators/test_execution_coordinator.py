@@ -118,11 +118,11 @@ def test_missing_coverage_stops_before_dispatching_a_run() -> None:
 
 
 def test_a_raising_run_reports_failure_and_stops() -> None:
-    coordinator, _d, events = _build(RecordingDispatcher(raises=RuntimeError("nổ")))
+    coordinator, _d, events = _build(RecordingDispatcher(raises=RuntimeError("boom")))
 
     coordinator.run(run_config())
 
-    assert events == [("failed", 3, "nổ")]
+    assert events == [("failed", 3, "boom")]
 
 
 def test_a_cancelled_result_is_reported_as_cancelled_not_succeeded() -> None:

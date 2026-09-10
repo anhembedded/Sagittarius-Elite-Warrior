@@ -76,7 +76,7 @@ def test_component_loads_and_renders_the_subtitle(qapp, qml_item):
 
     assert root.objectName() == "klineInspectorBody"
     subtitle = qml_item(root, "lblKlineInspectorSubtitle")
-    assert subtitle.property("text") == "BTCUSDT (1m)  •  2 nến"
+    assert subtitle.property("text") == "BTCUSDT (1m)  •  2 candles"
     quick.close()
     quick.deleteLater()
 

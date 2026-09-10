@@ -47,14 +47,14 @@ class BacktestEventLogger(BaseEventLogger):
         symbol: str = "BTCUSDT",
     ) -> None:
         self.info(
-            f"Bắt đầu chạy Backtest: {strategy_name} ({timeframe}) | Cặp: {symbol} | Vốn ban đầu: {capital:,.0f} {currency}"
+            f"Starting Backtest: {strategy_name} ({timeframe}) | Pair: {symbol} | Initial capital: {capital:,.0f} {currency}"
         )
 
     def log_klines_loaded(
         self, count: int, symbol: str, start_date: str = "", end_date: str = ""
     ) -> None:
         range_str = f" ({start_date} -> {end_date})" if start_date and end_date else ""
-        self.info(f"Đã nạp {count:,} nến lịch sử cho {symbol}{range_str}.")
+        self.info(f"Loaded {count:,} historical candles for {symbol}{range_str}.")
 
     def log_indicators_calculated(
         self, elapsed_ms: float, indicator_names: list[str] | None = None
@@ -72,51 +72,49 @@ class BacktestEventLogger(BaseEventLogger):
     ) -> None:
         pnl_sign = "+" if net_pnl > 0 else ""
         self.success(
-            f"Hoàn thành Backtest ({duration_sec:.2f}s): {trade_count} lệnh | Net PnL: {pnl_sign}{net_pnl:,.2f} {currency} | Win Rate: {win_rate:.1f}%"
+            f"Backtest completed ({duration_sec:.2f}s): {trade_count} trades | Net PnL: {pnl_sign}{net_pnl:,.2f} {currency} | Win Rate: {win_rate:.1f}%"
         )
 
     def log_backtest_failed(self, error_message: str) -> None:
-        self.error(f"Lỗi Backtest: {error_message}")
+        self.error(f"Backtest error: {error_message}")
 
     def log_backtest_empty(self, reason: str = "") -> None:
         suffix = f": {reason}" if reason else ""
-        self.warning(
-            f"Backtest hoàn thành nhưng không phát sinh lệnh giao dịch nào{suffix}."
-        )
+        self.warning(f"Backtest completed but produced no trades{suffix}.")
 
     def log_strategy_selected(self, strategy_name: str, strategy_key: str) -> None:
-        self.info(f"Đã chọn chiến lược: {strategy_name} ({strategy_key})")
+        self.info(f"Selected strategy: {strategy_name} ({strategy_key})")
 
     def log_timeframe_selected(self, timeframe: str) -> None:
-        self.info(f"Đã đổi khung thời gian: {timeframe}")
+        self.info(f"Changed timeframe: {timeframe}")
 
     def log_time_range_selected(
         self, preset: str, start_date: str = "", end_date: str = ""
     ) -> None:
         range_str = f" ({start_date} -> {end_date})" if start_date and end_date else ""
-        self.info(f"Đã chọn khoảng thời gian: {preset}{range_str}")
+        self.info(f"Selected time range: {preset}{range_str}")
 
     def log_capital_updated(self, capital: float, currency: str) -> None:
-        self.info(f"Đã cập nhật vốn ban đầu: {capital:,.0f} {currency}")
+        self.info(f"Updated initial capital: {capital:,.0f} {currency}")
 
     def log_bot_params_saved(
         self, strategy_name: str, params: dict[str, Any] | None = None
     ) -> None:
         param_str = (
-            ", ".join(f"{k}={v}" for k, v in params.items()) if params else "Mặc định"
+            ", ".join(f"{k}={v}" for k, v in params.items()) if params else "Default"
         )
-        self.info(f"Đã lưu thông số chiến lược ({strategy_name}): {param_str}")
+        self.info(f"Saved strategy parameters ({strategy_name}): {param_str}")
 
     def log_indicator_toggled(self, script_name: str, enabled: bool) -> None:
-        action = "Bật" if enabled else "Tắt"
-        self.info(f"{action} chỉ báo tham chiếu: {script_name}")
+        action = "Enabled" if enabled else "Disabled"
+        self.info(f"{action} reference indicator: {script_name}")
 
     def log_signal_event(
         self, symbol: str, side: str, price: float, time_str: str = ""
     ) -> None:
         time_prefix = f"[{time_str}] " if time_str else ""
         self.log(
-            f"{time_prefix}Tín hiệu: {side.upper()} {symbol} @ {price:,.2f}",
+            f"{time_prefix}Signal: {side.upper()} {symbol} @ {price:,.2f}",
             level="info",
             is_dev=True,
         )

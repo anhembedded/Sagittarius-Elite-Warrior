@@ -91,4 +91,4 @@ see the table above.
 `.agents/` rule documentation: **English**.
 Code, identifiers, docstrings, comments, commit subjects: **English**.
 Conversation with the user, task files, bug reports, `Tasks/` documents: **Vietnamese**.
-User-visible UI strings: **Vietnamese**.
+User-visible UI strings and log messages: **English**.

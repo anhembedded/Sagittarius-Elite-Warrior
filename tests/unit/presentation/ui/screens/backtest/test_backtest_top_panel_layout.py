@@ -53,7 +53,7 @@ def test_top_panel_with_cards_shows_header_cards_and_expand_button(
 
     primary = [
         {
-            "title": "TỔNG LÃI/LỖ (NET PNL)",
+            "title": "TOTAL PNL (NET PNL)",
             "value": "-8,193.54",
             "valueTone": Tone.NEGATIVE,
             "suffix": "USD",
@@ -61,26 +61,27 @@ def test_top_panel_with_cards_shows_header_cards_and_expand_button(
             "badgeTone": Tone.NEGATIVE,
         },
         {
-            "title": "TỶ LỆ THẮNG (WIN RATE)",
+            "title": "WIN RATE",
             "value": "10.33%",
             "valueTone": Tone.NEUTRAL,
             "suffix": "",
-            "badgeText": "92/891 lệnh",
+            "badgeText": "92/891 trades",
             "badgeTone": Tone.NEUTRAL,
         },
     ]
     vm.run_result.set_stat_cards(primary=primary, extended=[])
-    vm.run_result.set_result_warning_text("⚠ Phí giao dịch chiếm phần lớn kết quả.")
+    vm.run_result.set_result_warning_text("⚠ Trading fees make up most of the result.")
     panel._sync_all()
     qapp.processEvents()
 
     assert panel._stat_cards_row.isVisible()
     assert panel._metrics_header.isVisible()
     assert panel._btn_expand_metrics.isVisible()
-    assert panel._btn_expand_metrics.text() == "Mở rộng"
+    assert panel._btn_expand_metrics.text() == "Expand"
     assert panel._result_warning_label.isVisible()
     assert (
-        panel._result_warning_label.text() == "⚠ Phí giao dịch chiếm phần lớn kết quả."
+        panel._result_warning_label.text()
+        == "⚠ Trading fees make up most of the result."
     )
     assert not panel._result_box.isVisible()
 

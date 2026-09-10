@@ -42,7 +42,7 @@ def test_rejects_a_column_count_below_one(qtbot):
 
 
 def test_set_items_renders_one_selectable_card_each(qtbot):
-    overlay = PickerOverlay("CHỌN KHUNG THỜI GIAN")
+    overlay = PickerOverlay("SELECT TIMEFRAME")
     qtbot.addWidget(overlay)
 
     overlay.set_items([PickerItem("1m", "1m"), PickerItem("1h", "1h")])

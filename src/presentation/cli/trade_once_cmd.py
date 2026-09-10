@@ -81,14 +81,14 @@ def execute_trade_once(app: App, args: argparse.Namespace) -> None:
     try:
         interval = TimeFrame(args.interval)
     except ValueError:
-        print(f"Interval không hợp lệ: {args.interval!r}")
+        print(f"Invalid interval: {args.interval!r}")
         return
 
     strategy_registry = app.container.resolve(StrategyRegistry)
     if args.strategy not in strategy_registry.available():
         print(
-            f"Chiến lược không tồn tại: {args.strategy!r}. "
-            f"Có sẵn: {sorted(strategy_registry.available())}"
+            f"Strategy does not exist: {args.strategy!r}. "
+            f"Available: {sorted(strategy_registry.available())}"
         )
         return
 
@@ -100,8 +100,7 @@ def execute_trade_once(app: App, args: argparse.Namespace) -> None:
     )
     if not candles:
         print(
-            f"Chưa có dữ liệu nến cho {args.symbol} {interval.value} — chạy "
-            "`sync` trước."
+            f"No candle data for {args.symbol} {interval.value} yet — run `sync` first."
         )
         return
 
@@ -119,13 +118,13 @@ def execute_trade_once(app: App, args: argparse.Namespace) -> None:
     metadata_provider = app.container.resolve(IMarketMetadataProvider)
     metadata = metadata_provider.get_or_fetch(args.symbol)
     if metadata is None:
-        print(f"Không có futures metadata cho {args.symbol}.")
+        print(f"No futures metadata available for {args.symbol}.")
         return
 
     account_reader = app.container.resolve(ITradingAccountReader)
     status = account_reader.check_connection()
     if status.usdt_balance is None:
-        print("Không biết số dư USDT (chưa cấu hình credentials hoặc mất kết nối).")
+        print("USDT balance unknown (credentials not configured or connection lost).")
         return
 
     intent = order_intent_for(signal.action)
@@ -138,7 +137,7 @@ def execute_trade_once(app: App, args: argparse.Namespace) -> None:
         step_size=metadata.step_size,
     )
     if quantity <= 0:
-        print("Khối lượng tính được bằng 0 — không có gì để gửi.")
+        print("Calculated quantity is 0 — nothing to send.")
         return
 
     command = ExecuteOrderCommand(
@@ -160,13 +159,15 @@ def execute_trade_once(app: App, args: argparse.Namespace) -> None:
     try:
         result: ExecuteOrderResult = app.dispatch(ExecuteOrderCommand, command)
     except OrderRejectedByExchangeError as exc:
-        print(f"Sàn từ chối lệnh: {exc}")
+        print(f"Exchange rejected the order: {exc}")
         return
     except InvalidOrderForSubmissionError as exc:
-        print(f"Order chưa hợp lệ để gửi: {exc}")
+        print(f"Order is not valid for submission: {exc}")
         return
     except (BinanceAPIException, BinanceRequestException, RequestException):
-        print("Không gửi được lệnh tới sàn — kiểm tra kết nối mạng rồi thử lại.")
+        print(
+            "Could not send the order to the exchange — check your network connection and try again."
+        )
         return
 
     if result.limit_context is not None:

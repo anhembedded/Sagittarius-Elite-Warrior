@@ -160,8 +160,8 @@ class IndicatorCoordinator:
         from the chart when toggled in the indicator picker modal, without
         requiring a full backtest rerun."""
         enabled_keys = set(self._view_model.script_model.enabled_keys)
-        scripts_str = ", ".join(sorted(enabled_keys)) if enabled_keys else "Không có"
-        self._logger.info(f"Đã cập nhật chỉ báo tham chiếu: {scripts_str}")
+        scripts_str = ", ".join(sorted(enabled_keys)) if enabled_keys else "None"
+        self._logger.info(f"Updated reference indicators: {scripts_str}")
 
         current_active_keys = set(self._script_runner.active.keys())
         disabled_keys = current_active_keys - enabled_keys

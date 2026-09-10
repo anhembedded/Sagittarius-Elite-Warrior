@@ -315,9 +315,9 @@ class SymbolPickerVM(AbstractSymbolPickerVM):
         self._sync_models()
         self._result_count = len(self._rows)
         self._status = (
-            "Đang tải danh sách symbol từ sàn..."
+            "Loading symbol list from the exchange..."
             if not self._entries
-            else "Không có symbol nào khớp bộ lọc hiện tại."
+            else "No symbols match the current filter."
             if not self._rows
             else ""
         )
@@ -353,9 +353,9 @@ class SymbolPickerVM(AbstractSymbolPickerVM):
 
     def _row(self, entry: _Entry) -> dict[str, object]:
         if entry.current:
-            subtitle = "Đang dùng"
+            subtitle = "Current"
         elif entry.recent:
-            subtitle = "Gần đây"
+            subtitle = "Recent"
         elif entry.quote:
             subtitle = f"Quote {entry.quote}"
         else:
@@ -382,9 +382,9 @@ class SymbolPickerVM(AbstractSymbolPickerVM):
                 "selected": scope is self._scope,
             }
             for scope, label in (
-                (Scope.ALL, "Tất cả"),
-                (Scope.FAVOURITES, "Yêu thích"),
-                (Scope.RECENT, "Gần đây"),
+                (Scope.ALL, "All"),
+                (Scope.FAVOURITES, "Favourites"),
+                (Scope.RECENT, "Recent"),
             )
         ]
 
@@ -407,7 +407,7 @@ class SymbolPickerVM(AbstractSymbolPickerVM):
         return [
             {
                 "id": value,
-                "label": "Tất cả" if value == _ANY_QUOTE else value,
+                "label": "All" if value == _ANY_QUOTE else value,
                 "selected": value == self._quote,
             }
             for value in values

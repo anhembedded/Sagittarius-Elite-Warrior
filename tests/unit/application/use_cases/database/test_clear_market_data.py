@@ -61,7 +61,7 @@ def test_clear_market_data_empty_symbol_fails():
 
     assert result.success is False
     assert result.deleted_records == 0
-    assert "trống" in result.message
+    assert "empty" in result.message
 
 
 def test_clear_market_data_exception_returns_failure():

@@ -42,7 +42,7 @@ class LimitationsDialog(QmlOverlay):
             selectable=False,
         )
         super().__init__(
-            "GIỚI HẠN CỦA LẦN CHẠY NÀY",
+            "LIMITATIONS OF THIS RUN",
             qml_file=_QML,
             context={"vm": self._widget_vm},
             parent=parent,

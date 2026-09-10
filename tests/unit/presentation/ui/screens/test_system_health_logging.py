@@ -176,7 +176,7 @@ def test_dashboard_handles_health_updated_event(qapp, health_mock_container):
     # Format changed with EPIC-008G and the user approved it: both screens now
     # render through HealthStatusReport.to_log_line(), so they can no longer
     # disagree about the same fact the way they used to.
-    assert "Trạng thái hệ thống: DEGRADED" in latest_entry.message
+    assert "System status: DEGRADED" in latest_entry.message
     assert "Database: CONNECTION FAILED" in latest_entry.message
     # Backtest's own formatter used to omit `container` entirely; nothing is
     # hand-picked any more, so it survives.
@@ -256,4 +256,4 @@ def test_backtest_initializes_and_handles_health_updated_event(
         )
     )
     log_texts = [entry.message for entry in presenter._view_model.log_model.entries]
-    assert any("[Health] Trạng thái hệ thống: HEALTHY" in log for log in log_texts)
+    assert any("[Health] System status: HEALTHY" in log for log in log_texts)

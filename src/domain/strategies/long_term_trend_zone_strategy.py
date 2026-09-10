@@ -43,7 +43,7 @@ class LongTermTrendZoneStrategy(BaseStrategy):
         self._trend_ema_len = self.input_int(
             "trend_ema_len",
             _DEFAULT_TREND_EMA_LEN,
-            label="EMA Xu hướng dài hạn",
+            label="Long-Term Trend EMA",
             minval=10,
             maxval=500,
         )
@@ -72,7 +72,7 @@ class LongTermTrendZoneStrategy(BaseStrategy):
         self.track(ema_series, context.indicators[self.TREND_EMA_KEY], context)
 
         if crossed_above(price_series, ema_series):
-            return self.buy("Giá cắt lên EMA xu hướng dài hạn")
+            return self.buy("Price crossed above the long-term trend EMA")
         if crossed_below(price_series, ema_series):
-            return self.sell("Giá cắt xuống EMA xu hướng dài hạn")
+            return self.sell("Price crossed below the long-term trend EMA")
         return self.hold()

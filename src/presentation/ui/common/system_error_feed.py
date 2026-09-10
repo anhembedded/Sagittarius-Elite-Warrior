@@ -62,7 +62,7 @@ class SystemErrorFeed(BaseFeed):
             SystemErrorReport(
                 source=getattr(event, "function_name", "unknown slot"),
                 summary=(
-                    f"Lỗi giao diện trong {getattr(event, 'function_name', '?')}: "
+                    f"UI error in {getattr(event, 'function_name', '?')}: "
                     f"{getattr(event, 'exception_type', 'Exception')}: "
                     f"{getattr(event, 'message', '')}"
                 ),
@@ -79,7 +79,7 @@ class SystemErrorFeed(BaseFeed):
             SystemErrorReport(
                 source=str(task_name),
                 summary=(
-                    f"Tác vụ nền '{task_name}' thất bại: "
+                    f"Background task '{task_name}' failed: "
                     f"{type(error).__name__ if error is not None else 'Unknown'}: "
                     f"{error}"
                 ),

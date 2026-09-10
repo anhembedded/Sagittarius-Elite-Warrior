@@ -24,7 +24,7 @@ def test_every_alignment_state_has_content() -> None:
 
 def test_trading_disabled_says_view_only() -> None:
     content = venue_alignment_banner_content(VenueAlignment.TRADING_DISABLED)
-    assert "TẮT" in content.message
+    assert "OFF" in content.message
 
 
 def test_mainnet_data_trap_names_both_venues() -> None:

@@ -80,7 +80,7 @@ def test_declared_inputs_match_the_pine_scripts_defaults_and_groups():
     declared = {spec.name: spec for spec in EmaTrendPullbackStrategy().inputs}
 
     assert declared["ema_long_len"].default == 200
-    assert declared["ema_long_len"].group == "Xu hướng dài hạn"
+    assert declared["ema_long_len"].group == "Long-Term Trend"
     assert declared["tick_confirm"].default == 5
     assert declared["touch_sensitivity"].default == 0.0
     assert declared["enable_touch_reset"].default is True
@@ -90,9 +90,9 @@ def test_declared_inputs_match_the_pine_scripts_defaults_and_groups():
     assert declared["pullback_sensitivity"].default == 0.2
     assert declared["candle_confirm_entry"].default is False
     assert declared["take_profit_percent"].default == 2.0
-    assert declared["take_profit_percent"].group == "Chốt lời"
+    assert declared["take_profit_percent"].group == "Take Profit"
     assert declared["enable_alerts"].default is True
-    assert declared["enable_alerts"].group == "Cảnh báo"
+    assert declared["enable_alerts"].group == "Alerts"
     assert len(declared) == 10
 
 

@@ -68,7 +68,7 @@ def test_an_interval_live_trading_does_not_support_is_refused(interval: str) -> 
     """`1s` and `1w` are real `TimeFrame` members and still refused — the
     subset is a trading-risk decision, not a parsing one — and `1hr` is
     the typo shape the enum-derived constant exists to make impossible."""
-    with pytest.raises(ValueError, match="Khung thời gian"):
+    with pytest.raises(ValueError, match="Timeframe"):
         _config(interval=interval)
 
 

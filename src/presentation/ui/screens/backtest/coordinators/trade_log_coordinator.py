@@ -66,7 +66,7 @@ class TradeLogCoordinator:
             return
         if self._view_model.isConfigDirty:
             self._logger.info(
-                f"Đang xuất Trade Logs của lần chạy trước ({self._view_model.lastRunSummary})."
+                f"Exporting Trade Logs from the previous run ({self._view_model.lastRunSummary})."
             )
         path = self._ask_export_path()
         if not path:

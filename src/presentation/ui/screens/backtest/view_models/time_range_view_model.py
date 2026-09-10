@@ -60,12 +60,12 @@ class TimeRangeViewModel(QObject):
     @Property("QVariantList", constant=True)
     def presetOptions(self) -> list[dict[str, str]]:
         return [
-            {"value": TimeRangePreset.LAST_7_DAYS.value, "label": "7 ngày qua"},
-            {"value": TimeRangePreset.LAST_30_DAYS.value, "label": "30 ngày qua"},
-            {"value": TimeRangePreset.LAST_90_DAYS.value, "label": "90 ngày qua"},
-            {"value": TimeRangePreset.LAST_365_DAYS.value, "label": "365 ngày qua"},
-            {"value": TimeRangePreset.ALL_HISTORY.value, "label": "Toàn bộ lịch sử"},
-            {"value": TimeRangePreset.CUSTOM.value, "label": "Tuỳ chỉnh"},
+            {"value": TimeRangePreset.LAST_7_DAYS.value, "label": "Last 7 days"},
+            {"value": TimeRangePreset.LAST_30_DAYS.value, "label": "Last 30 days"},
+            {"value": TimeRangePreset.LAST_90_DAYS.value, "label": "Last 90 days"},
+            {"value": TimeRangePreset.LAST_365_DAYS.value, "label": "Last 365 days"},
+            {"value": TimeRangePreset.ALL_HISTORY.value, "label": "All History"},
+            {"value": TimeRangePreset.CUSTOM.value, "label": "Custom"},
         ]
 
     def _get_preset(self) -> str:

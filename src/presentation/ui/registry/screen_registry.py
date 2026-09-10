@@ -30,13 +30,13 @@ class ScreenRegistry(IScreenRegistry):
     def register(self, descriptor: ScreenDescriptor) -> None:
         if descriptor.route in self._descriptors:
             raise ValueError(
-                f"Route '{descriptor.route}' đã tồn tại trong ScreenRegistry!"
+                f"Route '{descriptor.route}' already exists in ScreenRegistry!"
             )
         if descriptor.is_default:
             if self._default_route is not None:
                 raise ValueError(
-                    f"Xung đột màn hình mặc định: '{descriptor.route}' và "
-                    f"'{self._default_route}' đều khai báo is_default=True."
+                    f"Default screen conflict: '{descriptor.route}' and "
+                    f"'{self._default_route}' both declare is_default=True."
                 )
             self._default_route = descriptor.route
         self._descriptors[descriptor.route] = descriptor
@@ -65,9 +65,9 @@ class ScreenRegistry(IScreenRegistry):
             return
         if existing.sequence != sequence:
             raise ValueError(
-                f"Xung đột section_sequence cho section '{key}': đã đăng ký "
-                f"{existing.sequence}, module mới khai {sequence}. Gọi "
-                "register_section() để chốt một giá trị tường minh."
+                f"section_sequence conflict for section '{key}': already registered "
+                f"as {existing.sequence}, new module declares {sequence}. Call "
+                "register_section() to pin an explicit value."
             )
 
     def get(self, route: str) -> ScreenDescriptor:

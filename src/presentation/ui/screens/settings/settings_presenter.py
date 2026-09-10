@@ -71,19 +71,19 @@ if TYPE_CHECKING:
 _SYMBOL_SEPARATOR = ","
 
 _SAVED_MESSAGE = (
-    "Đã lưu. Default Symbols/Interval/Sync Days vào user_config.json, "
-    "API Key/Secret (nếu có sửa) vào secrets.local.json. Cả hai cần khởi "
-    "động lại app để có hiệu lực."
+    "Saved. Default Symbols/Interval/Sync Days to user_config.json, "
+    "API Key/Secret (if changed) to secrets.local.json. Both require "
+    "restarting the app to take effect."
 )
 _SAVED_IN_MEMORY_ONLY_MESSAGE = (
-    "Đã áp dụng cho phiên chạy hiện tại, nhưng KHÔNG ghi được xuống "
-    "user_config.json — thay đổi sẽ mất khi khởi động lại app."
+    "Applied to the current session, but could NOT be written to "
+    "user_config.json — the change will be lost on the next app restart."
 )
-_EMPTY_SYMBOLS_MESSAGE = "Default Symbols không được để trống."
+_EMPTY_SYMBOLS_MESSAGE = "Default Symbols must not be empty."
 #: `BOT-125` — Save is refused outright rather than partially applied.
 _VENUES_LOCKED_MESSAGE = (
-    "Đang giao dịch — tắt giao dịch ở màn Giao dịch trước khi đổi Nguồn dữ "
-    "liệu hoặc Nơi đặt lệnh. Chưa lưu gì cả."
+    "Trading is active — disable trading on the Trading screen before "
+    "changing the Data Source or Order Venue. Nothing was saved."
 )
 
 #: `EPIC-021B` §2.3 — human-readable label per `CredentialsSource`, and
@@ -93,9 +93,9 @@ _VENUES_LOCKED_MESSAGE = (
 _CREDENTIALS_SOURCE_LABELS = EnumLabels(
     CredentialsSource,
     {
-        CredentialsSource.ENV: "Đang dùng key từ biến môi trường",
-        CredentialsSource.FILE: "Đang dùng key từ secrets.local.json",
-        CredentialsSource.NONE: "Chưa cấu hình API key/secret",
+        CredentialsSource.ENV: "Using key from environment variable",
+        CredentialsSource.FILE: "Using key from secrets.local.json",
+        CredentialsSource.NONE: "No API key/secret configured",
     },
 )
 
@@ -351,7 +351,7 @@ class SettingsPresenter(BasePresenter):
                 action_id, ActionOutcome.FAILED
             )
             self._settings_view_model.set_connection_result(
-                f"Lỗi kiểm tra kết nối: {error}", is_error=True
+                f"Connection check error: {error}", is_error=True
             )
 
     def _discard_outranked_state(self) -> None:

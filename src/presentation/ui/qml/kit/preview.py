@@ -19,7 +19,7 @@ _QML_FILE = Path(__file__).with_name("_StyleGuidePreview.qml")
 _LOG_ENTRIES = [
     {
         "timestampText": "13:56:40",
-        "message": "[Health] Trạng thái hệ thống: HEALTHY",
+        "message": "[Health] System status: HEALTHY",
         "isError": False,
     },
     {

@@ -207,7 +207,9 @@ class _RichParamsStrategy(BaseStrategy):
 
     def setup(self) -> None:
         self.period = self.input_int("period", 20, label="Period", minval=1, maxval=200)
-        self.threshold = self.input_float("threshold", 1.5, label="Ngưỡng", minval=0.0)
+        self.threshold = self.input_float(
+            "threshold", 1.5, label="Threshold", minval=0.0
+        )
 
     def decide(self, context):
         return self.hold()
@@ -1146,7 +1148,7 @@ def test_successful_run_with_a_fee_dominant_result_sets_the_warning_text(
     presenter._run_backtest(config)
 
     assert view_model.run_result.resultWarningText != ""
-    assert "Phí giao dịch" in view_model.run_result.resultWarningText
+    assert "Fees account for a large share" in view_model.run_result.resultWarningText
 
 
 def test_successful_run_with_a_diverging_out_of_sample_result_sets_the_warning_text(
@@ -1272,7 +1274,7 @@ def test_no_historical_data_reports_empty_message_and_unlocks(
 
     assert presenter.fsm.current_state == BacktestUiState.EMPTY_DATA
     assert view_model.run_result.resultIsError is False
-    assert "Không có dữ liệu" in view_model.run_result.resultText
+    assert "No historical data" in view_model.run_result.resultText
     # BOT-059: "no data at all" is exactly the case "Đồng bộ ngay" exists for.
     assert view_model.run_result.needsDataSync is True
     assert presenter._last_no_data_config is config
@@ -1290,7 +1292,7 @@ def test_zero_trades_reports_empty_message_with_the_metrics(
 
     assert presenter.fsm.current_state == BacktestUiState.COMPLETED
     assert view_model.run_result.resultIsError is False
-    assert "không có giao dịch nào" in view_model.run_result.resultText
+    assert "no trades in the selected" in view_model.run_result.resultText
     assert "Closed trades: 0" in view_model.run_result.resultText
     # BOT-055: 0 trades still populates the 4 cards (all reading 0), not an
     # empty panel — only "no historical data at all" clears it.
@@ -1382,7 +1384,7 @@ def test_missing_coverage_after_sync_fails_without_sync_loop(
     )
 
     assert presenter.fsm.current_state is BacktestUiState.ERROR
-    assert "Thiếu nến" in view_model.run_result.resultText
+    assert "Missing candles" in view_model.run_result.resultText
     mock_thread_mgr.submit.assert_not_called()
 
 
@@ -1673,7 +1675,7 @@ def test_sync_without_the_required_candle_reports_incomplete_and_keeps_retry_ava
     assert presenter.fsm.current_state is BacktestUiState.ERROR
     assert view_model.run_result.needsDataSync is True
     assert presenter._last_no_data_config == config
-    assert "Đồng bộ chưa đủ" in view_model.run_result.resultText
+    assert "Sync is not sufficient" in view_model.run_result.resultText
     mock_thread_mgr.submit.assert_not_called()
 
 
@@ -1763,7 +1765,7 @@ def test_cancel_button_cancels_the_sync_token_not_the_backtest_token(
     assert presenter.fsm.current_state == BacktestUiState.CANCELLING
     assert sync_token.is_cancelled() is True
     assert presenter._backtest_cancellation_token.is_cancelled() is False
-    assert "đồng bộ" in view_model.run_result.resultText.lower()
+    assert "sync" in view_model.run_result.resultText.lower()
 
 
 def test_run_sync_emits_sync_cancelled_and_resolves_fsm_back_to_idle(
@@ -1793,7 +1795,7 @@ def test_run_sync_emits_sync_cancelled_and_resolves_fsm_back_to_idle(
     assert presenter.fsm.current_state == BacktestUiState.IDLE
     assert presenter._sync_cancellation_token is None
     assert presenter._cancelling_action_id is None
-    assert "hủy đồng bộ" in view_model.run_result.resultText.lower()
+    assert "sync cancelled" in view_model.run_result.resultText.lower()
 
 
 def test_sync_succeeding_right_after_cancel_requested_still_resolves_fsm(
@@ -1861,7 +1863,7 @@ def test_all_history_with_tick_mode_is_rejected_before_any_dispatch(
 
     assert presenter.fsm.current_state == BacktestUiState.IDLE
     assert view_model.run_result.resultIsError is True
-    assert "Toàn bộ lịch sử" in view_model.run_result.resultText
+    assert "All History" in view_model.run_result.resultText
     mock_dispatcher.dispatch.assert_not_called()
 
 
@@ -3219,7 +3221,7 @@ def test_dirty_tracking_detects_timeframe_change_after_completed(presenter):
     assert vm.uiMode == BacktestUiState.CONFIG_DIRTY.value
     assert vm.isConfigDirty is True
     assert vm.controlsEnabled is True
-    assert "Khung thời gian (1m → 5m)" in vm.configDiffSummary
+    assert "Timeframe (1m → 5m)" in vm.configDiffSummary
 
 
 def test_dirty_tracking_restores_to_completed_when_input_reverted(presenter):
@@ -3262,11 +3264,11 @@ def test_dirty_tracking_detects_capital_and_strategy_changes(presenter):
     # Change initial capital
     vm.initialCapitalText = "50000"
     assert presenter.fsm.current_state == BacktestUiState.CONFIG_DIRTY
-    assert "Vốn (10,000 → 50,000)" in vm.configDiffSummary
+    assert "Capital (10,000 → 50,000)" in vm.configDiffSummary
 
     # Change strategy
     vm.strategy_params.selectedStrategyKey = "ema_strategy"
-    assert "Chiến lược (fake_strategy → ema_strategy)" in vm.configDiffSummary
+    assert "Strategy (fake_strategy → ema_strategy)" in vm.configDiffSummary
 
 
 def test_running_from_dirty_state_clears_dirty_state_on_completion(presenter):
@@ -3305,7 +3307,7 @@ def test_empty_backtest_transitions_to_idle_with_sync_affordance(presenter):
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
 
     cfg = presenter._get_current_config()
-    presenter._on_backtest_empty("Chưa có dữ liệu lịch sử", cfg)
+    presenter._on_backtest_empty("No historical data", cfg)
 
     assert presenter.fsm.current_state == BacktestUiState.EMPTY_DATA
     assert vm.uiMode == BacktestUiState.EMPTY_DATA.value
@@ -3375,7 +3377,7 @@ def test_cancel_request_fences_callbacks_and_restores_idle(presenter, view_model
 
     assert presenter.fsm.current_state is BacktestUiState.IDLE
     assert presenter._active_action_outcome is BacktestActionOutcome.CANCELLED
-    assert "Đã hủy Backtest" in view_model.run_result.resultText
+    assert "Backtest cancelled" in view_model.run_result.resultText
 
 
 def test_cancel_restores_config_dirty_and_late_success_cannot_render(
@@ -3468,7 +3470,7 @@ def test_superseded_backtest_success_cannot_overwrite_the_new_action(
     assert presenter._active_action == second_action
     assert presenter._active_action_outcome is BacktestActionOutcome.PENDING
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.run_result.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Running backtest..."
 
 
 def test_superseded_backtest_failure_cannot_overwrite_the_new_action(
@@ -3489,7 +3491,7 @@ def test_superseded_backtest_failure_cannot_overwrite_the_new_action(
     assert presenter._active_action == second_action
     assert presenter._active_action_outcome is BacktestActionOutcome.PENDING
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.run_result.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Running backtest..."
 
 
 def test_success_after_failure_for_the_same_action_is_ignored(presenter, view_model):
@@ -3520,7 +3522,7 @@ def test_invalidated_action_cannot_apply_a_late_success(presenter, view_model):
 
     assert presenter._active_action_outcome is BacktestActionOutcome.INVALIDATED
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.run_result.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Running backtest..."
 
 
 def test_invalidated_action_cannot_apply_a_late_failure(presenter, view_model):
@@ -3533,7 +3535,7 @@ def test_invalidated_action_cannot_apply_a_late_failure(presenter, view_model):
 
     assert presenter._active_action_outcome is BacktestActionOutcome.INVALIDATED
     assert presenter.fsm.current_state == BacktestUiState.RUNNING
-    assert view_model.run_result.resultText == "Đang chạy backtest..."
+    assert view_model.run_result.resultText == "Running backtest..."
 
 
 def test_action_context_deep_copies_mutable_strategy_params(presenter):
@@ -3654,7 +3656,7 @@ def test_market_rule_verification_initial_unverified_when_cache_empty(
         view_model.marketRuleVerificationStatus
         == MetadataVerificationStatus.UNVERIFIED_MISSING.value
     )
-    assert "chưa có metadata" in view_model.marketRuleExplanation
+    assert "no metadata" in view_model.marketRuleExplanation
 
 
 def test_market_rule_verification_verified_when_metadata_cached(presenter, view_model):
@@ -3679,7 +3681,7 @@ def test_market_rule_verification_verified_when_metadata_cached(presenter, view_
         view_model.marketRuleVerificationStatus
         == MetadataVerificationStatus.VERIFIED.value
     )
-    assert "Đã xác minh theo quy tắc sàn Binance" in view_model.marketRuleExplanation
+    assert "Verified against Binance exchange rules" in view_model.marketRuleExplanation
 
 
 def test_market_rule_verification_stale_metadata_reported_truthfully(
@@ -3707,7 +3709,7 @@ def test_market_rule_verification_stale_metadata_reported_truthfully(
         view_model.marketRuleVerificationStatus
         == MetadataVerificationStatus.UNVERIFIED_STALE.value
     )
-    assert "metadata cũ" in view_model.marketRuleExplanation
+    assert "metadata is stale" in view_model.marketRuleExplanation
 
 
 def test_strategy_properties_save_applies_leverage_to_the_view_model(

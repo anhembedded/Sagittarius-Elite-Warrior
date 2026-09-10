@@ -24,7 +24,7 @@ def build_preview() -> QWidget:
     view_model.run_result.set_stat_cards(
         [
             {
-                "title": "LỢI NHUẬN RÒNG",
+                "title": "NET PROFIT",
                 "value": "+1,420.50 USDT",
                 "suffix": "+14.21%",
                 "positive": True,
@@ -36,7 +36,7 @@ def build_preview() -> QWidget:
                 "positive": False,
             },
             {
-                "title": "TỶ LỆ THẮNG",
+                "title": "WIN RATE",
                 "value": "62.50%",
                 "suffix": "15/24",
                 "positive": True,
@@ -49,20 +49,20 @@ def build_preview() -> QWidget:
             },
         ],
         [
-            {"title": "Tổng số lệnh", "value": "24", "suffix": ""},
-            {"title": "Lệnh thắng", "value": "15", "suffix": ""},
-            {"title": "Lệnh thua", "value": "9", "suffix": ""},
-            {"title": "Lợi nhuận gộp", "value": "3,120.00 USDT", "suffix": ""},
-            {"title": "Thua lỗ gộp", "value": "-1,699.50 USDT", "suffix": ""},
-            {"title": "Lệnh thắng lớn nhất", "value": "450.00 USDT", "suffix": ""},
-            {"title": "Lệnh thua lớn nhất", "value": "-210.00 USDT", "suffix": ""},
-            {"title": "Lãi/lỗ trung bình", "value": "59.19 USDT", "suffix": ""},
+            {"title": "Total Trades", "value": "24", "suffix": ""},
+            {"title": "Winning Trades", "value": "15", "suffix": ""},
+            {"title": "Losing Trades", "value": "9", "suffix": ""},
+            {"title": "Gross Profit", "value": "3,120.00 USDT", "suffix": ""},
+            {"title": "Gross Loss", "value": "-1,699.50 USDT", "suffix": ""},
+            {"title": "Largest Winning Trade", "value": "450.00 USDT", "suffix": ""},
+            {"title": "Largest Losing Trade", "value": "-210.00 USDT", "suffix": ""},
+            {"title": "Average Profit/Loss", "value": "59.19 USDT", "suffix": ""},
         ],
     )
     view_model.run_result.set_limitations(
         [
-            "Giả lập trên dữ liệu nến lịch sử đã đóng",
-            "Phí cố định 0.1% mỗi chiều",
+            "Simulated on closed historical candle data",
+            "Fixed 0.1% fee per side",
         ]
     )
     sample_trades = [

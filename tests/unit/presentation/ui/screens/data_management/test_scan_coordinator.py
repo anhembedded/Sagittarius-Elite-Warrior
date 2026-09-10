@@ -106,7 +106,7 @@ def test_scan_coordinator_auto_discover_never_opens_a_shard_session(scan_fixture
     signals["ui_symbol_options"].assert_called_once_with(["BTCUSDT", "ETHUSDT"])
     signals["ui_status_table"].assert_not_called()
     assert any(
-        "1 tệp dữ liệu cục bộ" in str(call.args[0])
+        "1 local data file" in str(call.args[0])
         for call in signals["ui_log"].call_args_list
     )
     # Regression: the empty-state placeholder cannot tell "genuinely empty
@@ -129,7 +129,7 @@ def test_scan_coordinator_auto_discover_reports_an_empty_vault_truthfully(
 
     signals["ui_symbol_options"].assert_not_called()
     assert any(
-        "trống" in str(call.args[0]) for call in signals["ui_log"].call_args_list
+        "is empty" in str(call.args[0]) for call in signals["ui_log"].call_args_list
     )
     signals["ui_known_shard_count"].assert_called_once_with(0)
     assert tracker.active_outcome == ActionOutcome.SUCCEEDED
@@ -191,7 +191,8 @@ def test_scan_coordinator_scan_all_dispatches_prune_and_reports_removals(
     prune_call = dispatcher.dispatch.call_args_list[1]
     assert prune_call.args[0] is PruneEmptyShardsCommand
     assert any(
-        "2 shard" in str(call.args[0]) for call in signals["ui_log"].call_args_list
+        "2 empty shard" in str(call.args[0])
+        for call in signals["ui_log"].call_args_list
     )
     assert tracker.active_outcome == ActionOutcome.SUCCEEDED
 

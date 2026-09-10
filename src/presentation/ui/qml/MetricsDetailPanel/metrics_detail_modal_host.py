@@ -87,8 +87,8 @@ def _build_clipboard_text(vm: MetricsDetailVM) -> str:
     `LogListModel.copyAllToClipboard()`: readable as plain text, no markup,
     safe to paste into a chat message or a bug report."""
     lines = [
-        "CHỈ SỐ CHI TIẾT BACKTEST",
-        f"Lãi thô {vm.grossProfitText} / Lỗ thô {vm.grossLossText}",
+        "BACKTEST DETAIL METRICS",
+        f"Gross Profit {vm.grossProfitText} / Gross Loss {vm.grossLossText}",
         vm.barCaption,
         "",
     ]

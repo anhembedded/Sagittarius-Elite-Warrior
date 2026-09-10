@@ -70,7 +70,7 @@ def _probe(venue: MarketDataVenue) -> None:
         f"MARKET_DATA  {venue.name:<16} klines: {klines_url:<38} "
         f"({klines_type:<7}) testnet={testnet}{ping_note}"
     )
-    print(f"{'':<29} symbols: {spot_url:<38} (SPOT — 021C mới đổi)")
+    print(f"{'':<29} symbols: {spot_url:<38} (SPOT — changed in 021C)")
 
 
 def main() -> None:

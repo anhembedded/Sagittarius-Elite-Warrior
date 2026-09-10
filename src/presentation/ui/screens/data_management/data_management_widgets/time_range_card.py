@@ -88,7 +88,7 @@ class TimeRangeCardWidget(QWidget):  # base-exempt: a form group, not a card
         pick_row = QHBoxLayout()
         pick_row.setContentsMargins(0, 0, 0, 0)
         pick_row.addStretch(1)
-        self._btn_pick_range = QPushButton("Chọn lịch")
+        self._btn_pick_range = QPushButton("Pick Dates")
         self._btn_pick_range.setObjectName("btnPickDateRange")
         self._btn_pick_range.setFixedHeight(22)
         self._btn_pick_range.setCursor(Qt.CursorShape.PointingHandCursor)

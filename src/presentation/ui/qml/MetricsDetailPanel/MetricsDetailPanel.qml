@@ -12,7 +12,7 @@ import "../kit"
 DialogShell {
     id: root
     objectName: "metricsDetailPanel"
-    title: "Chỉ số chi tiết Backtest"
+    title: "Backtest Detail Metrics"
     onCancelled: vm.requestClose()
 
     ColumnLayout {
@@ -26,7 +26,7 @@ DialogShell {
             RowLayout {
                 Layout.fillWidth: true
                 Text {
-                    text: "LÃI THÔ VS LỖ THÔ"
+                    text: "GROSS PROFIT VS GROSS LOSS"
                     textFormat: Text.PlainText
                     color: Theme.muted
                     font.pixelSize: 10
@@ -147,13 +147,13 @@ DialogShell {
             }
             Button {
                 objectName: "btnMetricsCopyAll"
-                text: "Copy tất cả"
+                text: "Copy All"
                 role: "ghost"
                 onClicked: vm.requestCopy()
             }
             Button {
                 objectName: "btnMetricsClose"
-                text: "Đóng"
+                text: "Close"
                 role: "primary"
                 onClicked: vm.requestClose()
             }

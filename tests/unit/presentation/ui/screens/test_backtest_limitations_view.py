@@ -35,11 +35,11 @@ def test_always_applicable_limitations_are_present_for_every_run():
 
     joined = " ".join(limitations)
     assert "slippage" in joined
-    assert "độ trễ mạng" in joined
-    assert "sổ lệnh" in joined
+    assert "network latency" in joined
+    assert "orderbook" in joined
     assert "Stop Loss" in joined
-    assert "giá mở nến kế tiếp" in joined
-    assert "Phí giao dịch" in joined
+    assert "next candle's open price" in joined
+    assert "Trading fees" in joined
     assert "Static" in joined
 
 

@@ -98,7 +98,7 @@ class LiveStrategyConfigStore:
             return float(self._config.get(key.value, fallback))
         except (TypeError, ValueError):
             logger.warning(
-                "Giá trị %s không phải số — dùng mặc định %s.", key.value, fallback
+                "Value for %s is not a number — using default %s.", key.value, fallback
             )
             return float(fallback)
 
@@ -110,7 +110,7 @@ class LiveStrategyConfigStore:
             stored = json.loads(raw)
         except json.JSONDecodeError:
             logger.warning(
-                "Bỏ qua %s — không đọc được JSON.",
+                "Skipping %s — could not parse JSON.",
                 ConfigKeys.TRADING_LIVE_STRATEGY_PARAMS.value,
             )
             return {}

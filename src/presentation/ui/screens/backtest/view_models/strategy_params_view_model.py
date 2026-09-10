@@ -90,7 +90,7 @@ class StrategyParamsViewModel(QObject):
         for opt in self._strategy_options:
             if opt.get("key") == self._selected_strategy_key:
                 return opt.get("name", self._selected_strategy_key)
-        return self._selected_strategy_key or "Chọn chiến lược"
+        return self._selected_strategy_key or "Select strategy"
 
     selectedStrategyName = Property(
         str,

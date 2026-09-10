@@ -48,7 +48,7 @@ ColumnLayout {
             Button { objectName: "previewPrimary"; text: "▷ Start Live"; role: "primary" }
             Button { objectName: "previewSecondary"; text: "Load History"; role: "secondary" }
             Button { objectName: "previewGhost"; text: "Copy"; role: "ghost" }
-            Button { objectName: "previewDanger"; text: "Xóa toàn bộ Vault"; role: "danger" }
+            Button { objectName: "previewDanger"; text: "Delete Entire Vault"; role: "danger" }
         }
     }
 
@@ -96,7 +96,7 @@ ColumnLayout {
                     objectName: "previewNetPnlCard"
                     anchors.fill: parent
                     anchors.margins: 14
-                    title: "Tổng lãi/lỗ (net pnl)"
+                    title: "Total Net PnL (net pnl)"
                     value: "-8,193.54 USD"
                     caption: "-81.94%"
                     tone: "negative"
@@ -109,9 +109,9 @@ ColumnLayout {
                     objectName: "previewWinRateCard"
                     anchors.fill: parent
                     anchors.margins: 14
-                    title: "Tỷ lệ thắng"
+                    title: "Win Rate"
                     value: "10.33%"
-                    caption: "92/891 lệnh"
+                    caption: "92/891 trades"
                 }
             }
         }
@@ -154,7 +154,7 @@ ColumnLayout {
             ProgressBanner {
                 anchors.fill: parent
                 anchors.margins: 12
-                statusText: "Đang chạy backtest…"
+                statusText: "Running backtest…"
                 percent: 62
             }
         }

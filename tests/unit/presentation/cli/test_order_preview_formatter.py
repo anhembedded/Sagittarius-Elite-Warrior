@@ -62,10 +62,10 @@ def test_ready_preview_matches_the_epics_worked_example() -> None:
 
     assert "client_order_id : SEW-a91f4c72e0b8" in text
     assert "BTCUSDT / BUY   position_side=BOTH (One-way)" in text
-    assert "MARKET / 0.013  (làm tròn xuống từ 0.0137, step 0.001)" in text
+    assert "MARKET / 0.013  (rounded down from 0.0137, step 0.001)" in text
     assert "832.00 USDT     ≥ minNotional 100.00 ✔" in text
     assert text.splitlines()[-1] == (
-        "Trạng thái: SẴN SÀNG GỬI  (chưa gửi — task này không có đường ra mạng)"
+        "Status: READY TO SEND  (not sent — this task has no network egress)"
     )
 
 
@@ -73,7 +73,7 @@ def test_rejected_preview_matches_the_epics_worked_example() -> None:
     text = format_order_preview(_rejected_preview())
 
     assert text.splitlines()[-1] == (
-        "Trạng thái: TỪ CHỐI  MIN_NOTIONAL — 64.00 USDT < 100.00 USDT"
+        "Status: REJECTED  MIN_NOTIONAL — 64.00 USDT < 100.00 USDT"
     )
 
 
@@ -96,7 +96,7 @@ def test_quantity_line_omits_rounding_note_when_nothing_was_rounded() -> None:
 
     text = format_order_preview(preview)
 
-    assert "làm tròn" not in text
+    assert "rounded" not in text
 
 
 def test_json_export_round_trips_the_domain_order() -> None:

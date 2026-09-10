@@ -64,7 +64,7 @@ def test_compute_diff_summary_detects_position_sizing_changes():
     )
 
     diff = cfg1.compute_diff_summary(cfg2)
-    assert "Kích thước lệnh (100.0% → 20.0%)" in diff
+    assert "Order size (100.0% → 20.0%)" in diff
 
 
 def test_compute_diff_summary_detects_broker_simulation_changes():
@@ -84,9 +84,9 @@ def test_compute_diff_summary_detects_broker_simulation_changes():
     )
 
     diff = cfg1.compute_diff_summary(cfg2)
-    assert "Kim tự tháp (1 → 3)" in diff
-    assert "Trượt giá (0 → 5 ticks)" in diff
-    assert "Phí hoa hồng (0.1 → 0.05)" in diff
+    assert "Pyramiding (1 → 3)" in diff
+    assert "Slippage (0 → 5 ticks)" in diff
+    assert "Commission (0.1 → 0.05)" in diff
 
 
 def test_compute_diff_summary_detects_leverage_changes():
@@ -101,7 +101,7 @@ def test_compute_diff_summary_detects_leverage_changes():
     )
 
     diff = cfg1.compute_diff_summary(cfg2)
-    assert "Đòn bẩy (Long 1.0x/Short 1.0x → Long 5.0x/Short 3.0x)" in diff
+    assert "Leverage (Long 1.0x/Short 1.0x → Long 5.0x/Short 3.0x)" in diff
 
 
 def test_compute_diff_summary_does_not_flag_leverage_when_unchanged():
@@ -109,4 +109,4 @@ def test_compute_diff_summary_does_not_flag_leverage_when_unchanged():
     cfg2 = _base_config()
 
     diff = cfg1.compute_diff_summary(cfg2)
-    assert "Đòn bẩy" not in diff
+    assert "Leverage" not in diff

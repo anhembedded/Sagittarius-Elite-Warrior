@@ -220,7 +220,7 @@ class TestCancelAllOrders:
         result = handler.execute(EmergencyStopCommand())
 
         assert result.orders_cancelled.succeeded is True
-        assert "Không có lệnh" in result.orders_cancelled.detail
+        assert "No open orders" in result.orders_cancelled.detail
 
     def test_cancels_every_open_order_grouped_by_symbol(self) -> None:
         all_orders = [
@@ -279,7 +279,7 @@ class TestClosePositions:
         result = handler.execute(EmergencyStopCommand())
 
         assert result.positions_closed.succeeded is True
-        assert "Không có vị thế" in result.positions_closed.detail
+        assert "No open positions" in result.positions_closed.detail
 
     def test_closes_a_long_position_with_a_market_sell_reduce_only_order(self) -> None:
         raw_client = Mock()

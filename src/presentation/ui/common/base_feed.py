@@ -98,7 +98,7 @@ class BaseFeed(QObject):
         luôn khả năng gỡ đăng ký ở `stop()`.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} phải cài _subscribe() — xem BaseFeed's docstring"
+            f"{type(self).__name__} must implement _subscribe() — see BaseFeed's docstring"
         )
 
     def _publish(self, event: object) -> None:

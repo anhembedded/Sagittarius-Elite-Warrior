@@ -157,7 +157,7 @@ def test_backtest_presenter_event_bus_handlers(qapp) -> None:
     )
     assert presenter._view_model.log_model.rowCount() == current_count + 1
     idx = presenter._view_model.log_model.index(current_count, 0)
-    assert "chiến lược" in presenter._view_model.log_model.data(
+    assert "strategy" in presenter._view_model.log_model.data(
         idx, LogListModel.MessageRole
     )
 

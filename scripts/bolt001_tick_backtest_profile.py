@@ -97,8 +97,8 @@ st = pstats.Stats(pr, stream=io.StringIO())
 # repo runs over `scripts/` too) rejects both. There is no public
 # alternative that returns the numbers this report needs.
 total = st.total_tt  # type: ignore[attr-defined]
-print(f"{N:,} tick, bar 5 phút — tổng {total:.2f}s\n")
-print(f"{'cumtime':>8} {'%tổng':>7}  {'ncalls':>10}  hàm")
+print(f"{N:,} ticks, 5-minute bars — total {total:.2f}s\n")
+print(f"{'cumtime':>8} {'%total':>7}  {'ncalls':>10}  function")
 rows = []
 for (fn, ln, name), (_cc, nc, _tt, ct, _) in st.stats.items():  # type: ignore[attr-defined]
     rows.append((ct, nc, f"{fn.split('/')[-1]}:{ln}({name})"))
@@ -109,7 +109,7 @@ bb = [r for r in rows if "_bar_bounds" in r[2]]
 if bb:
     ct, nc, label = bb[0]
     print(
-        f">>> _bar_bounds: {nc:,} lần gọi, cumtime {ct:.3f}s = {ct / total * 100:.2f}% tổng"
+        f">>> _bar_bounds: {nc:,} calls, cumtime {ct:.3f}s = {ct / total * 100:.2f}% of total"
     )
 else:
-    print(">>> _bar_bounds KHÔNG xuất hiện trong profile")
+    print(">>> _bar_bounds did NOT appear in the profile")

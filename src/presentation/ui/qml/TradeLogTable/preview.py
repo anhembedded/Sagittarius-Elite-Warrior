@@ -64,7 +64,7 @@ _ROWS = (
         PositionSide.LONG,
         -22.33,
         35,
-        entry_reason="EMA Crossover 12/26 cắt lên",
+        entry_reason="EMA Crossover 12/26 crosses up",
         metadata={"r_multiple": "-0.4R", "fee": "9.90 USD"},
     ),
     _row(3, PositionSide.LONG, 41.20, 18),

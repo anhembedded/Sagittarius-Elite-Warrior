@@ -90,8 +90,8 @@ def _require_in_range(
     """
     if not minimum <= value <= maximum:
         raise ValueError(
-            f"{field_name} phải nằm trong khoảng [{minimum:g}, {maximum:g}]; "
-            f"nhận được {value:g}."
+            f"{field_name} must be in the range [{minimum:g}, {maximum:g}]; "
+            f"got {value:g}."
         )
 
 
@@ -131,8 +131,8 @@ class LiveStrategyConfig:
         # hand-edited config does not.
         if self.interval and self.interval not in SUPPORTED_LIVE_INTERVALS:
             raise ValueError(
-                f"Khung thời gian {self.interval!r} không dùng được cho giao dịch "
-                f"live. Chọn một trong: {', '.join(SUPPORTED_LIVE_INTERVALS)}."
+                f"Timeframe {self.interval!r} cannot be used for live trading. "
+                f"Choose one of: {', '.join(SUPPORTED_LIVE_INTERVALS)}."
             )
 
     @property

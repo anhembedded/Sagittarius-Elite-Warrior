@@ -71,7 +71,7 @@ def test_opening_the_dialog_loads_and_renders_the_groups(qapp):
     assert dialog.objectName() == "metricsDetailModal"
     assert dialog.isVisible() is True
     assert dialog.root_object.objectName() == "metricsDetailPanel"
-    risk_group = next(g for g in vm.groups if g["label"] == "RỦI RO")
+    risk_group = next(g for g in vm.groups if g["label"] == "RISK")
     assert len(risk_group["rows"]) > 0
     dialog.close()
 

@@ -36,7 +36,7 @@ def build_preview() -> QWidget:
     view_model.set_symbol_options(["BTCUSDT", "ETHUSDT", "SOLUSDT"])
     view_model.symbol = "BTCUSDT"
     view_model.set_trading_state(True, False)
-    view_model.set_status("Đã bật giao dịch.", False)
+    view_model.set_status("Trading enabled.", False)
     view_model.set_session_stats(3, 2)
 
     view = TradingView()

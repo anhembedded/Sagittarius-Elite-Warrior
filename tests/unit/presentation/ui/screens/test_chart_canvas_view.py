@@ -142,7 +142,7 @@ def test_exit_marker_does_not_use_ambiguous_sell_or_short_label():
 
     assert "SELL" not in label.upper()
     assert "SHORT" not in label.upper()
-    assert "ĐÓNG" in label or "EXIT" in label
+    assert "CLOSE" in label or "EXIT" in label
 
 
 def test_short_trade_markers_use_truthful_short_labels_not_long():

@@ -83,7 +83,7 @@ _CANCELLING_MODE = "CANCELLING"
 #: screen's `AppProgressBar`-era `QPushButton` said — kept as the explicit
 #: label here so the on-screen wording does not silently change as part of
 #: this retrofit.
-_CANCEL_LABEL = "Hủy Tiến Trình (Cancel)"
+_CANCEL_LABEL = "Cancel Progress (Cancel)"
 
 #: `ProgressBanner.qml`'s `ColumnLayout` measures to a stable 30px
 #: `implicitHeight` at this card's real inner width (292px = the 320px
@@ -428,7 +428,7 @@ class DataManagementView(BaseView):
         self._build_dialogs()
 
     def _build_header_actions(self) -> list[QPushButton]:
-        self._btn_vacuum = QPushButton("Tối ưu hóa Database (Vacuum)")
+        self._btn_vacuum = QPushButton("Optimize Database (Vacuum)")
         self._btn_vacuum.setObjectName("btnVacuum")
         self._btn_vacuum.setIcon(get_icon_loader().get_icon("zap", Palette.ACCENT, 14))
         self._btn_vacuum.setStyleSheet(
@@ -438,7 +438,7 @@ class DataManagementView(BaseView):
             f"QPushButton:hover {{ background-color: {Palette.STATE_HOVER_BG}; }}"
         )
 
-        self._btn_purge = QPushButton("Xóa toàn bộ Vault (Purge)")
+        self._btn_purge = QPushButton("Purge Entire Vault (Purge)")
         self._btn_purge.setObjectName("btnPurgeVault")
         self._btn_purge.setIcon(
             get_icon_loader().get_icon("trash-2", Palette.DANGER, 14)
@@ -545,7 +545,7 @@ class DataManagementView(BaseView):
         self._btn_symbol.setIcon(
             get_icon_loader().get_icon("search", Palette.MUTED, 14)
         )
-        self._btn_symbol.setToolTip("Tìm kiếm nhanh trong 1.361+ mã Binance")
+        self._btn_symbol.setToolTip("Quickly search across 1,361+ Binance symbols")
         self._btn_symbol.setStyleSheet(field_style())
         self._btn_symbol.clicked.connect(self._open_symbol_picker)
         grid.addWidget(self._btn_symbol, 0, 1)
@@ -637,12 +637,13 @@ class DataManagementView(BaseView):
         `self._view_model.requestClearData` here would bind `None`.
         """
         self._clear_dialog = ConfirmOverlay(
-            "XÁC NHẬN XÓA DỮ LIỆU",
-            "Xóa các nến đã lưu trong SQLite shard",
-            message="Bạn có chắc chắn muốn xóa toàn bộ nến của symbol/timeframe đã chọn không? "
-            "Thao tác này sẽ giải phóng dung lượng đĩa và làm trống bảng klines tương ứng.",
-            confirm_text="Xác nhận Xóa",
-            cancel_text="Hủy bỏ",
+            "CONFIRM DATA DELETION",
+            "Delete candles stored in the SQLite shard",
+            message="Are you sure you want to delete all candles for the selected "
+            "symbol/timeframe? This will free up disk space and empty the "
+            "corresponding klines table.",
+            confirm_text="Confirm Delete",
+            cancel_text="Cancel",
             danger=True,
             parent=self,
         )
@@ -650,13 +651,13 @@ class DataManagementView(BaseView):
         self._clear_dialog.accepted.connect(self._on_clear_confirmed)
 
         self._purge_dialog = ConfirmOverlay(
-            "CẢNH BÁO NGUY HIỂM — PURGE VAULT",
-            "Xóa toàn bộ database SQLite",
-            message="CẢNH BÁO NGUY HIỂM: Bạn đang chuẩn bị xóa TOÀN BỘ dữ liệu của tất cả các "
-            "symbol trong Storage Vault! Hành động này sẽ xóa tất cả các file SQLite shard "
-            "(.db) và không thể hoàn tác.",
-            confirm_text="XÓA TOÀN BỘ (PURGE)",
-            cancel_text="Hủy bỏ",
+            "DANGER WARNING — PURGE VAULT",
+            "Delete the entire SQLite database",
+            message="DANGER WARNING: You are about to delete ALL data for every "
+            "symbol in the Storage Vault! This action will delete all SQLite "
+            "shard files (.db) and cannot be undone.",
+            confirm_text="PURGE EVERYTHING (PURGE)",
+            cancel_text="Cancel",
             danger=True,
             parent=self,
         )

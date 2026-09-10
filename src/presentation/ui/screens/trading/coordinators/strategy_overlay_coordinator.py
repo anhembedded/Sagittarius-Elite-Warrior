@@ -162,7 +162,7 @@ class StrategyOverlayCoordinator:
             # but a drawing failure must never take the trading screen
             # down with it.
             logger.warning(
-                "Không dựng được bản sao chiến lược '%s' để vẽ chart.",
+                "Could not build a strategy copy '%s' to draw the chart.",
                 self._config.strategy_key,
             )
             return None

@@ -46,7 +46,7 @@ def test_selected_preset_label_follows_the_selected_preset(qapp) -> None:
 
     vm.preset = TimeRangePreset.LAST_7_DAYS.value
 
-    assert vm.selectedPresetLabel == "7 ngày qua"
+    assert vm.selectedPresetLabel == "Last 7 days"
 
 
 def test_an_unknown_preset_shows_its_raw_value_rather_than_a_wrong_label(
@@ -89,7 +89,7 @@ def test_display_timezone_label_tracks_the_selected_timezone(qapp) -> None:
     assert vm.displayTimezoneLabel == "Asia/Ho_Chi_Minh"
 
     vm.set_display_timezone(SYSTEM_TIMEZONE_KEY)
-    assert vm.displayTimezoneLabel.startswith("Hệ thống (")
+    assert vm.displayTimezoneLabel.startswith("System (")
 
 
 def test_the_timezone_the_label_lookup_uses_is_offered_by_the_options(qapp) -> None:

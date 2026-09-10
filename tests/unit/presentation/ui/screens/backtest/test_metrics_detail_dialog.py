@@ -98,7 +98,7 @@ def test_timeframe_seconds_reads_the_view_models_live_selected_timeframe(
         if row["title"] == "MAX DRAWDOWN DURATION"
     )
     # 24 bars * 3600s / 86400 = 1 day exactly.
-    assert row["infoBadge"] == "≈ 1 ngày"
+    assert row["infoBadge"] == "≈ 1 days"
     dialog.close()
 
 

@@ -103,19 +103,19 @@ _FALLBACK_TIMEFRAME_LABEL = TimeFrame.ONE_MINUTE.value
 _PROGRESS_BANNER_HEIGHT = 32
 
 # --- `EPIC-023C` strategy card — same fixed domain terms `TradingView`
-# uses (`ui-presentation-rule.md`: "Thông số Chiến lược" is a fixed term,
+# uses (`ui-presentation-rule.md`: "Strategy Parameters" is a fixed term,
 # distinct from general Bot settings, never rephrased per screen). ---
-_PARAMS_BUTTON_TEXT = "Thông số Chiến lược…"
-_ARM_TEXT = "Nạp chiến lược"
-_DISARM_TEXT = "Gỡ"
-_NOT_ARMED_TEXT = "Chưa nạp chiến lược nào."
-_NO_SIGNAL_TEXT = "Chưa có tín hiệu nào."
+_PARAMS_BUTTON_TEXT = "Strategy Parameters…"
+_ARM_TEXT = "Arm Strategy"
+_DISARM_TEXT = "Disarm"
+_NOT_ARMED_TEXT = "No strategy armed."
+_NO_SIGNAL_TEXT = "No signal yet."
 
 # --- `EPIC-023D` toggle/Emergency Stop — same fixed text `TradingView` uses. --- #
-_TOGGLE_ON_TEXT = "Tắt giao dịch"
-_TOGGLE_OFF_TEXT = "Bật giao dịch"
-_TOGGLE_BUSY_TEXT = "Đang xử lý..."
-_EMERGENCY_STOP_TEXT = "DỪNG KHẨN CẤP"
+_TOGGLE_ON_TEXT = "Disable Trading"
+_TOGGLE_OFF_TEXT = "Enable Trading"
+_TOGGLE_BUSY_TEXT = "Processing..."
+_EMERGENCY_STOP_TEXT = "EMERGENCY STOP"
 
 # --- `EPIC-024B` manual trading card. No leverage/margin-mode field here —
 # `PRO-003` §8.1 confirmed `ITradingClient` has no way to change either on
@@ -333,7 +333,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         pick_row = QHBoxLayout()
         pick_row.setContentsMargins(0, 0, 0, 0)
         pick_row.addStretch(1)
-        self._btn_pick_range = QPushButton("Chọn lịch")
+        self._btn_pick_range = QPushButton("Pick Dates")
         self._btn_pick_range.setObjectName("btnPickDataRange")
         self._btn_pick_range.setFixedHeight(22)
         self._btn_pick_range.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -425,19 +425,19 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         layout = card.body_layout
         layout.setContentsMargins(14, 14, 14, 14)
         layout.setSpacing(10)
-        layout.addLayout(_section_row("Chiến lược"))
+        layout.addLayout(_section_row("Strategy"))
 
         self._cbo_live_strategy = QComboBox()
         self._cbo_live_strategy.setObjectName("cboLiveStrategy")
         self._cbo_live_strategy.setFixedHeight(32)
         self._cbo_live_strategy.setStyleSheet(_field_style())
-        layout.addWidget(self._field_row("Chiến lược", self._cbo_live_strategy))
+        layout.addWidget(self._field_row("Strategy", self._cbo_live_strategy))
 
         self._cbo_live_interval = QComboBox()
         self._cbo_live_interval.setObjectName("cboLiveInterval")
         self._cbo_live_interval.setFixedHeight(32)
         self._cbo_live_interval.setStyleSheet(_field_style())
-        layout.addWidget(self._field_row("Khung TG", self._cbo_live_interval))
+        layout.addWidget(self._field_row("Timeframe", self._cbo_live_interval))
 
         self._spn_sizing_percent = QDoubleSpinBox()
         self._spn_sizing_percent.setObjectName("spnLiveSizingPercent")
@@ -446,7 +446,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._spn_sizing_percent.setSuffix(" %")
         self._spn_sizing_percent.setFixedHeight(32)
         self._spn_sizing_percent.setStyleSheet(_field_style())
-        layout.addWidget(self._field_row("% vốn/lệnh", self._spn_sizing_percent))
+        layout.addWidget(self._field_row("% Capital/Trade", self._spn_sizing_percent))
 
         self._spn_leverage = QDoubleSpinBox()
         self._spn_leverage.setObjectName("spnLiveLeverage")
@@ -455,7 +455,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._spn_leverage.setSuffix(" x")
         self._spn_leverage.setFixedHeight(32)
         self._spn_leverage.setStyleSheet(_field_style())
-        layout.addWidget(self._field_row("Đòn bẩy", self._spn_leverage))
+        layout.addWidget(self._field_row("Leverage", self._spn_leverage))
 
         self._btn_strategy_params = StyledButton(
             _PARAMS_BUTTON_TEXT, role=StyleRole.SECONDARY_BUTTON
@@ -526,7 +526,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         layout = card.body_layout
         layout.setContentsMargins(14, 14, 14, 14)
         layout.setSpacing(6)
-        layout.addLayout(_section_row("Tín hiệu gần nhất"))
+        layout.addLayout(_section_row("Latest Signal"))
         self._lbl_last_signal = QLabel(_NO_SIGNAL_TEXT)
         self._lbl_last_signal.setObjectName("lblLastSignal")
         self._lbl_last_signal.setWordWrap(True)
@@ -542,15 +542,15 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         layout = card.body_layout
         layout.setContentsMargins(14, 14, 14, 14)
         layout.setSpacing(10)
-        layout.addLayout(_section_row("Phiên giao dịch"))
+        layout.addLayout(_section_row("Trading Session"))
 
-        layout.addWidget(self._field_label("Số lệnh đã gửi phiên này"))
+        layout.addWidget(self._field_label("Orders Sent This Session"))
         self._lbl_orders_sent = QLabel("0")
         self._lbl_orders_sent.setObjectName("lblOrdersSentThisSession")
         apply_role(self._lbl_orders_sent, StyleRole.STAT_VALUE)
         layout.addWidget(self._lbl_orders_sent)
 
-        layout.addWidget(self._field_label("Số symbol đang có vị thế mở"))
+        layout.addWidget(self._field_label("Symbols With Open Positions"))
         self._lbl_open_symbols = QLabel("0")
         self._lbl_open_symbols.setObjectName("lblOpenSymbolsCount")
         apply_role(self._lbl_open_symbols, StyleRole.STAT_VALUE)
@@ -597,7 +597,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         layout = card.body_layout
         layout.setContentsMargins(14, 14, 14, 14)
         layout.setSpacing(10)
-        layout.addLayout(_section_row("Đặt lệnh thủ công"))
+        layout.addLayout(_section_row("Manual Order"))
 
         self._cbo_manual_order_type = QComboBox()
         self._cbo_manual_order_type.setObjectName("cboManualOrderType")
@@ -608,7 +608,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._cbo_manual_order_type.currentIndexChanged.connect(
             self._sync_manual_order_price_visibility
         )
-        layout.addWidget(self._field_row("Loại lệnh", self._cbo_manual_order_type))
+        layout.addWidget(self._field_row("Order Type", self._cbo_manual_order_type))
 
         self._spn_manual_quantity = QDoubleSpinBox()
         self._spn_manual_quantity.setObjectName("spnManualQuantity")
@@ -616,7 +616,7 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._spn_manual_quantity.setRange(0.0, 1_000_000.0)
         self._spn_manual_quantity.setFixedHeight(32)
         self._spn_manual_quantity.setStyleSheet(_field_style())
-        layout.addWidget(self._field_row("Khối lượng", self._spn_manual_quantity))
+        layout.addWidget(self._field_row("Quantity", self._spn_manual_quantity))
 
         self._spn_manual_price = QDoubleSpinBox()
         self._spn_manual_price.setObjectName("spnManualPrice")
@@ -624,7 +624,9 @@ class DevBoardPanel(QWidget):  # base-exempt: screen region on app bg, not a car
         self._spn_manual_price.setRange(0.0, 10_000_000.0)
         self._spn_manual_price.setFixedHeight(32)
         self._spn_manual_price.setStyleSheet(_field_style())
-        self._row_manual_price = self._field_row("Giá (Limit)", self._spn_manual_price)
+        self._row_manual_price = self._field_row(
+            "Price (Limit)", self._spn_manual_price
+        )
         layout.addWidget(self._row_manual_price)
 
         actions = QWidget()

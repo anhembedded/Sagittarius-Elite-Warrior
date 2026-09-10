@@ -27,28 +27,28 @@ from .performance_metrics_view import StatCardData
 #: In-Sample/Out-of-Sample Net Profit — the mockup simply doesn't show
 #: those) falls into `_OTHER_GROUP` instead of silently disappearing.
 _GROUP_ORDER: tuple[str, ...] = (
-    "LÃI & LỖ",
-    "TRUNG BÌNH MỖI LỆNH",
-    "RỦI RO",
-    "CHUỖI LIÊN TIẾP",
-    "KHÁC",
+    "PROFIT & LOSS",
+    "AVERAGE PER TRADE",
+    "RISK",
+    "STREAKS",
+    "OTHER",
 )
-_OTHER_GROUP = "KHÁC"
+_OTHER_GROUP = "OTHER"
 _GROUP_BY_TITLE: dict[str, str] = {
-    "Gross Profit": "LÃI & LỖ",
-    "Gross Loss": "LÃI & LỖ",
-    "Avg Trade": "LÃI & LỖ",
-    "Total Closed Trades": "LÃI & LỖ",
-    "Avg Winning Trade": "TRUNG BÌNH MỖI LỆNH",
-    "Avg Losing Trade": "TRUNG BÌNH MỖI LỆNH",
-    "Largest Winning Trade": "TRUNG BÌNH MỖI LỆNH",
-    "Largest Losing Trade": "TRUNG BÌNH MỖI LỆNH",
-    "Sharpe Ratio": "RỦI RO",
-    "Sortino Ratio": "RỦI RO",
-    "Calmar Ratio": "RỦI RO",
-    "Max Drawdown Duration": "RỦI RO",
-    "Max Consecutive Wins": "CHUỖI LIÊN TIẾP",
-    "Max Consecutive Losses": "CHUỖI LIÊN TIẾP",
+    "Gross Profit": "PROFIT & LOSS",
+    "Gross Loss": "PROFIT & LOSS",
+    "Avg Trade": "PROFIT & LOSS",
+    "Total Closed Trades": "PROFIT & LOSS",
+    "Avg Winning Trade": "AVERAGE PER TRADE",
+    "Avg Losing Trade": "AVERAGE PER TRADE",
+    "Largest Winning Trade": "AVERAGE PER TRADE",
+    "Largest Losing Trade": "AVERAGE PER TRADE",
+    "Sharpe Ratio": "RISK",
+    "Sortino Ratio": "RISK",
+    "Calmar Ratio": "RISK",
+    "Max Drawdown Duration": "RISK",
+    "Max Consecutive Wins": "STREAKS",
+    "Max Consecutive Losses": "STREAKS",
 }
 
 #: Consecutive-loss count at which the mockup's "Cảnh báo" badge appears.
@@ -70,29 +70,29 @@ def _ratio_verdict(value: float) -> tuple[str, Tone]:
     """Common Sharpe/Sortino heuristic: <0 poor, 0–1 mediocre, 1–2 good,
     >2 excellent. Not a spec anywhere in this codebase — see NOTES.md."""
     if value < 0:
-        return "Rất kém", Tone.NEGATIVE
+        return "Very Poor", Tone.NEGATIVE
     if value < _RATIO_GOOD_THRESHOLD:
-        return "Trung bình", Tone.NEUTRAL
+        return "Average", Tone.NEUTRAL
     if value < _RATIO_EXCELLENT_THRESHOLD:
-        return "Tốt", Tone.POSITIVE
-    return "Xuất sắc", Tone.POSITIVE
+        return "Good", Tone.POSITIVE
+    return "Excellent", Tone.POSITIVE
 
 
 def _calmar_verdict(value: float) -> tuple[str, Tone]:
     """Calmar = return / max drawdown. <0 means a net loss ("Âm"); the rest
     is the same invented-heuristic caveat as `_ratio_verdict` (NOTES.md)."""
     if value < 0:
-        return "Âm", Tone.NEGATIVE
+        return "Negative", Tone.NEGATIVE
     if value < _CALMAR_WEAK_THRESHOLD:
-        return "Yếu", Tone.NEUTRAL
+        return "Weak", Tone.NEUTRAL
     if value < _CALMAR_ACCEPTABLE_THRESHOLD:
-        return "Khá", Tone.NEUTRAL
-    return "Mạnh", Tone.POSITIVE
+        return "Fair", Tone.NEUTRAL
+    return "Strong", Tone.POSITIVE
 
 
 def _consecutive_losses_verdict(count: int) -> tuple[str, Tone]:
     if count >= _CONSECUTIVE_LOSSES_WARNING_THRESHOLD:
-        return "Cảnh báo", Tone.NEGATIVE
+        return "Warning", Tone.NEGATIVE
     return "", Tone.NEUTRAL
 
 
@@ -218,7 +218,7 @@ class MetricsDetailVM(QObject):
             info_badge = ""
             if card.title == "Max Drawdown Duration" and numeric is not None:
                 days = numeric * timeframe_seconds / _SECONDS_PER_DAY
-                info_badge = f"≈ {days:.0f} ngày"
+                info_badge = f"≈ {days:.0f} days"
             rows_by_group[group].append(
                 {
                     "title": card.title.upper(),
@@ -256,13 +256,13 @@ class MetricsDetailVM(QObject):
             "∞" if profit_factor == float("inf") else f"{profit_factor:.3f}"
         )
         self._bar_caption = (
-            f"Mỗi 1 USD lãi đi kèm {loss_per_profit_dollar:,.2f} USD lỗ"
-            f" — hệ số lãi {profit_factor_text}"
+            f"Every $1 of profit comes with ${loss_per_profit_dollar:,.2f} of loss"
+            f" — profit factor {profit_factor_text}"
         )
 
     def _recompute_footer(self) -> None:
         total_closed = self._get_total_closed_trades()
         fee_rate = self._get_fee_rate_percent()
         self._footer_text = (
-            f"Tính trên {total_closed:,} lệnh đã đóng · phí {fee_rate:g}% mỗi lệnh"
+            f"Based on {total_closed:,} closed trades · fee {fee_rate:g}% per trade"
         )

@@ -36,14 +36,14 @@ class StrategyPickerDialog(QmlOverlay):
                 {
                     "id": option.get("key", ""),
                     "label": option.get("name", option.get("key", "")),
-                    "subtitle": f"Mã: {option.get('key', '')}",
+                    "subtitle": f"Key: {option.get('key', '')}",
                 }
                 for option in view_model.strategy_params.strategyOptions
             ],
             get_current=lambda: view_model.strategy_params.selectedStrategyKey,
         )
         super().__init__(
-            "CHỌN CHIẾN LƯỢC BOT",
+            "SELECT BOT STRATEGY",
             qml_file=_QML,
             context={"vm": self._widget_vm},
             parent=parent,

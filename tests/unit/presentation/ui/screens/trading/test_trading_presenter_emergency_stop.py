@@ -174,7 +174,7 @@ def test_full_success_turns_trading_off_and_reports_success(presenter, mock_disp
     assert presenter._view_model.enabled is False
     assert presenter._view_model.toggleBusy is False
     assert presenter._view_model.statusIsError is False
-    assert "Đã dừng khẩn cấp" in presenter._view_model.statusMessage
+    assert "Emergency stop completed" in presenter._view_model.statusMessage
 
 
 def test_a_confirmed_final_state_replaces_the_stale_positions_and_open_orders(
@@ -221,7 +221,7 @@ def test_an_unconfirmed_final_state_leaves_stale_tables_but_warns(
     # leaves whatever was there before untouched, exactly what "stale" means.
     presenter.view.set_positions.assert_not_called()
     assert any(
-        "Không thể xác nhận trạng thái" in entry.message
+        "Could not confirm account state" in entry.message
         for entry in presenter._view_model.log_model.entries
     )
 
@@ -238,7 +238,7 @@ def test_partial_failure_is_reported_as_failure_not_success(presenter, mock_disp
     # trading-disabled state that didn't happen.
     assert presenter._view_model.enabled is False
     assert presenter._view_model.statusIsError is True
-    assert "THẤT BẠI MỘT PHẦN" in presenter._view_model.statusMessage
+    assert "PARTIALLY FAILED" in presenter._view_model.statusMessage
 
 
 def test_an_exception_from_the_dispatcher_is_reported_not_raised(
@@ -273,7 +273,7 @@ def test_a_stale_result_from_a_superseded_emergency_stop_action_is_discarded(
     mock_dispatcher.dispatch.return_value = _result()
     presenter._run_emergency_stop(stale_action_id)  # arrives late
 
-    assert presenter._view_model.statusMessage != "Đã dừng khẩn cấp."
+    assert presenter._view_model.statusMessage != "Emergency stop completed."
 
 
 def test_a_toggle_click_while_emergency_stop_is_pending_is_refused_not_superseding_it(
@@ -297,7 +297,7 @@ def test_a_toggle_click_while_emergency_stop_is_pending_is_refused_not_supersedi
     presenter._run_emergency_stop(action_id)  # the original action, still current
 
     assert presenter._view_model.statusIsError is False
-    assert "Đã dừng khẩn cấp" in presenter._view_model.statusMessage
+    assert "Emergency stop completed" in presenter._view_model.statusMessage
 
 
 def test_a_second_emergency_stop_click_while_one_is_pending_is_refused(

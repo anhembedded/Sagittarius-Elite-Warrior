@@ -9,7 +9,7 @@ from sagittarius_engine.interfaces.i_container import IContainer
 
 class TradingScreenModule(AbstractScreenModule):
     route = "trading"
-    title = "Giao dịch"
+    title = "Trading"
     icon = "chart-candlestick"
     section_key = "NAVIGATION"
     section_sequence = 10

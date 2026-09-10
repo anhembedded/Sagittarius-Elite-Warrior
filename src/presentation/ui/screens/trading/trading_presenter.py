@@ -134,19 +134,19 @@ _BLOCK_REASON_MESSAGES = EnumLabels(
     EnableTradingBlockReason,
     {
         EnableTradingBlockReason.TRADING_VENUE_DISABLED: (
-            "Trading venue đang tắt trong cấu hình — chỉ hỗ trợ Futures Testnet."
+            "Trading venue is disabled in configuration — only Futures Testnet is supported."
         ),
         EnableTradingBlockReason.CONNECTION_NOT_READY: (
-            "Kết nối tới sàn chưa sẵn sàng — kiểm tra lại API key/kết nối mạng."
+            "Connection to the exchange is not ready — check your API key/network connection."
         ),
         EnableTradingBlockReason.UNEXPECTED_POSITIONS: (
-            "Tài khoản đang có vị thế mở ngoài dự kiến — vui lòng xử lý thủ công "
-            "trên sàn trước khi bật giao dịch."
+            "The account has unexpected open positions — please handle them manually "
+            "on the exchange before enabling trading."
         ),
         EnableTradingBlockReason.SUPERSEDED_BY_CONCURRENT_STATE_CHANGE: (
-            "Một thao tác khác (thường là DỪNG KHẨN CẤP) đã thay đổi trạng thái "
-            "trong lúc đang đối soát — không bật giao dịch. Kiểm tra lại rồi thử "
-            "lại nếu vẫn muốn bật."
+            "Another operation (usually EMERGENCY STOP) changed the state while "
+            "reconciliation was in progress — trading was not enabled. Check the "
+            "state and try again if you still want to enable it."
         ),
     },
 )
@@ -612,7 +612,8 @@ class TradingPresenter(BasePresenter):
         # race the Emergency Stop already in flight.
         if self._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING:
             self._view_model.set_status(
-                "Đang dừng khẩn cấp — vui lòng đợi xong trước khi bật/tắt giao dịch.",
+                "Emergency stop in progress — please wait for it to finish "
+                "before enabling/disabling trading.",
                 True,
             )
             return
@@ -652,13 +653,13 @@ class TradingPresenter(BasePresenter):
         if error is not None or result is None:
             self._toggle_tracker.finish_action(action_id, ActionOutcome.FAILED)
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._view_model.set_status(f"Lỗi khi bật giao dịch: {error}", True)
+            self._view_model.set_status(f"Error enabling trading: {error}", True)
             return
 
         self._toggle_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
         self._view_model.set_trading_state(result.enabled, False)
         if result.enabled:
-            self._view_model.set_status("Đã bật giao dịch.", False)
+            self._view_model.set_status("Trading enabled.", False)
             # `BUG-107` — THIS is the explicit request for live prices, not
             # the sidebar click that opened the screen. Trading without them
             # would be trading blind, so the chart goes live here and stays
@@ -694,12 +695,12 @@ class TradingPresenter(BasePresenter):
         if error is not None:
             self._toggle_tracker.finish_action(action_id, ActionOutcome.FAILED)
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._view_model.set_status(f"Lỗi khi tắt giao dịch: {error}", True)
+            self._view_model.set_status(f"Error disabling trading: {error}", True)
             return
 
         self._toggle_tracker.finish_action(action_id, ActionOutcome.SUCCEEDED)
         self._view_model.set_trading_state(False, False)
-        self._view_model.set_status("Đã tắt giao dịch.", False)
+        self._view_model.set_status("Trading disabled.", False)
 
     # ================================================================== #
     # Strategy card (`EPIC-022D`) — the button handlers live in
@@ -716,7 +717,7 @@ class TradingPresenter(BasePresenter):
     @safe_ui_action
     def _on_bot_params_save_requested(self, values: dict) -> None:
         if self._arming_coordinator.apply_params(values):
-            self._view_model.set_status("Đã lưu Thông số Chiến lược.", False)
+            self._view_model.set_status("Strategy Parameters saved.", False)
 
     @Slot()
     def _on_arm_requested(self) -> None:
@@ -781,7 +782,8 @@ class TradingPresenter(BasePresenter):
             # racing the first one's own cancel/close calls.
             if self._emergency_stop_tracker.active_outcome is ActionOutcome.PENDING:
                 self._view_model.set_status(
-                    "Đang dừng khẩn cấp — yêu cầu đã được gửi, vui lòng đợi.", False
+                    "Emergency stop in progress — the request has already been sent, please wait.",
+                    False,
                 )
                 return
             action = self._emergency_stop_tracker.begin_action(
@@ -791,11 +793,11 @@ class TradingPresenter(BasePresenter):
             # state`) — Enable/Disable must not race Emergency Stop's own
             # `disable()`/`place_order()` calls.
             self._view_model.set_trading_state(self._session_state.enabled, True)
-            self._view_model.set_status("Đang dừng khẩn cấp...", False)
+            self._view_model.set_status("Emergency stop in progress...", False)
             self._thread_manager.submit(self._run_emergency_stop, action.action_id)
         except Exception as exc:  # noqa: BLE001 - deliberately not @safe_ui_action, see this section's own docstring
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._view_model.set_status(f"Lỗi khi dừng khẩn cấp: {exc}", True)
+            self._view_model.set_status(f"Error during emergency stop: {exc}", True)
 
     def _run_emergency_stop(self, action_id: int) -> None:
         try:
@@ -820,8 +822,8 @@ class TradingPresenter(BasePresenter):
         if error is not None or result is None:
             self._emergency_stop_tracker.finish_action(action_id, ActionOutcome.FAILED)
             self._view_model.set_trading_state(self._session_state.enabled, False)
-            self._view_model.set_status(f"Lỗi khi dừng khẩn cấp: {error}", True)
-            self._append_log(f"[ERROR] Dừng khẩn cấp thất bại: {error}")
+            self._view_model.set_status(f"Error during emergency stop: {error}", True)
+            self._append_log(f"[ERROR] Emergency stop failed: {error}")
             return
 
         self._emergency_stop_tracker.finish_action(
@@ -832,10 +834,10 @@ class TradingPresenter(BasePresenter):
         self._log_emergency_stop_result(result)
         self._apply_emergency_stop_final_state(result)
         if result.fully_succeeded:
-            self._view_model.set_status("Đã dừng khẩn cấp.", False)
+            self._view_model.set_status("Emergency stop completed.", False)
         else:
             self._view_model.set_status(
-                "DỪNG KHẨN CẤP — THẤT BẠI MỘT PHẦN. Xem nhật ký.", True
+                "EMERGENCY STOP — PARTIALLY FAILED. See the log.", True
             )
 
     def _apply_emergency_stop_final_state(self, result: EmergencyStopResult) -> None:
@@ -848,9 +850,9 @@ class TradingPresenter(BasePresenter):
         (still "open" for a position that is now flat)."""
         if not result.final_state_confirmed:
             self._append_log(
-                "[WARNING] Không thể xác nhận trạng thái tài khoản sau khi dừng "
-                "khẩn cấp — bảng vị thế/lệnh chờ bên dưới có thể không còn đúng. "
-                "Chạy `exchange-status` để kiểm tra trực tiếp."
+                "[WARNING] Could not confirm account state after the emergency "
+                "stop — the positions/open orders table below may no longer be "
+                "accurate. Run `exchange-status` to check directly."
             )
             return
         self._order_book.replace_all(
@@ -858,12 +860,12 @@ class TradingPresenter(BasePresenter):
         )
 
     def _log_emergency_stop_result(self, result: EmergencyStopResult) -> None:
-        self._append_log("DỪNG KHẨN CẤP")
+        self._append_log("EMERGENCY STOP")
         for index, (label, step) in enumerate(
             (
-                ("Tắt giao dịch", result.trading_disabled),
-                ("Huỷ lệnh chờ", result.orders_cancelled),
-                ("Đóng vị thế", result.positions_closed),
+                ("Disable trading", result.trading_disabled),
+                ("Cancel pending orders", result.orders_cancelled),
+                ("Close positions", result.positions_closed),
             ),
             start=1,
         ):
@@ -910,7 +912,7 @@ class TradingPresenter(BasePresenter):
     @Slot(str, str)
     @safe_ui_action
     def _on_cancel_order_requested(self, symbol: str, client_order_id: str) -> None:
-        self._append_log(f"Đang huỷ lệnh {client_order_id} ({symbol})...")
+        self._append_log(f"Cancelling order {client_order_id} ({symbol})...")
         self._thread_manager.submit(self._run_cancel_order, symbol, client_order_id)
 
     def _run_cancel_order(self, symbol: str, client_order_id: str) -> None:
@@ -929,15 +931,15 @@ class TradingPresenter(BasePresenter):
     def _on_cancel_order_completed(self, payload: tuple) -> None:
         symbol, client_order_id, result, error = payload
         if error is not None or result is None:
-            self._append_log(f"Lỗi khi huỷ lệnh {client_order_id}: {error}")
+            self._append_log(f"Error cancelling order {client_order_id}: {error}")
             return
         if result.blocked:
             self._append_log(
-                f"Huỷ lệnh bị chặn: {format_execute_order_block_reason(result.blocked_by)}"
+                f"Cancel order blocked: {format_execute_order_block_reason(result.blocked_by)}"
             )
             return
         self._order_book.on_order_cancelled(client_order_id)
-        self._append_log(f"Đã huỷ lệnh {client_order_id} ({symbol}).")
+        self._append_log(f"Order {client_order_id} ({symbol}) cancelled.")
 
     # ================================================================== #
     # Live fill markers (`EPIC-021K` §2.3) — chart-only, per symbol; never

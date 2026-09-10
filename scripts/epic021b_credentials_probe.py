@@ -43,11 +43,11 @@ def main() -> None:
     provider = EnvFirstCredentialsProvider(SecretsFileSource(secrets_file_path))
     resolution = provider.resolve()
 
-    print(f"Nguồn: {_SOURCE_LABEL[resolution.source]}")
+    print(f"Source: {_SOURCE_LABEL[resolution.source]}")
     if resolution.credentials is None:
         print(
-            "Key:    (chưa cấu hình) — lấy key ở testnet.binancefuture.com, "
-            f"rồi export {ENV_API_KEY} hoặc lưu qua màn Settings."
+            "Key:    (not configured) — get a key at testnet.binancefuture.com, "
+            f"then export {ENV_API_KEY} or save it via the Settings screen."
         )
         return
 
@@ -63,7 +63,7 @@ def main() -> None:
         f"{name} {'✔' if secret not in text else '✘ LEAKED'}"
         for name, text in leak_checks.items()
     )
-    print(f"Kiểm rò rỉ: {results}")
+    print(f"Leak check: {results}")
 
 
 def _render_in_a_traceback(credentials: object) -> str:

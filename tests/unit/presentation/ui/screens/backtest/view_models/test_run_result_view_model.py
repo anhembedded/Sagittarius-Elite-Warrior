@@ -27,9 +27,9 @@ def test_result_text_and_error_flag_change_on_one_emit(qapp) -> None:
     seen: list[tuple[str, bool]] = []
     vm.resultChanged.connect(lambda: seen.append((vm.resultText, vm.resultIsError)))
 
-    vm.set_result("Không tìm thấy dữ liệu", True)
+    vm.set_result("No data found", True)
 
-    assert seen == [("Không tìm thấy dữ liệu", True)]
+    assert seen == [("No data found", True)]
 
 
 def test_clearing_the_cards_is_a_single_call_for_both_lists(qapp) -> None:
@@ -47,12 +47,12 @@ def test_limitations_are_copied_not_aliased(qapp) -> None:
     reference would let a later `.append()` change what the screen shows
     without any signal."""
     vm = RunResultViewModel()
-    source = ["Không mô phỏng phí funding"]
+    source = ["Does not simulate funding fees"]
 
     vm.set_limitations(source)
-    source.append("thêm sau khi set")
+    source.append("added after set")
 
-    assert vm.limitations == ["Không mô phỏng phí funding"]
+    assert vm.limitations == ["Does not simulate funding fees"]
 
 
 def test_the_warning_line_only_emits_when_it_actually_changes(qapp) -> None:
@@ -60,8 +60,8 @@ def test_the_warning_line_only_emits_when_it_actually_changes(qapp) -> None:
     seen: list[int] = []
     vm.resultWarningTextChanged.connect(lambda: seen.append(1))
 
-    vm.set_result_warning_text("Dữ liệu thiếu 3 nến")
-    vm.set_result_warning_text("Dữ liệu thiếu 3 nến")
+    vm.set_result_warning_text("Data is missing 3 candles")
+    vm.set_result_warning_text("Data is missing 3 candles")
 
     assert len(seen) == 1
 
@@ -72,7 +72,7 @@ def test_the_coverage_banner_reads_both_of_its_halves_from_here(qapp) -> None:
     together so the banner cannot be left half-stale."""
     vm = RunResultViewModel()
 
-    vm.set_data_coverage(False, "Chỉ có dữ liệu từ 2024-01-01")
+    vm.set_data_coverage(False, "Only have data from 2024-01-01")
     vm.set_needs_data_sync(True)
 
     assert vm.isDataFullyCovered is False

@@ -25,18 +25,18 @@ ColumnLayout {
         headerLetterSpacing: 0.5
         reuseItems: true
         columns: [
-            { key: "time", label: "THỜI GIAN", width: root.timeColumnWidth },
+            { key: "time", label: "TIME", width: root.timeColumnWidth },
             { key: "symbol", label: "SYMBOL", width: root.symbolColumnWidth },
-            { key: "side", label: "CHIỀU", width: root.sideColumnWidth },
-            { key: "type", label: "KIỂU LỆNH", width: root.typeColumnWidth },
-            { key: "quantity", label: "KHỐI LƯỢNG", width: root.quantityColumnWidth, align: "right" },
-            { key: "price", label: "GIÁ", width: root.priceColumnWidth, align: "right" },
-            { key: "status", label: "TRẠNG THÁI", fillWidth: true, align: "right" },
+            { key: "side", label: "SIDE", width: root.sideColumnWidth },
+            { key: "type", label: "ORDER TYPE", width: root.typeColumnWidth },
+            { key: "quantity", label: "QUANTITY", width: root.quantityColumnWidth, align: "right" },
+            { key: "price", label: "PRICE", width: root.priceColumnWidth, align: "right" },
+            { key: "status", label: "STATUS", fillWidth: true, align: "right" },
             { key: "cancel", label: "", width: root.cancelColumnWidth, align: "right" },
         ]
         rowsModel: vm ? vm.rows : null
         isEmpty: vm ? vm.rows.length === 0 : false
-        emptyText: "Không có lệnh đang chờ khớp"
+        emptyText: "No open orders pending"
         rowDelegate: Component {
             OpenOrderRow {
                 width: ListView.view.width

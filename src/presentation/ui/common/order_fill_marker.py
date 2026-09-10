@@ -31,9 +31,9 @@ from Sagittarius_Elite_Warrior.src.presentation.ui.components.chart_card.theme i
     BULL_COLOR,
 )
 
-_BUY_LABEL = "MUA"
-_SELL_LABEL = "BÁN"
-_CLOSE_SUFFIX = " (Đóng)"
+_BUY_LABEL = "BUY"
+_SELL_LABEL = "SELL"
+_CLOSE_SUFFIX = " (Close)"
 
 
 def order_filled_marker(event: OrderFilledEvent) -> MarkerPoint:
