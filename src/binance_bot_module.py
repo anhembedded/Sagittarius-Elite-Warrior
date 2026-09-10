@@ -71,6 +71,9 @@ from Sagittarius_Elite_Warrior.src.application.services.live_strategy_factory im
 from Sagittarius_Elite_Warrior.src.application.services.live_strategy_session import (
     LiveStrategySession,
 )
+from Sagittarius_Elite_Warrior.src.application.services.position_refresh_service import (
+    PositionRefreshService,
+)
 from Sagittarius_Elite_Warrior.src.application.services.strategy_registry import (
     StrategyRegistry,
 )
@@ -318,9 +321,16 @@ from sagittarius_engine import App
 from sagittarius_engine.base import BaseModule
 from sagittarius_engine.interfaces.i_config import IConfig
 from sagittarius_engine.interfaces.i_task_manager import ITaskManager
+from sagittarius_engine.runtime.scheduler.scheduler import Scheduler
 from sagittarius_engine.utils.path_utils import PathUtils
 
 _DEFAULT_DB_DIR_NAME: str = "database"
+
+#: `BUG-117` — Binance's own UI recomputes unrealized PnL roughly every
+#: second; polling `GetOpenPositionsQuery` that often for a number that
+#: only needs to look alive, not tick-perfect, would spend request weight
+#: for nothing. 5s keeps the Positions table honestly current without it.
+_POSITION_REFRESH_INTERVAL_SECONDS: float = 5.0
 
 
 class BinanceBotModule(BaseModule):
@@ -526,6 +536,21 @@ class BinanceBotModule(BaseModule):
             LiveStrategySession,
             lambda c: LiveStrategySession(c.resolve(LiveStrategyFactory)),
         )
+        # `BUG-117` — keeps every open position's mark price/unrealized PnL
+        # from going stale between `ACCOUNT_UPDATE` events (a fill, a
+        # funding settlement); nothing else ever refreshed it. One instance,
+        # scheduled once at boot (`boot()` below) via the engine's own
+        # `Scheduler`, not one per screen — it reads `TradingSessionState.
+        # enabled` itself every tick, so no Enable/Disable/Emergency-Stop
+        # handler needs to start or stop it.
+        app.container.singleton(
+            PositionRefreshService,
+            lambda c: PositionRefreshService(
+                c.resolve(ICommandDispatcher),
+                c.resolve(IEventPublisher),
+                c.resolve(TradingSessionState),
+            ),
+        )
 
     def _register_use_cases(self, app: App) -> None:
         """Binds CQRS commands to their respective use case command handlers."""
@@ -616,6 +641,15 @@ class BinanceBotModule(BaseModule):
         # Initialize Event Handlers and subscribe to the Event Bus
         event_handler = MarketTickEventHandler(session)
         app.event_bus.on(MarketTickEvent, event_handler.handle)
+
+        # `BUG-117` — one recurring job, registered once, for the lifetime
+        # of the process; `PositionRefreshService.refresh_once()` is a
+        # no-op while trading is disabled, so nothing else needs to start
+        # or stop this alongside Enable/Disable/Emergency-Stop.
+        position_refresh = app.container.resolve(PositionRefreshService)
+        app.container.resolve(Scheduler).every(
+            seconds=_POSITION_REFRESH_INTERVAL_SECONDS
+        ).do(position_refresh.refresh_once)
 
     @staticmethod
     def _arm_from_config(config: IConfig, session: LiveStrategySession) -> None:
