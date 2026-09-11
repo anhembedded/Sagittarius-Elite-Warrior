@@ -1,6 +1,6 @@
 # EPIC-024B — Giao dịch thủ công trên Dev Board
 
-- **Trạng thái:** 🔴 Backlog
+- **Trạng thái:** ✅ Hoàn thành (code merge 2026-09-09/10 — PR #184, #185; đóng board 2026-09-11, xem §6)
 - **Repo:** Elite
 - **Chặn bởi:** — (không phụ thuộc A) · **Chặn:** `C` (modularize chốt phạm vi dựa trên kết quả task
   này)
@@ -163,9 +163,13 @@ Cả 2 câu hỏi trên đã có câu trả lời — điều kiện merge của
   `tests/integration/application/test_manual_order_pipeline_against_fake_server.py` (đã làm trước
   đó) vẫn giữ — chứng minh lệnh thật lên "sàn" đúng `side`/`reduceOnly` qua fake HTTP server, một
   lớp bằng chứng khác (network thật, không qua UI) mà test Qt-click này không thay thế.
-- ⛔ **Testnet tier** (opt-in, chỉ chạy được nơi có credentials thật) — không làm được trong môi
-  trường sandbox hiện tại (đã ghi từ đầu file). Chưa có bằng chứng khớp lệnh thật trên Testnet cho
-  đường thủ công.
+- ✅ **Testnet tier — bằng chứng thật, do user tự chạy (2026-09-10):** không chạy được trong sandbox
+  (đã ghi từ đầu file), nhưng user đã tự chạy app thật với credentials Futures Testnet của mình, bấm
+  Long/Short trên card này và gửi log + ảnh chụp về. Bằng chứng: (1) Binance hiển thị vị thế thật với
+  unrealized PnL `+15.98 USDT` do lệnh đặt từ card mà có — tức lệnh **đã khớp thật** trên sàn;
+  (2) chính đường thủ công này bộc lộ 3 bug thật, đều đã sửa và merge: `BUG-112` (Bật giao dịch bắt
+  nạp chiến lược), `BUG-116` (Limit thiếu `time_in_force` — caller LIMIT thật đầu tiên), `BUG-117`
+  (PnL bảng vị thế đứng im giữa 2 lần khớp). Xem §6.
 - ✅ Unit: `_on_cancel_order_requested`/`_run_cancel_order` dispatch đúng
   `CancelOrderCommand(symbol, client_order_id)` — cả Dev Board (`test_dashboard_presenter.py`) và
   Trading (`test_trading_presenter_cancel_order.py`, vì `OpenOrdersTable` dùng chung).
@@ -177,3 +181,26 @@ Cả 2 câu hỏi trên đã có câu trả lời — điều kiện merge của
   nhận layout đúng, ô Giá ẩn/hiện đúng. Chưa chụp được nút "Huỷ" trên 1 dòng Open Orders thật có dữ
   liệu (fixture test hiện tại luôn rỗng) — chỉ xác nhận qua đọc code + unit test, không phải ảnh
   chụp mắt thấy.
+
+## 6. Kết quả — đóng task 2026-09-11
+
+**Cơ chế đã được chứng minh tổng quát cho caller thứ hai — nhưng không phải "chạy đúng không cần
+sửa gì".** Câu trả lời thật cho câu hỏi ở đầu file là vế thứ hai: caller thứ hai (con người) lộ ra
+đúng những giả định ngầm "chỉ đúng khi caller là chiến lược", mỗi cái là một bug thật user gặp khi
+tự chạy Testnet:
+
+| Bug | Giả định ngầm bị lộ | Sửa |
+| :--- | :--- | :--- |
+| `BUG-112` | "Bật giao dịch" đồng nghĩa "đã nạp chiến lược" | bỏ gate `NO_STRATEGY_ARMED` |
+| `BUG-116` | Chỉ có MARKET đi qua `PreviewOrderQueryHandler` | gán `GTC` cho LIMIT |
+| `BUG-117` | Vị thế chỉ đổi khi có fill (ACCOUNT_UPDATE) | `PositionRefreshService` dùng chung, chu kỳ cấu hình được |
+
+Cả 3 đều ghi ở `Tasks/bug_report/completed/`. Đây chính là input cho bước modularize mà §4.1 yêu cầu.
+
+**Điều kiện "C được lên kế hoạch cụ thể" (README §1):** không lên kế hoạch C theo phạm vi cũ
+(Market Connector / Market Order / Strategy Engine mirroring `AbstractScreenModule`) nữa. Bằng chứng
+B thu được cho thấy vấn đề lớn hơn phạm vi C: `BUG-117` không ai sở hữu read-model vị thế,
+`BUG-112` Trading phụ thuộc state của Strategy, 59 tên method trùng giữa `trading` và `dashboard`.
+Việc cắt module cho **cả app** (không chỉ trading core) được tách ra thành đề xuất riêng
+[`PRO-004`](../../../proposal/PRO-004.md); số phận của `EPIC-024C` (cancel hay hấp thụ) quyết định
+trong đó, không quyết ở đây.

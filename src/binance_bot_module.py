@@ -330,7 +330,21 @@ _DEFAULT_DB_DIR_NAME: str = "database"
 #: second; polling `GetOpenPositionsQuery` that often for a number that
 #: only needs to look alive, not tick-perfect, would spend request weight
 #: for nothing. 5s keeps the Positions table honestly current without it.
-_POSITION_REFRESH_INTERVAL_SECONDS: float = 5.0
+#: Overridable via `ConfigKeys.TRADING_POSITION_REFRESH_INTERVAL_SECONDS`,
+#: clamped to `_MIN_POSITION_REFRESH_INTERVAL_SECONDS` below.
+_DEFAULT_POSITION_REFRESH_INTERVAL_SECONDS: float = 5.0
+
+#: `BUG-117` — floor for the config override above. `futures_position_
+#: information()` (`python-binance`) calls Binance's documented "Position
+#: Information V3" (`GET /fapi/v3/positionRisk`), weight 5 per Binance's
+#: published USDⓈ-M Futures API weight table (not re-verified against a
+#: live call — egress to `*.binance.*` is policy-blocked in this sandbox,
+#: same disclosure `futures_account_reader.py` already carries). Binance's
+#: default IP weight budget is 2400/min; at 1 call/s this poll alone spends
+#: `60 * 5 = 300` weight/min (12.5% of that budget), leaving headroom for
+#: every other request this app makes. Below 1s the app would be trading
+#: budget for a number that does not need sub-second freshness.
+_MIN_POSITION_REFRESH_INTERVAL_SECONDS: float = 1.0
 
 
 class BinanceBotModule(BaseModule):
@@ -635,8 +649,9 @@ class BinanceBotModule(BaseModule):
         # screen's strategy card re-arms it through `ArmStrategyCommand`.
         # Boot only seeds it from config, so an install that was
         # configured by file keeps working exactly as before.
+        config = app.container.resolve(IConfig)
         session = app.container.resolve(LiveStrategySession)
-        self._arm_from_config(app.container.resolve(IConfig), session)
+        self._arm_from_config(config, session)
 
         # Initialize Event Handlers and subscribe to the Event Bus
         event_handler = MarketTickEventHandler(session)
@@ -648,8 +663,35 @@ class BinanceBotModule(BaseModule):
         # or stop this alongside Enable/Disable/Emergency-Stop.
         position_refresh = app.container.resolve(PositionRefreshService)
         app.container.resolve(Scheduler).every(
-            seconds=_POSITION_REFRESH_INTERVAL_SECONDS
+            seconds=self._position_refresh_interval_seconds(config)
         ).do(position_refresh.refresh_once)
+
+    @staticmethod
+    def _position_refresh_interval_seconds(config: IConfig) -> float:
+        """`BUG-117` — reads `TRADING_POSITION_REFRESH_INTERVAL_SECONDS`,
+        clamped to `_MIN_POSITION_REFRESH_INTERVAL_SECONDS` (see that
+        constant's own comment for the Binance request-weight reasoning
+        behind the floor). Logs once, at boot, if the configured value was
+        raised — silently ignoring a below-floor setting would leave an
+        admin who deliberately tightened it with no idea it never took
+        effect."""
+        configured = float(
+            config.get(
+                ConfigKeys.TRADING_POSITION_REFRESH_INTERVAL_SECONDS.value,
+                _DEFAULT_POSITION_REFRESH_INTERVAL_SECONDS,
+            )
+        )
+        if configured < _MIN_POSITION_REFRESH_INTERVAL_SECONDS:
+            logger.warning(
+                "%s=%.3f is below the %.3fs floor (Binance request-weight "
+                "budget) — using %.3fs instead.",
+                ConfigKeys.TRADING_POSITION_REFRESH_INTERVAL_SECONDS.value,
+                configured,
+                _MIN_POSITION_REFRESH_INTERVAL_SECONDS,
+                _MIN_POSITION_REFRESH_INTERVAL_SECONDS,
+            )
+            return _MIN_POSITION_REFRESH_INTERVAL_SECONDS
+        return configured
 
     @staticmethod
     def _arm_from_config(config: IConfig, session: LiveStrategySession) -> None:

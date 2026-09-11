@@ -22,5 +22,6 @@
     "trading.live_strategy_params": "",
     "trading.live_interval": "",
     "trading.live_sizing_percent": 20.0,
-    "trading.live_leverage": 1.0
+    "trading.live_leverage": 1.0,
+    "trading.position_refresh_interval_seconds": 5.0
 }
