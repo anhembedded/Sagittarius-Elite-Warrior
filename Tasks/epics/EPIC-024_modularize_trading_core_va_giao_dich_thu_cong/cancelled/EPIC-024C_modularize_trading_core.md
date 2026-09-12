@@ -1,6 +1,29 @@
 # EPIC-024C — Modularize Market Connector / Market Order / Strategy Engine
 
-- **Trạng thái:** 🔴 Chưa chốt phạm vi (cố ý) — xem `PRO-003` §4
+> ## ❌ HUỶ 2026-09-11 — bị hấp thu vào [`EPIC-025`](../../EPIC-025_module_theo_bounded_context/README.md) (`PRO-004`)
+>
+> Task này đúng ở chẩn đoán (§2: *"không có khái niệm 'module' cho service phía sau UI trong toàn bộ
+> app"*) nhưng **sai ở phạm vi**. Bằng chứng mà `EPIC-024B` thu được (điều kiện kích hoạt §1) cho
+> thấy vấn đề lớn hơn 3 mảnh Market Connector / Market Order / Strategy Engine:
+>
+> - `BUG-117`: không ai sở hữu read-model vị thế — là vấn đề của **cả** context Giao dịch;
+> - `BUG-112`: Trading phụ thuộc state của Strategy — là vấn đề **ranh giới giữa 2 context**;
+> - 59 tên method trùng giữa `screens/trading` và `screens/dashboard` — là vấn đề của **tầng UI**,
+>   024C không chạm tới.
+>
+> Làm 024C riêng = dựng cơ chế module **lần 1** cho service, rồi `EPIC-025` dựng **lần 2** cho cả
+> app — đúng loại nhân bản cơ chế `ONBOARDING.md` §12.5.1 (*"luôn chọn general solution"*) cấm.
+> Mẫu "chép `AbstractScreenModule`" ở §2 cũng **không dùng nữa**: module nghiệp vụ đứng trên
+> `IExtension` của Engine (`EPIC-025` ADR D2), không phải một ABC app tự chế thứ ba.
+>
+> **Phần còn giá trị, đã mang sang:** 3 câu hỏi ở §3 được trả lời trong `EPIC-024B` §6 và trở thành
+> input cho HLD §3 (`modules/trading` contracts). Ràng buộc §4 (*"đổi ranh giới code, không đổi
+> logic nghiệp vụ"*) thành ADR D12 của `EPIC-025`.
+>
+> Đây không phải "bỏ vì ngại làm" — phạm vi được **mở rộng** thành epic riêng, không thu hẹp.
+
+
+- **Trạng thái:** ❌ Huỷ 2026-09-11 — hấp thu vào `EPIC-025` (xem banner)
 - **Repo:** Elite
 - **Chặn bởi:** `B` phải merge xong trước — không bắt đầu chi tiết hoá file này trước đó.
 

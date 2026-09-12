@@ -1,0 +1,101 @@
+@startuml to_be
+title TO-BE (HLD vong 1, 2026-09-11) — module theo bounded context tren IExtension cua Engine\nMui ten = huong phu thuoc (chi duoc import contracts/ cua module dau mui ten)
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+
+package "shell/ — Martin's Main (chi biet IExtension + contracts/)" #LightGray {
+  component "modules.py\ndanh sach module TUONG MINH\n(guard 2 chieu voi modules/ tren dia)" as ModList
+  component "surfaces/trading\n(mac dinh)\n0 dong nghiep vu" as SurfTrading #LightYellow
+  component "surfaces/dev_board\ngate dev.mode\n+ slot probes" as SurfDev #LightYellow
+  component "surfaces/settings\nslot sections" as SurfSettings #LightYellow
+  component "cli/ — parser dung tu\ncontribution cli_command" as Cli
+}
+
+package "core/ — kernel policy cua app" #LightGray {
+  component "contracts/\nBoundedContextModule(IExtension)\nIContributionRegistry + descriptor\nICommandDispatcher · IEventPublisher · IConfigReader" as CoreContracts
+  component "vo/ — Published Language\nTimeFrame · OrderSide · PositionSide\nMarketDataVenue · TradingVenue\nCurrency · MarketType · MarketData(candle)\nPositionSizing\n(luat: >=2 consumer o 2 module)" as CoreVo
+}
+
+package "modules/ — bounded context" {
+  component "market_data (Supporting)\ncontracts: IHistoricalKlines · ISymbolCatalog\nIMarketDataSync · IMarketStream · IRangeCoverage\nevents: MarketTick · SingleSyncProgress\n---\ndomain/ application/ adapters/(persistence, binance/market) ui/(Data Management, cli sync|stream)" as MD #LightGreen
+  component "trading (Supporting — Supplier)\ncontracts: IOrderSubmission · ITradingSession(.claim_symbol)\nIAccountSnapshot\nevents: OrderFilled · PositionChanged · PositionClosed\nEquitySampled · TradingSessionChanged\nDTO: PositionSnapshot (LivePosition KHONG ra ngoai)\n---\nso huu: TradingSessionState · PositionRefreshService\nwidget: positions · open orders · manual order · session\ndev_probes/exchange_api_tester · cli 3 lenh" as TR #LightGreen
+  component "strategy (CORE)\ncontracts: IStrategyCatalog · IStrategyEngineFactory\nStrategyContext (trung tinh)\nevents: SignalGenerated · StrategyArmed/Disarmed · LiveOrderBlocked\n---\nso huu: LiveStrategySession · LiveTradingCoordinator\nMarketTickEventHandler · arm/disarm\nwidget: strategy card · last signal · params dialog · overlay\ncli trade-once" as ST #Gold
+  component "backtesting (Supporting)\ncontracts: (chua co port public)\n---\nPaperExchange · _OpenPosition (KHONG gop voi LivePosition)\nACL: PaperExchange -> StrategyContext\nscreen backtest 60 file" as BT #LightGreen
+}
+
+package "support/ — Generic (khong ngon ngu nghiep vu)" {
+  component "binance_gateway\nIExchangeSessionFactory · ITradingSessionFactory\nIExchangeCredentialsProvider · endpoints · error translator\n(noi DUY NHAT dung binance.client.Client)" as GW
+  component "charting\nIChartHost · MarkerPoint · RegionSpan · InfoField\nChartCard — QtWidgets VINH VIEN" as CH
+  component "indicators\nIIndicatorCatalog · IIndicator\ntoan chi bao thuan, script runner" as IND
+  component "ui_kit\nkit · qml/kit · DataTable · tokens\nActionOwnershipTracker · BaseFeed" as KIT
+}
+
+package "Engine (mechanism — khong biet app)" #WhiteSmoke {
+  component "IExtension · ExtensionDescriptor\nExtensionManager (topo-sort, fail-fast, rollback)" as Ext
+  component "IContainer · IEventBus · QtEventBridge\nIDispatcher · Scheduler · HostedServiceManager" as Kern
+  component "PresenterManager (QStackedWidget)\n+ ScreenRegistry (EPIC-016, app) — toi Phase 4" as Nav
+  component "EPIC-001D / TASK-043 (Phase 5)\nNavigationService (USER_INTENT vs RESTORE, can_leave)\nslot registry dang model · screen lifecycle + conformance\ncreate_quick_widget(import_paths=) · import_boundary tong quat" as Nav2 #Pink
+}
+
+' --- huong phu thuoc giua module ---
+ST --> MD : IHistoricalKlines\nMarketTickEvent
+ST --> TR : IOrderSubmission\nITradingSession.claim_symbol\nIAccountSnapshot
+BT --> MD : IHistoricalKlines\nIMarketDataSync · IRangeCoverage
+BT --> ST : IStrategyCatalog\nIStrategyEngineFactory\nStrategyContext
+TR --> MD : IHistoricalKlines · IMarketStream\nIMarketDataSync (chart)
+
+MD --> GW
+TR --> GW
+TR ..> CH : ve fill marker qua IChartHost
+ST ..> CH : overlay
+ST ..> IND
+BT ..> CH
+BT ..> IND
+
+MD --> CoreVo
+TR --> CoreVo
+ST --> CoreVo
+BT --> CoreVo
+MD --> CoreContracts
+TR --> CoreContracts
+ST --> CoreContracts
+BT --> CoreContracts
+
+CoreContracts ..> Ext : BoundedContextModule extends IExtension
+ModList --> Ext : app.use(module) theo thu tu topo
+
+' --- surface chi treo widget do module gop ---
+TR ..> SurfTrading : gop surface_widget
+TR ..> SurfDev : gop surface_widget + dev_probe
+ST ..> SurfTrading
+ST ..> SurfDev
+MD ..> SurfDev : system controls · picker
+IND ..> SurfDev : script checklist
+TR ..> SurfSettings : settings_section
+MD ..> SurfSettings : settings_section
+MD ..> Cli : cli_command
+TR ..> Cli
+ST ..> Cli
+
+note bottom of TR #LightYellow
+  Chu trinh TR <-> ST duoc giai bang khai niem CUA trading:
+  symbol lease (claim_symbol/release_symbol). trading khong biet ai claim.
+end note
+
+note right of Nav2
+  Engine nhan mechanism, app giu policy (kind cua contribution,
+  danh sach module, gate dev.mode). Moi API Engine moi ->
+  1 dong RequiredEngineCapability (BOT-133).
+end note
+
+note as Guards #LightGreen
+  **3 guard AST** (tests/unit/architecture/):
+  test_module_boundaries — allowlist CHI DUOC CO (ratchet)
+  test_module_domain_is_qt_free
+  test_module_declarations — 2 chieu, dependencies == import that,
+  register() khong resolve(), khong double-claim DI
+  Sanity: 0 test moi.
+end note
+
+@enduml

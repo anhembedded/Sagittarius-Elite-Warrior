@@ -1,6 +1,6 @@
 # EPIC-024 — Giao dịch thủ công trên Dev Board + Modularize Trading Core
 
-- **Trạng thái:** 🟡 Đang làm (2/3 task con — A, B đã xong; C chờ quyết định trong `PRO-004`)
+- **Trạng thái:** ✅ Đóng 2026-09-11 — A, B xong; C **huỷ**, hấp thu vào [`EPIC-025`](../EPIC-025_module_theo_bounded_context/README.md)
 - **Repo:** Elite
 - **Nguồn gốc:** [`PRO-003`](../../proposal/PRO-003.md) — đề xuất kiến trúc đã được duyệt thành epic
   này. Đọc `PRO-003` trước khi làm bất kỳ task con nào — epic này chỉ tóm tắt quyết định, không lặp
@@ -43,7 +43,7 @@ giới Market Connector/Market Order/Strategy Engine phải được đặt tên
 | :-: | :--- | :--- | :---: |
 | **A** | [Sửa vi phạm: handler dùng port thay vì class cụ thể](completed/EPIC-024A_sua_vi_pham_kien_truc_port.md) | — | ✅ |
 | **B** | [Giao dịch thủ công trên Dev Board](completed/EPIC-024B_giao_dich_thu_cong_dev_board.md) | — | ✅ (đóng 2026-09-11 — code merge PR #184/#185, bằng chứng Testnet thật: B §6) |
-| **C** | [Modularize Market Connector / Market Order / Strategy Engine](incomplete/EPIC-024C_modularize_trading_core.md) | B (phạm vi chốt sau khi B xong) | 🔴 — **chờ `PRO-004`** quyết định cancel/hấp thụ (B §6) |
+| **C** | [Modularize Market Connector / Market Order / Strategy Engine](cancelled/EPIC-024C_modularize_trading_core.md) | B | ❌ Huỷ 2026-09-11 — hấp thu vào `EPIC-025` (lý do đầu file C) |
 
 ## 4. Ngoài phạm vi, cố ý
 
