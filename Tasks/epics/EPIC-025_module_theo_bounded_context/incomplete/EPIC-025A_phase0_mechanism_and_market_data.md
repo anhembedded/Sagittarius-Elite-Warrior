@@ -1,0 +1,41 @@
+# EPIC-025A — Phase 0: the module mechanism plus `modules/market_data` (Walking Skeleton)
+
+- **Status:** 🔴 Backlog — **blocked by ❓ O1** (ADR §3: the schema of each contribution-point kind)
+- **Repository:** Elite
+- **Blocks:** B, C, D, E
+- **Read first:** HLD §1–§3 (cut criteria, context map, the contracts of `market_data`), §4
+  (contribution points), §6 (guards); ADR D2, D3, D5, D9, D11.
+
+## 1. What to do
+
+**The mechanism (nothing migrates except `market_data`):**
+
+1. `src/core/` — `core/contracts/` (the application-side kernel contracts: `IContributionRegistry`
+   and the `Contribution*` descriptors) and `core/vo/` (the Published Language: only value objects
+   that already have two or more consumers in two modules — HLD §2.4).
+2. `src/shell/` — Martin's "Main": `modules.py` lists the `BoundedContextModule`s explicitly;
+   `create_app()` moves here from `src/main.py`; `binance_bot_module.py` is **not deleted** in this
+   phase, it only loses its `market_data` part.
+3. `BoundedContextModule(IExtension)` (HLD §3.1) and `IContributionRegistry` (HLD §4).
+4. The three AST guards under `tests/unit/architecture/`: `test_module_boundaries.py` (allowlist
+   **= as found**, shrink-only), `test_module_domain_is_qt_free.py`, `test_module_declarations.py`
+   (the two-way check of the module list against `modules/` on disk).
+5. Remove the hard-coded tuple of five screen modules in `app_bootstrapper.py`; the shell takes
+   them from `screen` contributions.
+
+**The Walking Skeleton — `modules/market_data/`** (HLD §3.2): `domain/` (Kline, the symbol catalog,
+shards, gaps, coverage, `MarketDataVenue`), `application/` (the `sync/` and `database/` use cases,
+the klines query, the market stream), `contracts/` (`IHistoricalKlines`, `ISymbolCatalog`,
+`IMarketStream`, `IMarketDataSync`, `IRangeCoverage`, DTOs, the events `MarketTickEvent` and
+`SingleSyncProgressEvent`), `adapters/` (`persistence/`, `binance/market/`), `ui/` (the Data
+Management screen and its Python widget wrappers; the `.qml` files **stay** under `qml/`), the CLI
+commands `sync` and `stream`. `support/binance_gateway` is extracted in the same phase because
+`market_data` needs it.
+
+## 2. Done when
+
+- The app runs exactly as before; Data Management goes through the registry; CLI `sync` and
+  `stream` work.
+- The guard allowlist has shrunk by exactly the `market_data` entries; `ci-local.ps1 -Full` is green
+  (the log file grepped, not the console).
+- The sanity tier has **zero** new tests.

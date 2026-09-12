@@ -1,6 +1,31 @@
 # EPIC-024C — Modularize Market Connector / Market Order / Strategy Engine
 
-- **Trạng thái:** 🔴 Chưa chốt phạm vi (cố ý) — xem `PRO-003` §4
+> ## ❌ CANCELLED 2026-09-11 — absorbed into [`EPIC-025`](../../EPIC-025_module_theo_bounded_context/README.md) (`PRO-004`)
+>
+> This task was right in its diagnosis (§2: *"there is no notion of a 'module' for services behind
+> the UI anywhere in the app"*) but **wrong in its scope**. The evidence that `EPIC-024B` produced
+> (the trigger condition in §1) shows a problem larger than the three pieces Market Connector /
+> Market Order / Strategy Engine:
+>
+> - `BUG-117`: nobody owns the positions read model — a problem of the **whole** Trading context;
+> - `BUG-112`: Trading depends on Strategy's state — a problem of the **boundary between two contexts**;
+> - 59 method names duplicated between `screens/trading` and `screens/dashboard` — a problem of the
+>   **UI layer**, which 024C never touched.
+>
+> Doing 024C on its own would build the module mechanism **once** for services and then let
+> `EPIC-025` build it a **second** time for the whole app — exactly the duplicated mechanism that
+> `ONBOARDING.md` §12.5.1 (*"always choose the general solution"*) forbids. The "copy
+> `AbstractScreenModule`" template in §2 is **no longer used** either: a business module stands on the
+> Engine's `IExtension` (`EPIC-025` ADR D2), not on a third home-made ABC.
+>
+> **What keeps its value, carried over:** the three questions in §3 are answered in `EPIC-024B` §6
+> and became input for HLD §3 (the `modules/trading` contracts). The constraint in §4 (*"change
+> code boundaries, not business logic"*) became ADR D12 of `EPIC-025`.
+>
+> This is not "dropped because it was hard" — the scope was **widened** into its own epic, not narrowed.
+
+
+- **Trạng thái:** ❌ Cancelled 2026-09-11 — absorbed into `EPIC-025` (see the banner above)
 - **Repo:** Elite
 - **Chặn bởi:** `B` phải merge xong trước — không bắt đầu chi tiết hoá file này trước đó.
 

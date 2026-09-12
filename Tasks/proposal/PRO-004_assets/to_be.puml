@@ -1,0 +1,101 @@
+@startuml to_be
+title TO-BE (HLD round 1, 2026-09-11) — bounded-context modules on the Engine's IExtension\nArrow = dependency direction (only the target module's contracts/ may be imported)
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+
+package "shell/ — Martin's Main (knows only IExtension + contracts/)" #LightGray {
+  component "modules.py\nEXPLICIT module list\n(two-way guard against modules/ on disk)" as ModList
+  component "surfaces/trading\n(default route)\n0 lines of business logic" as SurfTrading #LightYellow
+  component "surfaces/dev_board\ngated by dev.mode\n+ probes slot" as SurfDev #LightYellow
+  component "surfaces/settings\nsections slot" as SurfSettings #LightYellow
+  component "cli/ — parser assembled from\ncli_command contributions" as Cli
+}
+
+package "core/ — the app's kernel policy" #LightGray {
+  component "contracts/\nBoundedContextModule(IExtension)\nIContributionRegistry + descriptor\nICommandDispatcher · IEventPublisher · IConfigReader" as CoreContracts
+  component "vo/ — Published Language\nTimeFrame · OrderSide · PositionSide\nMarketDataVenue · TradingVenue\nCurrency · MarketType · MarketData(candle)\nPositionSizing\n(rule: >=2 consumers in 2 modules)" as CoreVo
+}
+
+package "modules/ — bounded context" {
+  component "market_data (Supporting)\ncontracts: IHistoricalKlines · ISymbolCatalog\nIMarketDataSync · IMarketStream · IRangeCoverage\nevents: MarketTick · SingleSyncProgress\n---\ndomain/ application/ adapters/(persistence, binance/market) ui/(Data Management, cli sync|stream)" as MD #LightGreen
+  component "trading (Supporting — Supplier)\ncontracts: IOrderSubmission · ITradingSession(.claim_symbol)\nIAccountSnapshot\nevents: OrderFilled · PositionChanged · PositionClosed\nEquitySampled · TradingSessionChanged\nDTO: PositionSnapshot (LivePosition NEVER leaves)\n---\nowns: TradingSessionState · PositionRefreshService\nwidgets: positions · open orders · manual order · session\ndev_probes/exchange_api_tester · 3 cli commands" as TR #LightGreen
+  component "strategy (CORE)\ncontracts: IStrategyCatalog · IStrategyEngineFactory\nStrategyContext (neutral)\nevents: SignalGenerated · StrategyArmed/Disarmed · LiveOrderBlocked\n---\nowns: LiveStrategySession · LiveTradingCoordinator\nMarketTickEventHandler · arm/disarm\nwidgets: strategy card · last signal · params dialog · overlay\ncli trade-once" as ST #Gold
+  component "backtesting (Supporting)\ncontracts: (no public port yet)\n---\nPaperExchange · _OpenPosition (NOT merged with LivePosition)\nACL: PaperExchange -> StrategyContext\nbacktest screen, 60 files" as BT #LightGreen
+}
+
+package "support/ — Generic (no business language)" {
+  component "binance_gateway\nIExchangeSessionFactory · ITradingSessionFactory\nIExchangeCredentialsProvider · endpoints · error translator\n(the ONLY place that constructs binance.client.Client)" as GW
+  component "charting\nIChartHost · MarkerPoint · RegionSpan · InfoField\nChartCard — QtWidgets FOREVER" as CH
+  component "indicators\nIIndicatorCatalog · IIndicator\npure indicator maths, script runner" as IND
+  component "ui_kit\nkit · qml/kit · DataTable · tokens\nActionOwnershipTracker · BaseFeed" as KIT
+}
+
+package "Engine (mechanism — knows nothing of the app)" #WhiteSmoke {
+  component "IExtension · ExtensionDescriptor\nExtensionManager (topo-sort, fail-fast, rollback)" as Ext
+  component "IContainer · IEventBus · QtEventBridge\nIDispatcher · Scheduler · HostedServiceManager" as Kern
+  component "PresenterManager (QStackedWidget)\n+ ScreenRegistry (EPIC-016, app) — until Phase 4" as Nav
+  component "EPIC-001D / TASK-043 (Phase 5)\nNavigationService (USER_INTENT vs RESTORE, can_leave)\nslot registry as models · screen lifecycle + conformance\ncreate_quick_widget(import_paths=) · generalised import_boundary" as Nav2 #Pink
+}
+
+' --- dependency direction between modules ---
+ST --> MD : IHistoricalKlines\nMarketTickEvent
+ST --> TR : IOrderSubmission\nITradingSession.claim_symbol\nIAccountSnapshot
+BT --> MD : IHistoricalKlines\nIMarketDataSync · IRangeCoverage
+BT --> ST : IStrategyCatalog\nIStrategyEngineFactory\nStrategyContext
+TR --> MD : IHistoricalKlines · IMarketStream\nIMarketDataSync (chart)
+
+MD --> GW
+TR --> GW
+TR ..> CH : draws fill markers via IChartHost
+ST ..> CH : overlay
+ST ..> IND
+BT ..> CH
+BT ..> IND
+
+MD --> CoreVo
+TR --> CoreVo
+ST --> CoreVo
+BT --> CoreVo
+MD --> CoreContracts
+TR --> CoreContracts
+ST --> CoreContracts
+BT --> CoreContracts
+
+CoreContracts ..> Ext : BoundedContextModule extends IExtension
+ModList --> Ext : app.use(module) in topological order
+
+' --- a surface only hangs widgets that modules contribute ---
+TR ..> SurfTrading : contributes surface_widget
+TR ..> SurfDev : contributes surface_widget + dev_probe
+ST ..> SurfTrading
+ST ..> SurfDev
+MD ..> SurfDev : system controls · picker
+IND ..> SurfDev : script checklist
+TR ..> SurfSettings : settings_section
+MD ..> SurfSettings : settings_section
+MD ..> Cli : cli_command
+TR ..> Cli
+ST ..> Cli
+
+note bottom of TR #LightYellow
+  The TR <-> ST cycle is resolved with a concept that BELONGS TO trading:
+  the symbol lease (claim_symbol/release_symbol). trading does not know who claimed.
+end note
+
+note right of Nav2
+  The Engine receives mechanism, the app keeps policy (contribution kinds,
+  the module list, the dev.mode gate). Every new Engine API ->
+  one RequiredEngineCapability line (BOT-133).
+end note
+
+note as Guards #LightGreen
+  **3 AST guards** (tests/unit/architecture/):
+  test_module_boundaries — allowlist may ONLY SHRINK (ratchet)
+  test_module_domain_is_qt_free
+  test_module_declarations — two-way list, dependencies == real imports,
+  register() never resolve()s, no double DI claim
+  Sanity: 0 new tests.
+end note
+
+@enduml
