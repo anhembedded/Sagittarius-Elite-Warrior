@@ -1,43 +1,50 @@
-# §5 — Engine nhận mechanism, app giữ policy
+# §5 — The Engine owns mechanism, the application owns policy
 
-User: *"Engine đó sẽ là core engine trong sự nghiệp của tôi, tôi sẽ tái sử dụng cực nhiều."* → mọi thứ
-**không biết app này** đi về Engine; mọi thứ biết "trading", "Dev Board", "Binance" ở lại app.
-Engine `ui-architecture.md` §1: *"Runtime — Engine owns: Shell, regions, navigation, screen lifecycle"*.
+The user's framing: *"Engine đó sẽ là core engine trong sự nghiệp của tôi, tôi sẽ tái sử dụng cực
+nhiều"* ("that Engine will be the core engine of my career; I will reuse it enormously"). The rule
+that follows is simple to state: everything that **does not know this application** goes to the
+Engine; everything that knows about "trading", "Dev Board" or "Binance" stays in the application.
+The Engine's own rule agrees — `ui-architecture.md` §1: *"Runtime — Engine owns: Shell, regions,
+navigation, screen lifecycle"*.
 
-## 5.1 Bảng chia
+## 5.1 The split
 
-| Năng lực | Engine (mechanism) | App (policy) | Trạng thái Engine (đo 2026-09-11) |
+| Capability | Engine (mechanism) | Application (policy) | Engine status (measured 2026-09-11) |
 | :--- | :--- | :--- | :--- |
-| Vòng đời module, topo-sort, fail-fast | `IExtension`, `ExtensionDescriptor`, `ExtensionManager` | `BoundedContextModule` (2 hook UI), danh sách module | ✅ có |
-| DI | `IContainer`, `registrations()` | kiểm tra double-claim sau `register()` | ✅ có; ⚠️ ghi đè im lặng |
-| Event | `IEventBus`, `MemoryEventBus` (sync trên thread caller), `QtEventBridge` (hop sang main thread qua `AutoConnection`) | Feed normalizer / event type | ✅ có |
-| CQRS | `IDispatcher` resolve handler từ container (**không có registry**), middleware | Command/Query internal | ✅ có |
-| Scheduler / hosted | `Scheduler.every().do()`, `HostedServiceManager` | `PositionRefreshService` job | ✅ có; ⚠️ **không có cancel job** — chỉ `max_runs`/`stop()` |
-| Route / stacked navigation | `PresenterManager` (lazy, `QStackedWidget`) | `ScreenRegistry` (`EPIC-016`) | ✅ có — đủ cho Phase 0–4 |
-| **Navigation service, regions, slot/contribution registry, screen lifecycle + conformance suite** | **`EPIC-001D`** — `NavigationService`, region, slot registry dạng **model** (không context-property động), `mount/unmount/ui_mode/shutdown`, UI runtime là `IExtension` thật | kind của contribution (§4.3), surface, gate `dev.mode` | ❌ **chưa có** (backlog, P2, B+C đã xong nên **unblocked**) — Phase 5 |
-| QML import path per-`QuickSurface` | `create_quick_widget(background=)` — 1 import path hard-code `_QML_IMPORT_PATH` | `QuickSurface` (app-side, `BOT-132`) | ❌ chưa có — cần cho ADR D6 (hoãn) |
-| Guard ranh giới import | `import_boundary.find_deep_imports(root, exempt_dirs)` — chỉ soát import sâu vào `pyside_mvc` | 3 guard AST của app | 🟡 có tool hẹp; **tổng quát hoá** thành `find_cross_package_imports(root, rules)` là ứng viên Engine (mọi app dùng modular monolith đều cần) |
-| Ordering `QApplication` trước `boot()` | — | composition root dựng `QApplication` trước `App.boot()` | ✅ đã chứng minh bởi `examples/student_management/docs/ui_extension_lifecycle.md`: *"no engine change needed"* |
+| Module lifecycle, topological sort, fail-fast | `IExtension`, `ExtensionDescriptor`, `ExtensionManager` | `BoundedContextModule` (two UI hooks), the module list | ✅ present |
+| Dependency injection | `IContainer`, `registrations()` | the double-claim check after `register()` | ✅ present; ⚠️ overwrites silently |
+| Events | `IEventBus`, `MemoryEventBus` (synchronous on the caller's thread), `QtEventBridge` (hops to the main thread through `AutoConnection`) | Feed normalisers, event types | ✅ present |
+| CQRS | `IDispatcher` resolves the handler from the container (**there is no registry**), middleware | internal Commands and Queries | ✅ present |
+| Scheduler and hosted services | `Scheduler.every().do()`, `HostedServiceManager` | the `PositionRefreshService` job | ✅ present; ⚠️ **no job cancellation** — only `max_runs` and `stop()` |
+| Route / stacked navigation | `PresenterManager` (lazy, `QStackedWidget`) | `ScreenRegistry` (`EPIC-016`) | ✅ present — sufficient for Phases 0–4 |
+| **Navigation service, regions, slot/contribution registry, screen lifecycle with a conformance suite** | **`EPIC-001D`** — `NavigationService`, regions, a slot registry exposed **as models** (no dynamically named context properties), `mount / unmount / ui_mode / shutdown`, the UI runtime as a real `IExtension` | the contribution kinds (§4.3), surfaces, the `dev.mode` gate | ❌ **absent** (backlog, P2; B and C are done, so it is **unblocked**) — Phase 5 |
+| QML import path per `QuickSurface` | `create_quick_widget(background=)` — a single hard-coded import path `_QML_IMPORT_PATH` | `QuickSurface` (application-side, `BOT-132`) | ❌ absent — needed for ADR D6 (deferred) |
+| Import-boundary guard | `import_boundary.find_deep_imports(root, exempt_dirs)` — only checks deep imports into `pyside_mvc` | the application's three AST guards | 🟡 a narrow tool exists; **generalising** it to `find_cross_package_imports(root, rules)` is an Engine candidate (every modular-monolith app needs it) |
+| `QApplication` before `boot()` ordering | — | the composition root constructs `QApplication` before `App.boot()` | ✅ proven by `examples/student_management/docs/ui_extension_lifecycle.md`: *"no engine change needed"* |
 
-## 5.2 Task bên Engine (❓ O2 — API cụ thể chốt vòng 2)
+## 5.2 The Engine-side task (❓ O2 — the concrete API is settled in round 2)
 
-Mở **`TASK-043`** bên repo Engine (backlog, tham chiếu `EPIC-001D`), phạm vi tối thiểu mà app này là
-consumer thật đầu tiên:
+**`TASK-043`** is filed in the Engine repository (backlog, referencing `EPIC-001D`), with the
+minimum scope for which this application is the first real consumer:
 
-1. `NavigationService`: `navigate(route, *, source: NavigationSource)` phân biệt `USER_INTENT` /
-   `RESTORE` (`BUG-104`/`BUG-107` của app: restore không được kích side-effect); `can_leave()` hook.
-2. Slot registry: contribution = **descriptor + factory**, expose dạng model theo slot (đúng ràng
-   buộc `EPIC-001D`); Engine không biết kind nào tồn tại — kind là chuỗi do app đăng ký.
-3. `create_quick_widget(..., import_paths=())` — thêm import path per-widget (mở khoá ADR D6).
-4. `import_boundary` tổng quát: luật `(from_package_glob, allowed_import_globs)`, allowlist ratchet.
-5. UI runtime thành `IExtension` (đã quyết 2026-08-23 trong `EPIC-001D`).
+1. `NavigationService`: `navigate(route, *, source: NavigationSource)` distinguishing `USER_INTENT`
+   from `RESTORE` (this application's `BUG-104` / `BUG-107`: a restore must not trigger side
+   effects); a `can_leave()` hook.
+2. A slot registry: a contribution is a **descriptor plus a factory**, exposed as a model per slot
+   (the `EPIC-001D` constraint); the Engine does not know which kinds exist — a kind is a string the
+   application registers.
+3. `create_quick_widget(..., import_paths=())` — extra import paths per widget (unblocks ADR D6).
+4. A generalised `import_boundary`: rules of the form `(from_package_glob, allowed_import_globs)`,
+   with a ratchet allowlist.
+5. The UI runtime becomes an `IExtension` (decided on 2026-08-23 inside `EPIC-001D`).
 
-Mỗi API mới → 1 dòng `RequiredEngineCapability` trong `engine_capabilities.py` của app (`BOT-133`);
-Engine bump `b` theo `release.md` (published API đổi).
+Every new API becomes one `RequiredEngineCapability` line in the application's
+`engine_capabilities.py` (`BOT-133`); the Engine bumps `b` under `release.md` (published API changed).
 
-## 5.3 Cái gì **không** đẩy về Engine
+## 5.3 What is **not** pushed to the Engine
 
-- Kind contribution (`dev_probe`, `settings_section`…): là policy app.
-- `BoundedContextModule` 2 hook `contribute`/`subscribe`: giữ ở app tới khi có app thứ hai cần y hệt
-  (`architecture-rule` §6.3 — promote khi consumer thứ hai xuất hiện).
-- Binance gateway, credentials: app.
+- The contribution kinds (`dev_probe`, `settings_section`, …): application policy.
+- The two hooks `contribute` / `subscribe` on `BoundedContextModule`: they stay in the application
+  until a second application needs the identical shape (`architecture-rule` §6.3 — promote when the
+  second consumer appears).
+- The Binance gateway and credentials: application.

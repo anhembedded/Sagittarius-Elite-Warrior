@@ -1,60 +1,68 @@
-# EPIC-025 — Tách app thành module theo bounded context, trên Microkernel `IExtension` của Engine
+# EPIC-025 — Split the application into bounded-context modules on the Engine's `IExtension` microkernel
 
-- **Trạng thái:** 🔴 Backlog — vòng spec 1 xong (2026-09-11); **chưa task con nào được bắt đầu**
-  trước khi ❓ O1 trong [ADR](DECISION_2026-09-11_module_boundaries.md) §3 được trả lời (vòng 2).
-- **Repo:** Elite (Phase 0–4) · Engine (Phase 5, task riêng bên repo Engine tham chiếu `EPIC-001D`)
-- **Nguồn gốc:** [`PRO-004`](../../proposal/PRO-004.md) — user (2026-09-10): *"hiện tại chúng ta
+- **Status:** 🔴 Backlog — spec round 1 completed 2026-09-11; **no sub-task starts** until question
+  ❓ O1 in the [ADR](DECISION_2026-09-11_module_boundaries.md) §3 is answered (round 2).
+- **Repositories:** Elite (Phases 0–4) · Engine (Phase 5, tracked as `TASK-043` there, referencing
+  `EPIC-001D`).
+- **Origin:** [`PRO-004`](../../proposal/PRO-004.md) — the user (2026-09-10): *"hiện tại chúng ta
   không có chia module theo kiểu DDD, nên mọi thứ đang rất là lung tung và đạp chân lẫn nhau. Tui
-  muốn redesign lại khá lớn."* Tiêu chí: *"không ngại đập đi xây lại, không ngại risk, chỉ sợ bad
-  design, không thể mở rộng, khó bảo trì."*
-- **Kim chỉ nam:** [`Docs/HLD/`](../../../Docs/HLD/README.md) — High-Level Design chính thức. Epic
-  này chỉ tóm tắt quyết định và chia phase; **không lặp lại** phân tích/bằng chứng. Mọi task con đọc
-  HLD + ADR trước.
-- **Hấp thu:** [`EPIC-024C`](../EPIC-024_modularize_trading_core_va_giao_dich_thu_cong/cancelled/EPIC-024C_modularize_trading_core.md) (huỷ 2026-09-11, lý do đầu file đó).
+  muốn redesign lại khá lớn."* ("Right now we have no DDD-style module split, so everything is
+  messy and steps on everything else. I want a fairly large redesign.") Acceptance criterion:
+  *"không ngại đập đi xây lại, không ngại risk, chỉ sợ bad design, không thể mở rộng, khó bảo trì"*
+  ("not afraid to tear down and rebuild, not afraid of risk; only afraid of bad design, of not being
+  able to extend, of being hard to maintain").
+- **North star:** [`Docs/HLD/`](../../../Docs/HLD/README.md) — the official High-Level Design. This
+  epic only summarises the decisions and divides the work into phases; it **does not repeat** the
+  analysis or the evidence. Every sub-task reads the HLD and the ADR first.
+- **Absorbs:** [`EPIC-024C`](../EPIC-024_modularize_trading_core_va_giao_dich_thu_cong/cancelled/EPIC-024C_modularize_trading_core.md)
+  (cancelled 2026-09-11; the reason is at the top of that file).
 
 ---
 
-## 1. Quyết định đã chốt (đầy đủ ở ADR D1–D12)
+## 1. Decisions already made (in full: ADR D1–D12)
 
-1. **4 bounded context** `market_data` / `trading` / `strategy` (Core) / `backtesting` + **3 support**
-   `charting` / `indicators` / `ui_kit` + kernel service. Trading và Dev Board là **hai màn hình chính
-   danh**, cả hai là *composition surface* của widget do module góp; Dev Board gate `dev.mode`, có
-   thêm contribution point `dev_probe` để khám phá API sàn chưa rõ.
-2. **Module = `IExtension` của Engine** + 2 hook UI (`contribute`, `subscribe`). Không `IModule` mới.
-3. **Shell QtWidgets, danh sách module tường minh trong `shell/`**, không auto-discovery.
-4. **Walking Skeleton trong Strangler Fig**: `market_data` đi cùng cơ chế ở Phase 0; `trading` ngay
-   sau vì đó là nơi 59 chỗ trùng lặp và bug thật đang ở.
-5. **Engine nhận mechanism, app giữ policy**; mỗi API Engine mới → `engine_capabilities.py`.
+1. **Four bounded contexts** — `market_data` / `trading` / `strategy` (Core) / `backtesting` — plus
+   **four support packages** — `charting` / `indicators` / `ui_kit` / `binance_gateway` — plus kernel
+   services. Trading and Dev Board are **two legitimate screens**, and both are *composition
+   surfaces* built from widgets the modules contribute; Dev Board is gated by `dev.mode` and gains
+   a `dev_probe` contribution point for exploring unclear exchange APIs.
+2. **A module is an Engine `IExtension`** plus two UI hooks (`contribute`, `subscribe`). No new `IModule`.
+3. **The shell stays QtWidgets, with an explicit module list in `shell/`** and no auto-discovery.
+4. **A Walking Skeleton inside a Strangler Fig**: `market_data` is migrated together with the
+   mechanism in Phase 0; `trading` follows immediately, because that is where the 59 duplicates and
+   the real bugs are.
+5. **The Engine receives mechanism, the application keeps policy**; every new Engine API becomes a
+   line in `engine_capabilities.py`.
 
-## 2. Mục tiêu — đo được
+## 2. Goals — measurable
 
-| Chỉ số | Hôm nay (đo 2026-09-10) | Khi epic xong |
+| Metric | Today (measured 2026-09-10) | When the epic is done |
 | :--- | :--- | :--- |
-| Tên method/thành viên trùng giữa `screens/trading` ↔ `screens/dashboard` | **59** | **0** |
-| Item trong `presentation/ui/common/` | 25 file / 2.015 dòng | thư mục **không còn** |
-| Dòng của composition root (`binance_bot_module.py`) | 750 | danh sách module trong `shell/`, ≤ 100 |
-| Screen import `infrastructure/**` (vi phạm `architecture-rule` §3) | 2 | 0 |
-| Allowlist vi phạm ranh giới module (guard `test_module_boundaries.py`) | = nguyên trạng ở Phase 0 | **rỗng** |
-| Test sanity thêm mới | — | **0** (`testing-rule.md` §1) |
+| Method / member names duplicated between `screens/trading` and `screens/dashboard` | **59** | **0** |
+| Items in `presentation/ui/common/` | 25 files / 2,015 lines | the directory **no longer exists** |
+| Lines in the composition root (`binance_bot_module.py`) | 750 | a module list in `shell/`, ≤ 100 lines |
+| Screens importing `infrastructure/**` (violating `architecture-rule` §3) | 2 | 0 |
+| Allowlist of module-boundary violations (`test_module_boundaries.py`) | = as found in Phase 0 | **empty** |
+| New sanity-tier tests | — | **0** (`testing-rule.md` §1) |
 
-## 3. Thứ tự thực hiện
+## 3. Order of work
 
-Mỗi phase = **1 PR**, CI xanh, **app chạy được** (user tự chạy Testnet là kênh phát hiện bug hiệu
-quả nhất — không được mất). Không đổi hành vi nghiệp vụ (ADR D12).
+Each phase is **one pull request**, CI green, **the app running** (the user running Testnet is the
+most effective bug channel — it must not be lost). No change in business behaviour (ADR D12).
 
-| # | Task | Chặn bởi | Trạng thái |
+| # | Task | Blocked by | Status |
 | :-: | :--- | :--- | :---: |
-| **A** | [Phase 0 — Cơ chế + `modules/market_data` (Walking Skeleton)](incomplete/EPIC-025A_phase0_co_che_va_market_data.md) | ❓ O1 (vòng 2) | 🔴 |
-| **B** | [Phase 1 — `modules/trading`; Trading + Dev Board thành surface](incomplete/EPIC-025B_phase1_trading_va_surface.md) | A | 🔴 |
+| **A** | [Phase 0 — mechanism plus `modules/market_data` (Walking Skeleton)](incomplete/EPIC-025A_phase0_mechanism_and_market_data.md) | ❓ O1 (round 2) | 🔴 |
+| **B** | [Phase 1 — `modules/trading`; Trading and Dev Board become surfaces](incomplete/EPIC-025B_phase1_trading_and_surfaces.md) | A | 🔴 |
 | **C** | [Phase 2 — `modules/strategy` (Core domain)](incomplete/EPIC-025C_phase2_strategy.md) | B | 🔴 |
 | **D** | [Phase 3 — `modules/backtesting`](incomplete/EPIC-025D_phase3_backtesting.md) | C | 🔴 |
-| **E** | [Phase 4 — `support/*`; giải thể `ui/common/`](incomplete/EPIC-025E_phase4_support_va_giai_the_common.md) | D | 🔴 |
-| **F** | [Phase 5 — Engine `EPIC-001D`: `NavigationService`, regions, screen lifecycle](incomplete/EPIC-025F_phase5_engine_navigation.md) | E · task bên Engine | 🔴 |
+| **E** | [Phase 4 — `support/*`; dissolve `ui/common/`](incomplete/EPIC-025E_phase4_support_and_dissolve_common.md) | D | 🔴 |
+| **F** | [Phase 5 — Engine `EPIC-001D`: `NavigationService`, regions, screen lifecycle](incomplete/EPIC-025F_phase5_engine_navigation.md) | E · the Engine-side task | 🔴 |
 
-## 4. Ngoài phạm vi, cố ý
+## 4. Deliberately out of scope
 
-- Không microservice / multi-process; không hot-reload; không plugin bên thứ ba (mọi module
-  first-party → không semver contract public).
-- Không 1 DB / 1 module — chung SQLite, mỗi module sở hữu **schema namespace**.
-- Không đổi `EPIC-016`'s `ScreenRegistry`/`AbstractScreenModule` trước Phase 5.
-- QML per-module: hoãn (ADR D6).
+- No microservices or multiple processes; no hot reload; no third-party plugins (every module is
+  first-party, so no public semantic versioning of contracts).
+- No one-database-per-module — the SQLite store stays shared; each module owns a **schema namespace**.
+- No change to `EPIC-016`'s `ScreenRegistry` / `AbstractScreenModule` before Phase 5.
+- Per-module QML: deferred (ADR D6).

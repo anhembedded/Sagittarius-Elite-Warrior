@@ -1,49 +1,49 @@
 @startuml as_is
-title AS-IS (2026-09-10) — layer-first, khong ai so huu bounded context\nSo lieu do that tren src/: 664 file .py / 74.371 dong
+title AS-IS (2026-09-10) — layer-first; nobody owns a bounded context\nMeasured on src/: 664 .py files / 74,371 lines
 
 skinparam componentStyle rectangle
 skinparam wrapWidth 220
 
 package "Composition root" #LightGray {
-  component "binance_bot_module.py\n**750 dong**\n~30 singleton + ~40 bind\n+ 16 registry.register\n(persistence + exchange + trading\n+ backtest + strategy + indicator)" as BotModule #Pink
-  component "app_bootstrapper.py (547)\ntuple 5 module **hard-code** :322-330\nseed_app_theme() :225\nset_environment_banner_factory() :230" as Boot #Pink
+  component "binance_bot_module.py\n**750 lines**\n~30 singleton + ~40 bind\n+ 16 registry.register\n(persistence + exchange + trading\n+ backtest + strategy + indicator)" as BotModule #Pink
+  component "app_bootstrapper.py (547)\n**hard-coded** tuple of 5 modules :322-330\nseed_app_theme() :225\nset_environment_banner_factory() :230" as Boot #Pink
 }
 
-package "Screens (presentation/ui/screens) — 25.349 dong" {
-  component "trading\n2.458 dong / 9 file" as Trading #LightYellow
-  component "dashboard (Dev Board)\n5.005 dong / 15 file\ndashboard_presenter **2.008 dong**\ndev_board_panel 1.015" as Dashboard #LightYellow
-  component "backtest\n12.309 dong / 60 file\nbacktest_presenter 1.780" as Backtest #LightYellow
-  component "data_management\n4.238 dong / 22 file" as DataMgmt #LightYellow
-  component "settings\n1.339 dong / 6 file" as Settings #LightYellow
+package "Screens (presentation/ui/screens) — 25,349 lines" {
+  component "trading\n2,458 lines / 9 files" as Trading #LightYellow
+  component "dashboard (Dev Board)\n5,005 lines / 15 files\ndashboard_presenter **2,008 lines**\ndev_board_panel 1,015" as Dashboard #LightYellow
+  component "backtest\n12,309 lines / 60 files\nbacktest_presenter 1,780" as Backtest #LightYellow
+  component "data_management\n4,238 lines / 22 files" as DataMgmt #LightYellow
+  component "settings\n1,339 lines / 6 files" as Settings #LightYellow
 }
 
-Trading <-[#Red,thickness=4]-> Dashboard : **59 ten method trung nhau**\n26 method Presenter\n+ 26 thanh vien ViewModel\n+ 7 manh View\n(verbatim: trading_presenter.py:628-700\n<-> dashboard_presenter.py:1247-1300)
+Trading <-[#Red,thickness=4]-> Dashboard : **59 duplicated method names**\n26 Presenter methods\n+ 26 ViewModel members\n+ 7 View fragments\n(verbatim: trading_presenter.py:628-700\n<-> dashboard_presenter.py:1247-1300)
 
-package "presentation/ui/common — 25 file / 2.015 dong" #LightGray {
-  component "**Chi dashboard+trading dung** (9 item)\norder_feed / equity_feed / signal_feed\nmarket_tick_feed / order_fill_marker\nequity_chart_adapter\nlive_order_book_coordinator\nexecute_order_block_reason\nstrategy_arming_coordinator (392)" as CommonTrading #Pink
-  component "Dung chung that (>=3 screen)\naction_ownership_tracker / app_defaults\nbase_feed / sync_progress_*" as CommonReal #LightGreen
-  component "Chi 1 screen dung\nbase_event_logger (backtest)\nqml_property (data_mgmt)\nstrategy_display (backtest)" as CommonOne #Pink
+package "presentation/ui/common — 25 files / 2,015 lines" #LightGray {
+  component "**Used only by dashboard+trading** (9 items)\norder_feed / equity_feed / signal_feed\nmarket_tick_feed / order_fill_marker\nequity_chart_adapter\nlive_order_book_coordinator\nexecute_order_block_reason\nstrategy_arming_coordinator (392)" as CommonTrading #Pink
+  component "Genuinely shared (>=3 screens)\naction_ownership_tracker / app_defaults\nbase_feed / sync_progress_*" as CommonReal #LightGreen
+  component "Used by 1 screen only\nbase_event_logger (backtest)\nqml_property (data_mgmt)\nstrategy_display (backtest)" as CommonOne #Pink
 }
 
 Trading --> CommonTrading
 Dashboard --> CommonTrading
 note right of CommonTrading #Pink
-  Day **khong phai** "UI dung chung".
-  Day la context Giao dich/Chien luoc
-  bi xe doi qua 2 screen —
-  khong module nao so huu no.
+  This is **not** "shared UI".
+  It is the Trading/Strategy context
+  torn in half across 2 screens —
+  no module owns it.
 end note
 
-package "Layers — chia theo KIEU KY THUAT" {
-  component "domain/ (88 file)\nentities/ value_objects/ events/\npolicies/ models/ indicators/\nstrategies/ scripting/\n---\n**co hinh dang context:** trading/(13)\nbacktesting/(12)\n**khong co:** market_data/\n(bi rai ra 5 cho)" as Domain
-  component "application/ (135 file)\nports/(17) services/(15)\nuse_cases/(99) — **da tu nhom theo context**\ntrading/(27) backtest/(15) sync/(8)\nstream/(6) database/(9)\nnhung queries/(31) commands/(3) van theo kieu" as App
-  component "infrastructure/ (29 file)\nbinance/(14) persistence/(7)\nengine_adapters/(6) credentials/(2)" as Infra
+package "Layers — split by TECHNICAL KIND" {
+  component "domain/ (88 files)\nentities/ value_objects/ events/\npolicies/ models/ indicators/\nstrategies/ scripting/\n---\n**context-shaped:** trading/(13)\nbacktesting/(12)\n**missing:** market_data/\n(scattered over 5 places)" as Domain
+  component "application/ (135 files)\nports/(17) services/(15)\nuse_cases/(99) — **already grouped by context**\ntrading/(27) backtest/(15) sync/(8)\nstream/(6) database/(9)\nbut queries/(31) commands/(3) still by kind" as App
+  component "infrastructure/ (29 files)\nbinance/(14) persistence/(7)\nengine_adapters/(6) credentials/(2)" as Infra
 }
 
-package "UI dung chung khac" {
-  component "qml/ — 17 goi widget, **1 dong phang**\n35 .qml, khong .qmldir\nkhong qmlRegisterType nao\nQQmlEngine tao **rieng cho tung QQuickWidget**" as Qml
-  component "components/chart_card (27 file)\n**QtWidgets vinh vien** (qml-rule §0)" as Chart
-  component "kit/ (28 file, style.py 673)" as Kit
+package "Other shared UI" {
+  component "qml/ — 17 widget packages, **one flat pile**\n35 .qml, no .qmldir\nno qmlRegisterType\nQQmlEngine created **per QQuickWidget**" as Qml
+  component "components/chart_card (27 files)\n**QtWidgets forever** (qml-rule §0)" as Chart
+  component "kit/ (28 files, style.py 673)" as Kit
 }
 
 Boot --> Trading
@@ -60,8 +60,8 @@ Settings ..> App
 App ..> Domain
 Infra ..> App
 
-Backtest -[#Red]-> Infra : **vi pham §3**\nbacktest_presenter.py:43
-Settings -[#Red]-> Infra : **vi pham §3**\nsettings_presenter.py:21
+Backtest -[#Red]-> Infra : **violates §3**\nbacktest_presenter.py:43
+Settings -[#Red]-> Infra : **violates §3**\nsettings_presenter.py:21
 
 Trading --> Qml
 Dashboard --> Qml
@@ -71,8 +71,8 @@ Trading --> Chart
 Dashboard --> Chart
 Backtest --> Chart
 
-package "State dung chung — khong ai so huu" #LightGray {
-  component "TradingSessionState\n(trading:234, settings:143, dashboard:534\n+ 3 handler + thread websocket)" as SessState #Pink
+package "Shared state — nobody owns it" #LightGray {
+  component "TradingSessionState\n(trading:234, settings:143, dashboard:534\n+ 3 handlers + websocket thread)" as SessState #Pink
   component "LiveStrategySession\n(trading:300, dashboard:639)" as StratSess #Pink
   component "EquityCurveRecorder\n(trading:237, dashboard:541)" as Equity #Pink
 }
@@ -84,16 +84,16 @@ Dashboard --> SessState
 Settings --> SessState
 
 note bottom of BotModule #Pink
-  EPIC-024C tu ghi: "Khong co khai niem 'module'
-  cho service phia sau UI trong toan bo app —
-  BinanceBotModule la noi dang ky DUY NHAT cho moi thu"
+  EPIC-024C's own words: "there is no notion of a
+  'module' for services behind the UI anywhere in the app —
+  BinanceBotModule is the ONLY registration point for everything"
 end note
 
 note as Symptoms #Pink
-  **Bug da phat sinh tu day**
-  BUG-117: khong ai so huu read-model vi the
-  BUG-112: Trading phu thuoc state cua Strategy
-  BOT-126/BUG-085: khong ai so huu subscription stream
+  **Bugs that grew out of this**
+  BUG-117: nobody owns the positions read model
+  BUG-112: Trading depends on Strategy's state
+  BOT-126/BUG-085: nobody owns the stream subscription
   EPIC-023A: Dev Board "copy-pasted all six methods"
 end note
 

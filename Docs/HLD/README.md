@@ -1,42 +1,49 @@
-# HLD — High-Level Design chính thức của Sagittarius Elite Warrior
+# High-Level Design — Sagittarius Elite Warrior
 
-- **Trạng thái:** 🟢 Vòng 1 duyệt 2026-09-11 (ADR: [`EPIC-025/DECISION_2026-09-11_module_boundaries.md`](../../Tasks/epics/EPIC-025_module_theo_bounded_context/DECISION_2026-09-11_module_boundaries.md)).
-  Vòng 2 còn mở: schema contribution point (§4, ❓ O1) và API Engine cụ thể (§5, ❓ O2).
-- **Vai trò:** đây là **kim chỉ nam** — tài liệu duy nhất trả lời *"module nào, ranh giới ở đâu, theo
-  tiêu chí gì, API ra sao"*. Task/epic/bug **tham chiếu** tới đây, không chép lại. Khi code và HLD
-  lệch nhau, một trong hai **sai** và phải sửa ngay trong PR đó — không để lệch qua sprint.
-- **Nguồn gốc:** [`PRO-004`](../../Tasks/proposal/PRO-004.md) (đề xuất + bằng chứng đo được) →
-  ADR (quyết định) → HLD này (thiết kế). Sơ đồ: [`as_is.puml`](../../Tasks/proposal/PRO-004_assets/as_is.puml)
-  / [`to_be.puml`](../../Tasks/proposal/PRO-004_assets/to_be.puml).
-- **Ngôn ngữ:** tiếng Việt (như `Docs/PROJECT_INTENT_AND_USER_STORIES.md`); định danh code tiếng Anh.
+- **Status:** 🟢 Round 1 approved on 2026-09-11. The decision record is
+  [`EPIC-025/DECISION_2026-09-11_module_boundaries.md`](../../Tasks/epics/EPIC-025_module_theo_bounded_context/DECISION_2026-09-11_module_boundaries.md).
+  Round 2 is still open on two points: the schema of each contribution point (§4, question O1) and
+  the concrete Engine API (§5, question O2).
+- **What this document is for.** It is the *north star*: the one place that answers "which modules
+  exist, where their boundaries are, by what criteria, and what their APIs look like". Tasks, epics
+  and bug reports **reference** it; they do not repeat it. When the code and this document disagree,
+  one of them is wrong, and the pull request that discovers the disagreement fixes it. Drift is not
+  allowed to survive a sprint.
+- **Where it comes from.** [`PRO-004`](../../Tasks/proposal/PRO-004.md) holds the evidence and the
+  argument; the ADR holds the decisions; this document holds the design. Diagrams:
+  [`as_is.puml`](../../Tasks/proposal/PRO-004_assets/as_is.puml) and
+  [`to_be.puml`](../../Tasks/proposal/PRO-004_assets/to_be.puml).
+- **Language.** English, in the register of a self-study technical book (`ONBOARDING.md` §10).
 
-## Khung tư duy: 5 câu hỏi → 5 công cụ
+## How to read this document: five questions, five tools
 
-User đặt bài toán bằng 3 câu; khảo sát cho thấy phải là 5, mỗi câu có đúng một công cụ đã có tên
-và tiền lệ lớn — **không phát minh khái niệm mới**:
+The user framed the problem as three questions. The investigation showed there are really five,
+and that each one already has a well-known tool with a name and a large body of precedent. Nothing
+in this design is invented; the work is choosing the right tool for each question and showing,
+with measurements from this codebase, why it fits.
 
-| # | Câu hỏi | Công cụ | Nguồn | Trả lời ở |
+| # | Question | Tool | Origin | Answered in |
 | :-: | :--- | :--- | :--- | :--- |
-| 1 | **Cắt ở đâu?** | Bounded Context + Aggregate làm tiêu chí cắt; Distillation (Core/Supporting/Generic) | DDD chiến lược (Evans) | [§1](01_tieu_chi_cat_module.md), [§2](02_context_map.md) |
-| 2 | **Các mảnh nói chuyện với nhau thế nào?** | Context Map: Customer/Supplier, Open Host Service + Published Language, Anticorruption Layer | DDD chiến lược | [§2](02_context_map.md), [§3](03_hop_dong_module.md) |
-| 3 | **Bên trong mỗi mảnh tổ chức sao?** | Clean Architecture (domain / application / adapters / ui), Port = ABC | Robert Martin | [§3](03_hop_dong_module.md) |
-| 4 | **Lắp vào app không biết trước số mảnh?** | Microkernel + DIP: `IExtension` của Engine, Martin's "Main" = `shell/`, contribution point kiểu VS Code | Microkernel, VS Code extension model | [§3.1](03_hop_dong_module.md), [§4](04_surface_va_contribution_point.md), [§5](05_engine_app_split.md) |
-| 5 | **Làm sao để nó không mục sau 3 sprint, và đi tới đó mà app vẫn chạy?** | Architecture fitness function (guard AST, allowlist chỉ co); Strangler Fig + Walking Skeleton | Ford/Parsons/Kua; Fowler | [§6](06_enforcement_va_di_tru.md) |
+| 1 | **Where do we cut?** | Bounded Context, with the Aggregate as the cutting criterion; Distillation into Core / Supporting / Generic | Strategic DDD (Evans) | [§1](01_cut_criteria.md), [§2](02_context_map.md) |
+| 2 | **How do the pieces talk to each other?** | Context Map patterns: Customer/Supplier, Open Host Service with a Published Language, Anticorruption Layer | Strategic DDD | [§2](02_context_map.md), [§3](03_module_contracts.md) |
+| 3 | **How is each piece organised inside?** | Clean Architecture (`domain` / `application` / `adapters` / `ui`), where a Port is an abstract base class | Robert Martin | [§3](03_module_contracts.md) |
+| 4 | **How do we plug in pieces without knowing their number in advance?** | Microkernel plus the Dependency Inversion Principle: the Engine's `IExtension`, Martin's "Main" component as `shell/`, VS Code-style contribution points | Microkernel pattern; the VS Code extension model | [§3.1](03_module_contracts.md), [§4](04_surfaces_and_contribution_points.md), [§5](05_engine_app_split.md) |
+| 5 | **How do we keep it from rotting, and get there without stopping the app?** | Architecture fitness functions (AST guards with a shrink-only allowlist); Strangler Fig with a Walking Skeleton | Ford, Parsons & Kua; Fowler | [§6](06_enforcement_and_migration.md) |
 
-## Mục lục
+## Contents
 
-1. [Tiêu chí cắt module (C1–C6) và áp dụng lên app này](01_tieu_chi_cat_module.md)
-2. [Context map: 4 bounded context, 4 support, kernel; Distillation; kiểu tích hợp; Published Language](02_context_map.md)
-3. [Hợp đồng module: `BoundedContextModule`, bố cục bên trong, contracts từng module, bảng ánh xạ code hôm nay](03_hop_dong_module.md)
-4. [Surface và contribution point: Trading, Dev Board (`dev_probe`), Settings, CLI](04_surface_va_contribution_point.md)
-5. [Engine nhận mechanism, app giữ policy: bảng chia với `EPIC-001D`](05_engine_app_split.md)
-6. [Enforcement và di trú: 3 guard, allowlist ratchet, 6 phase](06_enforcement_va_di_tru.md)
+1. [Criteria for cutting a module (C1–C6), applied to this application](01_cut_criteria.md)
+2. [Context map: four bounded contexts, four support packages, a kernel; distillation; integration patterns; the Published Language](02_context_map.md)
+3. [Module contracts: `BoundedContextModule`, the internal layout, each module's contracts, the mapping from today's code](03_module_contracts.md)
+4. [Surfaces and contribution points: Trading, Dev Board (`dev_probe`), Settings, CLI](04_surfaces_and_contribution_points.md)
+5. [Engine owns mechanism, application owns policy: the split with `EPIC-001D`](05_engine_app_split.md)
+6. [Enforcement and migration: three guards, the allowlist ratchet, six phases](06_enforcement_and_migration.md)
 
-## Quy ước đọc
+## Reading conventions
 
-| Nhãn | Ý nghĩa |
+| Mark | Meaning |
 | :--- | :--- |
-| ✅ | Đã có trên cây code hôm nay (trích `file:line`), thiết kế **tái dùng** |
-| 🔵 | Thiết kế mới, chưa implement |
-| ❓ | Còn mở — chặn phase ghi kèm |
-| ⚠️ | Điểm dễ làm sai, đã có tiền lệ trả giá trong repo |
+| ✅ | Exists in the code today (cited as `file:line`); the design **reuses** it |
+| 🔵 | New design, not yet implemented |
+| ❓ | Open; the phase it blocks is named alongside |
+| ⚠️ | A place that is easy to get wrong, and where this repository has already paid for the mistake once |

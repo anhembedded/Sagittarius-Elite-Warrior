@@ -59,7 +59,7 @@ Older docs/habits mentioning "bump the submodule pointer" describe a process tha
 ## 3. The lifecycle of a TASK (new feature)
 
 1. **Task file** in `Tasks/backlog/` following the `BOT-XXX_short_description.md` template (the next number after the largest existing one). **Take that number from the files on disk, not from `ROADMAP.md`** — a board lags, and two sessions reading the same lagging board pick the same number. This has happened four times (`BUG-051`/`BUG-052`, `BUG-058` twice, `BOT-120`, `BOT-126`); `tests/unit/test_task_board_is_consistent.py` now fails the gate on a collision or a dangling board link, so a clash surfaces at merge instead of months later. If the user asks for a feature with no task → create the task file first, then code. Large epics get sub-tasks `BOT-XXXA`, `BOT-XXXB`… and the epic must have a table listing its sub-tasks.
-2. **Task file content** is written in Vietnamese, and must at minimum contain: real context & problem (not generic), design + the **reason** for any non-obvious decision, per-file changes, testing.
+2. **Task file content** is written in English (§10), and must at minimum contain: real context & problem (not generic), design + the **reason** for any non-obvious decision, per-file changes, testing.
 3. **Code + tests.** See §5 for which test tier is the right one.
 4. **On completion:** `git mv Tasks/backlog/BOT-XXX_*.md Tasks/completed/`, change the status to `✅ Hoàn thành (YYYY-MM-DD)`, and add an "Implementation Notes" section recording the **real bugs found while doing the work**, design decisions, and test counts. This is the task file's greatest value to a later reader — don't write it just to tick a box.
 5. **`ROADMAP.md` bookkeeping:** see §6.
@@ -247,7 +247,23 @@ Note: **every rule file in both repos only lists PowerShell commands**. On Linux
 
 - **`.agents/` rule documentation and this onboarding:** English.
 - **Code, identifiers, docstrings, comments, commit subjects:** English.
-- **Conversation with the user, task files, bug reports, ROADMAP and other `Tasks/` documents:** Vietnamese.
+- **Conversation with the user:** Vietnamese, or whatever language the user writes in.
+- **Every `.md` document — task files, bug reports, ROADMAP, epics, ADRs, proposals, `Docs/`:** English.
+  **User decision 2026-09-12** (*"từ nay tài liệu .md không viết tiếng Việt nữa"*), replacing the
+  earlier Vietnamese rule. Documents written before that date stay as they are; any new section
+  added to one of them is English.
+- **Register for documents — "like a self-study technical book"** (the user's words). Concretely:
+  - Teach, don't just record. State *why* before *what*; a reader who was not in the conversation
+    must be able to follow the reasoning and check it.
+  - Define a term the first time it is used, then use it consistently (Bounded Context, Port,
+    Surface, Contribution point). Never introduce a name without saying what it is.
+  - Prefer one worked example with real file paths and numbers over three adjectives. Evidence
+    is `file:line` and a measured count, not "many" or "a lot".
+  - Full sentences and short paragraphs; tables for comparisons and inventories, prose for
+    reasoning. A table cell is not the place for an argument.
+  - No chat-style shorthand, no emoji in prose (status icons in board tables are fine), no
+    untranslated Vietnamese except a quoted user decision, which is given verbatim and then
+    translated.
 - **User-visible UI strings and log messages:** English, using the agreed domain terminology (for example "Strategy Parameters" is distinct from the general Bot Settings).
 
 ---

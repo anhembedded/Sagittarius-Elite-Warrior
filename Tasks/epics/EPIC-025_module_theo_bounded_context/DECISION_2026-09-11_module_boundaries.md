@@ -1,165 +1,187 @@
-# ADR — Ranh giới module theo bounded context, trên Microkernel `IExtension` sẵn có
+# ADR — Module boundaries by bounded context, on the Engine's existing `IExtension` microkernel
 
-**Thuộc Epic:** [`EPIC-025`](README.md)
-**Nguồn:** [`PRO-004`](../../proposal/PRO-004.md) · HLD chính thức: [`Docs/HLD/`](../../../Docs/HLD/README.md)
-**Ngày:** 2026-09-11
-**Trạng thái:** 🟢 **Approved — vòng 1** (user chốt trực tiếp trong 2 phiên 2026-09-10 → 11).
-Vòng 2 (chi tiết contribution point + API Engine cụ thể) còn 3 câu ❓ ở §3.
+**Epic:** [`EPIC-025`](README.md)
+**Source:** [`PRO-004`](../../proposal/PRO-004.md) · The official design: [`Docs/HLD/`](../../../Docs/HLD/README.md)
+**Date:** 2026-09-11
+**Status:** 🟢 **Approved — round 1** (decided directly by the user across the sessions of
+2026-09-10 and 2026-09-11). Round 2 (contribution-point detail and the concrete Engine API) still
+has the three open questions in §3.
 
 > [!IMPORTANT]
-> Đọc cột trạng thái, không đọc văn xuôi (khuôn `EPIC-016`'s ADR).
+> Read the status column, not the prose (the convention of `EPIC-016`'s ADR).
 >
-> | Nhãn | Ý nghĩa |
+> | Label | Meaning |
 > | :--- | :--- |
-> | ✅ **Established** | Đã xác nhận trên cây code thật; có `file:line` |
-> | 🔵 **Proposed** | Đã chốt trong phiên review; **chưa** implement |
-> | 🟢 **User decision** | User quyết trực tiếp, nguyên văn trích trong ngoặc |
-> | 🤖 **Agent decision** | User uỷ quyền (*"hãy dựa vào rule tự ra quyết định mà ra quyết định"*) — quyết theo `ONBOARDING.md` §7: pattern có tên, tiền lệ lớn, không sợ redesign |
-> | ❓ **Open** | Chặn implementation của phase liên quan cho tới khi trả lời |
+> | ✅ **Established** | Confirmed on the real code tree; cited as `file:line` |
+> | 🔵 **Proposed** | Settled in the review session; **not yet** implemented |
+> | 🟢 **User decision** | Decided by the user directly; quoted verbatim, then translated |
+> | 🤖 **Agent decision** | Delegated by the user (*"hãy dựa vào rule tự ra quyết định mà ra quyết định"* — "decide it yourself, based on the decision rule") and decided under `ONBOARDING.md` §7: a named pattern, broad precedent, no fear of redesign |
+> | ❓ **Open** | Blocks the implementation of the phase named alongside until answered |
 
 ---
 
-## 1. Bối cảnh — 3 câu hỏi của user, và 3 dòng bằng chứng đo được
+## 1. Context — the user's three questions and three lines of measured evidence
 
-User đặt bài toán bằng đúng 3 câu (2026-09-10): **cắt ở đâu** (macro — DDD chiến lược), **bên trong
-mỗi mảnh tổ chức sao** (micro — Clean Architecture), **lắp vào app không biết trước số module thế
-nào** (plugin — Microkernel + DIP, Robert Martin's "Main" component). Tiêu chí: *"không ngại đập đi
-xây lại, không ngại risk, chỉ sợ bad design, không thể mở rộng, khó bảo trì."*
+The user posed the problem as exactly three questions (2026-09-10): **where to cut** (macro —
+strategic DDD), **how each piece is organised inside** (micro — Clean Architecture), and **how to
+plug pieces into an application whose number of modules is not known in advance** (plugin —
+Microkernel and the Dependency Inversion Principle; Robert Martin's "Main" component). The
+acceptance criterion, verbatim: *"không ngại đập đi xây lại, không ngại risk, chỉ sợ bad design,
+không thể mở rộng, khó bảo trì"* ("not afraid to tear down and rebuild, not afraid of risk; only
+afraid of bad design, of not being able to extend, of being hard to maintain").
 
-Bằng chứng đo trên `src/` (664 file / 74.371 dòng), chi tiết ở `PRO-004` §1–§2 và
+Evidence measured on `src/` (664 files, 74,371 lines), detailed in `PRO-004` §1–§2 and drawn in
 [`as_is.puml`](../../proposal/PRO-004_assets/as_is.puml):
 
-- Screen import internal của screen khác: **0**. Bệnh **không** phải "import lung tung". ✅
-- **59** tên method/thành viên trùng giữa `screens/trading` và `screens/dashboard`; 9 item trong
-  `ui/common/` chỉ đúng 2 screen đó dùng. ✅
-- `binance_bot_module.py` **750 dòng** là nơi đăng ký duy nhất cho mọi service; không đơn vị code
-  nào sở hữu một bounded context — `BUG-117`, `BUG-112`, `BOT-126` là giá đã trả. ✅
+- Screens importing another screen's internals: **0**. The disease is **not** "imports everywhere". ✅
+- **59** method and member names duplicated between `screens/trading` and `screens/dashboard`; 9
+  items in `ui/common/` are used by exactly those two screens. ✅
+- `binance_bot_module.py` is **750 lines** and the only registration point for every service; no
+  unit of code owns a bounded context. `BUG-117`, `BUG-112` and `BOT-126` are the price already
+  paid. ✅
 
 ---
 
-## 2. Quyết định
+## 2. Decisions
 
-### D1 — Cắt theo bounded context; 4 module nghiệp vụ + 3 support + kernel 🟢 User decision
+### D1 — Cut by bounded context: four business modules, three support packages, a kernel 🟢 User decision
 
-User duyệt bộ tiêu chí cắt (HLD §1, C1–C6) và bản đồ context (HLD §2): *"1. OK"*.
+The user approved the cutting criteria (HLD §1, C1–C6) and the context map (HLD §2): *"1. OK"*.
 
-| Loại | Đơn vị | Distillation |
+| Kind | Unit | Distillation |
 | :--- | :--- | :--- |
-| Bounded context | `strategy` | **Core domain** — lý do tồn tại của app |
+| Bounded context | `strategy` | **Core domain** — the reason the app exists |
 | Bounded context | `trading`, `market_data`, `backtesting` | Supporting |
-| Support (kỹ thuật, không ngôn ngữ nghiệp vụ) | `charting`, `indicators`, `ui_kit` | Generic |
-| Kernel service (inject, không bao giờ là module) | DI, bus, config, log, thread, scheduler, navigation, health | — |
+| Support (technical, no business language) | `charting`, `indicators`, `ui_kit`, `binance_gateway` | Generic |
+| Kernel service (injected, never a module) | DI, bus, config, log, threads, scheduler, navigation, health | — |
 
-`strategy` **tách khỏi** `trading` (giá của việc gộp = `BUG-112`). Account/Equity **cố ý** ở trong
-`trading` cho tới khi có consumer thứ hai thật (`architecture-rule.md` §6.3).
+`strategy` is **separated from** `trading`; the cost of keeping them merged was `BUG-112`.
+Account/Equity **deliberately** stays inside `trading` until a second real consumer appears
+(`architecture-rule.md` §6.3).
 
-### D2 — Hợp đồng module = `IExtension` + `ExtensionDescriptor` của Engine; **không** tạo `IModule` mới 🤖 Agent decision · ✅ Established
+### D2 — The module contract is the Engine's `IExtension` + `ExtensionDescriptor`; **no** new `IModule` 🤖 Agent decision · ✅ Established
 
-Engine đã có `IExtension` (register/boot/shutdown), `ExtensionDescriptor(dependencies,
-optional_dependencies, priority)`, `ExtensionManager` topo-sort + fail-fast chu trình + rollback;
-`IModule`/`BaseModule` của Engine là **legacy**. Tạo hợp đồng thứ ba = 3 khái niệm module song song
-(`IExtension` + `IModule` legacy + `AbstractScreenModule`) — đúng loại bad design user sợ.
-Bounded-context module = `IExtension` + 2 hook UI app tự thêm (`contribute`, `subscribe`) — HLD §3.
+The Engine already has `IExtension` (register / boot / shutdown), `ExtensionDescriptor(dependencies,
+optional_dependencies, priority)` and an `ExtensionManager` with topological sort, fail-fast on
+cycles and rollback; the Engine's own `IModule` / `BaseModule` are **legacy**. A third contract
+would mean three module concepts side by side (`IExtension`, the legacy `IModule`,
+`AbstractScreenModule`) — exactly the kind of bad design the user fears. A bounded-context module is
+an `IExtension` plus two application-side UI hooks (`contribute`, `subscribe`) — HLD §3.1.
 
-### D3 — Shell ở lại QtWidgets; danh sách module **tường minh** trong `shell/`; không auto-discovery 🤖 Agent decision · ✅ Established
+### D3 — The shell stays QtWidgets; the module list is **explicit** in `shell/`; no auto-discovery 🤖 Agent decision · ✅ Established
 
-- `qml-rule.md` §0: *"QML can be nested inside QtWidgets. Qt does not support the reverse"* → shell +
-  chart QtWidgets vĩnh viễn. `StackView` trong bản phác gốc → `QStackedWidget` (đã có qua
-  `PresenterManager`). Microkernel không đòi shell là QML.
-- `EPIC-017` đã từ chối auto-discovery. Danh sách module là **code** trong `shell/` (Martin's
-  "Main"), kèm guard 2 chiều: mọi package trong `modules/` phải có mặt trong danh sách và ngược lại.
+- `qml-rule.md` §0: *"QML can be nested inside QtWidgets. Qt does not support the reverse"* — the
+  shell and the chart are QtWidgets permanently. The `StackView` of the original sketch becomes
+  `QStackedWidget` (already present through `PresenterManager`). A microkernel does not require a
+  QML shell.
+- `EPIC-017` rejected auto-discovery. The module list is **code** in `shell/` (Martin's "Main"),
+  with a two-way guard: every package under `modules/` is in the list, and every list entry exists
+  on disk.
 
-### D4 — Trading và Dev Board là **hai màn hình chính danh**, cả hai là *composition surface* 🟢 User decision
+### D4 — Trading and Dev Board are **two legitimate screens**, and both are *composition surfaces* 🟢 User decision
 
-Nguyên văn: *"Trading là màn hình use-case thật, còn Dev Board chỉ là màn hình để developer test and
-discover API. Nên có nhiều cái tụi nó sẽ trùng lặp."* Và: *"'discover API' → có nghĩa là khi bạn dev
-nếu API nào của sàn chưa rõ, thì sẽ tạo 1 UI để test API đó."*
+Verbatim: *"Trading là màn hình use-case thật, còn Dev Board chỉ là màn hình để developer test and
+discover API. Nên có nhiều cái tụi nó sẽ trùng lặp."* ("Trading is the real use-case screen; Dev
+Board is only the screen where the developer tests and discovers APIs. So a lot of what they show
+will overlap.") And: *"'discover API' → có nghĩa là khi bạn dev nếu API nào của sàn chưa rõ, thì sẽ
+tạo 1 UI để test API đó."* ("'discover API' means: while developing, if some exchange API is
+unclear, you build a UI to try that API out.")
 
-Hệ quả thiết kế (HLD §4):
-- **Không** màn nào chứa logic nghiệp vụ. Cả hai *bố cục* widget do module **góp** vào; đúng một bản
-  `_run_enable`, một `LiveOrderBookCoordinator`, một chủ sở hữu read-model vị thế.
-- Dev Board gate bằng `dev.mode`, có thêm contribution point **`dev_probe`**: module nào cần khám phá
-  một API sàn chưa rõ thì góp một widget probe (gọi đúng port/adapter thật của module đó, hiển thị
-  request/response thô). Probe là code **của module** (`modules/X/ui/dev_probes/`), không phải của
-  Dev Board — Dev Board chỉ là nơi treo.
-- 59 chỗ trùng lặp → 0 là **tiêu chí hoàn thành** của Phase 1, đo bằng script, không bằng cảm nhận.
+Design consequences (HLD §4):
+- **Neither** screen contains business logic. Both *lay out* widgets that modules **contribute**;
+  there is one `_run_enable`, one `LiveOrderBookCoordinator`, one owner of the positions read model.
+- Dev Board is gated by `dev.mode` and gains a contribution point **`dev_probe`**: a module that
+  needs to explore an unclear exchange API contributes a probe widget that calls the module's own
+  real port or adapter and shows the raw request and response. A probe is **the module's** code
+  (`modules/X/ui/dev_probes/`), not Dev Board's — Dev Board is only where it hangs.
+- "59 duplicates → 0" is the **completion criterion** of Phase 1, measured by a script, not by
+  impression.
 
-### D5 — Thứ tự di trú: Walking Skeleton bên trong Strangler Fig 🤖 Agent decision
+### D5 — Migration order: a Walking Skeleton inside a Strangler Fig 🤖 Agent decision
 
-User: *"Tôi không chắc, tôi đâu có bỏ công điều tra, bạn mới là người làm việc đó."*
+The user: *"Tôi không chắc, tôi đâu có bỏ công điều tra, bạn mới là người làm việc đó."* ("I am not
+sure — I did not do the investigation, you did.")
 
-| Phase | Nội dung | Vì sao ở vị trí này |
+| Phase | Content | Why here |
 | :-: | :--- | :--- |
-| 0 | Cơ chế: `core/`, `BoundedContextModule`, `IContributionRegistry`, 3 guard (allowlist = nguyên trạng), `shell/` liệt kê module; **+ `modules/market_data`** | Walking Skeleton: `market_data` là context **mỏng nhất chạm đủ mọi kênh** (persistence, REST, WS, 1 screen, CLI) → chứng minh pattern end-to-end với ít rủi ro nhất |
-| 1 | `modules/trading` + Trading/Dev Board thành surface | Gỡ 59 chỗ trùng lặp sớm nhất; là nơi bug thật đang phát sinh (`BUG-111`→`117`) |
-| 2 | `modules/strategy` | Core domain, tách khỏi trading đã thành surface |
-| 3 | `modules/backtesting` (12.309 dòng UI) | Chỉ phụ thuộc `contracts/` của `market_data` + `strategy` |
-| 4 | `support/{charting,indicators,ui_kit}`; `ui/common/` giải thể | Sau khi mọi consumer đã là module |
-| 5 | Engine `EPIC-001D` (`NavigationService`, regions, screen lifecycle) | Phase 0–4 **không cần** navigation mới — `ScreenRegistry` hiện tại đủ |
+| 0 | Mechanism: `core/`, `BoundedContextModule`, `IContributionRegistry`, the three guards (allowlist as found), `shell/` listing the modules; **plus `modules/market_data`** | Walking Skeleton: `market_data` is the **thinnest context that touches every channel** (persistence, REST, websocket, one screen, CLI), so it proves the pattern end to end at the lowest risk |
+| 1 | `modules/trading`; Trading and Dev Board become surfaces | Removes the 59 duplicates earliest; it is where real bugs are being found (`BUG-111` → `117`) |
+| 2 | `modules/strategy` | The Core domain, separated from a `trading` that is already a surface |
+| 3 | `modules/backtesting` (12,309 lines of UI) | Depends only on the `contracts/` of `market_data` and `strategy` |
+| 4 | `support/{charting, indicators, ui_kit}`; `ui/common/` dissolved | After every consumer is a module |
+| 5 | Engine `EPIC-001D` (`NavigationService`, regions, screen lifecycle) | Phases 0–4 **do not need** new navigation — today's `ScreenRegistry` suffices |
 
-Mỗi phase = 1 PR, CI xanh, app **chạy được** (kênh phát hiện bug hiệu quả nhất là user tự chạy
-Testnet — không được mất nó).
+Each phase is one pull request, with CI green and the app **running** (the most effective bug
+channel is the user running Testnet; it must not be lost).
 
-### D6 — QML per-module: **hoãn**, giữ `src/presentation/ui/qml/` là nơi chính thức 🔵 Proposed
+### D6 — Per-module QML: **deferred**; `src/presentation/ui/qml/` remains the official place 🔵 Proposed
 
-Cho phép module sở hữu QML cần (a) sửa tường minh `qml-rule.md` §0.2 (tiền lệ `EPIC-003`), (b) cơ
-chế import-path per-`QuickSurface` bên Engine (hiện mỗi `QQuickWidget` tự tạo `QQmlEngine` trong
-`create_quick_widget()`, một import path hard-code). Chưa có consumer nào bị chặn vì thiếu nó →
-mở lại ở Phase 4/5 khi Engine làm `EPIC-001D`. Trong lúc đó: Python wrapper của widget nằm trong
-module; file `.qml` vẫn ở `qml/<Widget>/`.
+Letting a module own its QML requires (a) an explicit amendment of `qml-rule.md` §0.2 (the
+`EPIC-003` precedent for amending a rule) and (b) a per-`QuickSurface` import-path mechanism on the
+Engine side (today each `QQuickWidget` creates its own `QQmlEngine` inside `create_quick_widget()`
+with one hard-coded import path). No consumer is blocked by its absence → revisit in Phase 4/5 when
+the Engine does `EPIC-001D`. Meanwhile: a widget's Python wrapper lives in the module; the `.qml`
+file stays under `qml/<Widget>/`.
 
-### D7 — Test giữ theo **tier** (`tests/{unit,integration,sanity}`), bên trong mirror đường dẫn module 🤖 Agent decision
+### D7 — Tests stay organised by **tier** (`tests/{unit, integration, sanity}`), mirroring the module path inside each tier 🤖 Agent decision
 
-Cả `ci-local.ps1`, `testing-rule.md` và tầng sanity đều xây trên tier. Colocate `modules/X/tests/`
-chỉ có lợi khi module thật sự rời repo — chưa có nhu cầu. Thay đổi này **đảo ngược được** sau, và
-không chặn phase nào. Sanity **không thêm test mới** (`testing-rule.md` §1).
+`ci-local.ps1`, `testing-rule.md` and the sanity tier are all built on tiers. Co-locating
+`modules/X/tests/` pays off only when a module really leaves the repository, which nothing needs
+yet. The choice is **reversible** later and blocks no phase. The sanity tier **gains no tests**
+(`testing-rule.md` §1).
 
-### D8 — `EPIC-024C` bị hấp thu vào `EPIC-025` → `cancelled/` 🔵 Proposed
+### D8 — `EPIC-024C` is absorbed into `EPIC-025` → `cancelled/` 🔵 Proposed
 
-Phạm vi 024C (Market Connector / Market Order / Strategy Engine) là **tập con** của D1; làm riêng =
-dựng cơ chế module 2 lần (`ONBOARDING.md` §12.5.1 cấm). Lý do ghi ở đầu file 024C.
+The scope of 024C (Market Connector / Market Order / Strategy Engine) is a **subset** of D1; doing
+it separately would build the module mechanism twice (`ONBOARDING.md` §12.5.1 forbids that). The
+reason is written at the top of the 024C file.
 
-### D9 — `core/vo` gọi là **Published Language**, không phải "Shared Kernel" ✅ Established
+### D9 — `core/vo` is called a **Published Language**, not a "Shared Kernel" ✅ Established
 
-`architecture-rule.md` định nghĩa Shared Kernel **= đúng 2 symbol Engine** (`IDomainEvent`,
-`BaseEvent`), có test khoá. Dùng lại từ đó cho nghĩa khác sẽ phá luật đang có. Luật vào `core/`:
-chưa có ≥2 consumer ở 2 module khác nhau thì không được vào.
+`architecture-rule.md` defines the Shared Kernel as **exactly two Engine symbols** (`IDomainEvent`,
+`BaseEvent`), and a test locks that. Reusing the term for something else would break a rule that
+is already enforced. Admission to `core/`: only a type with at least two consumers in two different
+modules.
 
-### D10 — Engine nhận **mechanism**, app giữ **policy** 🟢 User decision + ✅ Established
+### D10 — The Engine receives **mechanism**, the application keeps **policy** 🟢 User decision + ✅ Established
 
-User: *"Tôi muốn Engine hỗ trợ scalable nhiều context/screen, vì Engine đó sẽ là core engine trong
-sự nghiệp của tôi, tôi sẽ tái sử dụng cực nhiều."* Engine `ui-architecture.md` §1: *"Runtime —
-Engine owns: Shell, regions, navigation, screen lifecycle"*; `EPIC-001D` (backlog) đã lên kế hoạch
-đúng việc này từ 2026-08-23. Không dựng bản song song phía app. Mỗi API Engine mới → một dòng trong
-`engine_capabilities.py` (`BOT-133`). Bảng chia cụ thể: HLD §5.
+The user: *"Tôi muốn Engine hỗ trợ scalable nhiều context/screen, vì Engine đó sẽ là core engine
+trong sự nghiệp của tôi, tôi sẽ tái sử dụng cực nhiều."* ("I want the Engine to scale to many
+contexts and screens, because that Engine will be the core engine of my career; I will reuse it
+enormously.") The Engine's `ui-architecture.md` §1: *"Runtime — Engine owns: Shell, regions,
+navigation, screen lifecycle"*; `EPIC-001D` (backlog) has planned exactly this since 2026-08-23. No
+parallel build on the application side. Every new Engine API becomes one line in
+`engine_capabilities.py` (`BOT-133`). The detailed split: HLD §5.
 
-### D11 — Enforcement: 3 guard AST, allowlist **chỉ được co** 🔵 Proposed
+### D11 — Enforcement: three AST guards; the allowlist **may only shrink** 🔵 Proposed
 
-`test_module_boundaries.py`, `test_module_domain_is_qt_free.py`, `test_core_has_no_module_imports.py`
-— viết bằng `ast` (bài học `BOT-133`: regex đỏ trên chính tài liệu của API). Allowlist vi phạm nguyên
-trạng ghi ở Phase 0; mỗi phase co lại; test fail nếu nở ra.
+`test_module_boundaries.py`, `test_module_domain_is_qt_free.py`, `test_module_declarations.py`,
+written with `ast` (the `BOT-133` lesson: a regex matched the API's own documentation). The
+violations as found are recorded in Phase 0; each phase shrinks the list; the test fails if it grows.
 
-### D12 — Ràng buộc di trú: refactor thuần, không đổi hành vi nghiệp vụ ✅ Established
+### D12 — Migration constraint: pure refactoring, no change in business behaviour ✅ Established
 
-Kế thừa `EPIC-024C` §4: *"modularize là đổi ranh giới code, không đổi logic nghiệp vụ"*. Coordinator
-vẫn do Presenter sở hữu, inject qua constructor — không DI-discovered (`async-ui-action-rule.md` §2).
+Inherited from `EPIC-024C` §4: *"modularize là đổi ranh giới code, không đổi logic nghiệp vụ"*
+("modularising changes code boundaries, not business logic"). Coordinators remain owned by their
+Presenter and injected through the constructor — never DI-discovered (`async-ui-action-rule.md` §2).
 
 ---
 
-## 3. Còn mở — chặn phase nào
+## 3. Still open — and what each blocks
 
-| # | Câu hỏi | Chặn | Trả lời ở |
+| # | Question | Blocks | Answered in |
 | :-: | :--- | :-: | :--- |
-| ❓ O1 | Danh sách **cuối** các contribution point kind và schema từng kind | Phase 0 (`IContributionRegistry`) | Vòng 2 — HLD §4 hiện là bản nháp |
-| ❓ O2 | API Engine cụ thể cho `NavigationService`/regions (`EPIC-001D`) | Phase 5 | Vòng 2 — task bên Engine |
-| ❓ O3 | QML per-module (D6) | Không chặn | Phase 4/5 |
+| ❓ O1 | The **final** list of contribution-point kinds and the schema of each | Phase 0 (`IContributionRegistry`) | Round 2 — HLD §4 is a draft |
+| ❓ O2 | The concrete Engine API for `NavigationService` and regions (`EPIC-001D`) | Phase 5 | Round 2 — the Engine-side task |
+| ❓ O3 | Per-module QML (D6) | nothing | Phase 4/5 |
 
 ---
 
-## 4. Hệ quả
+## 4. Consequences
 
-- `binance_bot_module.py` teo dần thành **danh sách module** trong `shell/` — không còn là god file.
-- `presentation/ui/common/` **biến mất** ở Phase 4: 9 item "chỉ trading+dashboard dùng" về
-  `modules/trading` / `modules/strategy`; 5 item dùng chung thật về `support/ui_kit` hoặc kernel.
-- `EPIC-016`'s `ScreenRegistry`/`AbstractScreenModule` **giữ nguyên** cho tới Phase 5 — module góp
-  screen qua đúng cơ chế đó.
+- `binance_bot_module.py` shrinks to a **module list** in `shell/` — no longer a god file.
+- `presentation/ui/common/` **disappears** in Phase 4: the 9 items used only by trading and
+  dashboard go to `modules/trading` / `modules/strategy`; the 5 genuinely shared items go to
+  `support/ui_kit` or the kernel.
+- `EPIC-016`'s `ScreenRegistry` / `AbstractScreenModule` **stay unchanged** until Phase 5 — modules
+  contribute screens through exactly that mechanism.

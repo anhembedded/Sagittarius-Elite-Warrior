@@ -1,19 +1,19 @@
 # §2 — Context map
 
-## 2.1 Bản đồ
+## 2.1 The map
 
 ```
                  ┌──────────────────────────── shell/ (Martin's "Main") ────────────────────────────┐
-                 │  danh sách module tường minh · surfaces: trading / dev_board / settings · CLI    │
+                 │  explicit module list · surfaces: trading / dev_board / settings · CLI          │
                  └───────────────────────────────────────────────────────────────────────────────────┘
-                                                      │ chỉ biết IExtension + contracts/
+                                                      │ knows only IExtension + contracts/
    ┌──────────────┐    IHistoricalKlines     ┌──────────────┐   IOrderSubmission    ┌──────────────┐
    │ market_data  │ ───────────────────────▶ │  strategy    │ ────────────────────▶ │   trading    │
    │ (Supporting) │    MarketTickEvent       │  (CORE)      │   ITradingSession     │ (Supporting) │
    └──────────────┘                          └──────────────┘   .claim_symbol()     └──────────────┘
           │  IHistoricalKlines                      ▲  IStrategyCatalog                     │
-          │  IMarketDataSync · IRangeCoverage       │  IStrategyEngineFactory                │ (không phụ thuộc
-          ▼                                         │                                        │  module nghiệp vụ nào)
+          │  IMarketDataSync · IRangeCoverage       │  IStrategyEngineFactory                │ (depends on no
+          ▼                                         │                                        │  business module)
    ┌──────────────┐ ────────────────────────────────┘
    │ backtesting  │  (Supporting) — ACL: PaperExchange ⇄ StrategyContext
    └──────────────┘
@@ -22,72 +22,81 @@
    kernel (Engine):     DI · bus · config · log · thread · scheduler · hosted · (navigation — Phase 5)
 ```
 
-Mũi tên = **hướng phụ thuộc** (A → B: A import `modules/B/contracts/`). Không có mũi tên ngược, không
-có chu trình — guard `test_module_boundaries.py` (§6) khoá điều này.
+An arrow is a **dependency direction**: A → B means A imports `modules/B/contracts/`. There are no
+reverse arrows and no cycles; the guard `test_module_boundaries.py` (§6) locks this in.
 
-## 2.2 Distillation — cái gì là lõi
+## 2.2 Distillation — what is the core
 
-| Loại | Module | Vì sao |
+Distillation is Evans' name for asking which part of the domain is the reason the system exists,
+so that design effort goes where it matters.
+
+| Kind | Module | Why |
 | :--- | :--- | :--- |
-| **Core domain** | `strategy` | Lý do app tồn tại: biến ý tưởng giao dịch thành tín hiệu. Là chỗ user đổi nhiều nhất, sáng tạo nhiều nhất. Mọi module khác tồn tại để **nuôi** (market_data), **thi hành** (trading) hoặc **kiểm chứng** (backtesting) nó |
-| **Supporting** | `market_data`, `trading`, `backtesting` | Cần thiết, có nghiệp vụ riêng, nhưng thay được bằng cách khác (sàn khác, mô phỏng khác) mà app vẫn là app này |
-| **Generic** | `support/{binance_gateway, charting, indicators, ui_kit}` | Kỹ thuật thuần; về lý thuyết mua/tải được từ ngoài |
+| **Core domain** | `strategy` | The reason the app exists: turning a trading idea into a signal. It is where the user changes things most often and most creatively. Every other module exists to **feed** it (market_data), **execute** it (trading) or **verify** it (backtesting) |
+| **Supporting** | `market_data`, `trading`, `backtesting` | Necessary, with business meaning of their own, but replaceable (another exchange, another simulator) without the app ceasing to be this app |
+| **Generic** | `support/{binance_gateway, charting, indicators, ui_kit}` | Purely technical; in principle something one could buy or download |
 
-Hệ quả thực dụng: **đầu tư chất lượng** (test, review, thời gian thiết kế) ưu tiên `strategy` →
-`trading` → còn lại. Và: `strategy` **không được** phụ thuộc chi tiết của sàn — nó chỉ thấy
-`trading.contracts` và `market_data.contracts`.
+The practical consequence: **quality investment** (tests, review, design time) goes to `strategy`
+first, then `trading`, then the rest. And `strategy` must **never** depend on exchange details — it
+sees only `trading.contracts` and `market_data.contracts`.
 
-## 2.3 Kiểu tích hợp giữa từng cặp (DDD context-map patterns)
+## 2.3 The integration pattern for each pair
 
-| Cặp (upstream → downstream) | Pattern | Cụ thể |
+Evans catalogues the ways two contexts can relate. Naming the pattern for each pair tells the
+reader what to expect at the boundary before opening the code.
+
+| Pair (upstream → downstream) | Pattern | Concretely |
 | :--- | :--- | :--- |
-| `market_data` → `strategy`, `trading`, `backtesting` | **Open Host Service + Published Language** | `IHistoricalKlines`, `IMarketStream`, `IMarketDataSync`, `IRangeCoverage`; ngôn ngữ chung = `core/vo` (`MarketData`, `TimeFrame`) và `MarketTickEvent` |
-| `trading` → `strategy` | **Customer/Supplier** — `trading` là supplier, `strategy` là customer | `IOrderSubmission`, `ITradingSession`, `IAccountSnapshot`. `trading` **không biết** `strategy` tồn tại |
-| `strategy` → `backtesting` | **Customer/Supplier** — `strategy` supplier | `IStrategyCatalog`, `IStrategyEngineFactory`. `backtesting` **chạy** chiến lược; chiến lược không biết mình đang được backtest |
-| `backtesting` ⇄ `PaperExchange` vs `StrategyContext` | **Anticorruption Layer** trong `backtesting` | Hôm nay `domain/strategies/strategy_context.py` + 3 strategy import type của `domain/backtesting` (ST → BT, **sai chiều**). To-be: `strategy` định nghĩa `StrategyContext` của nó (candle, vị thế hiện tại dưới dạng VO trung tính); `backtesting/adapters/` dịch `PaperExchange` → `StrategyContext`. `trading` cũng cung cấp `StrategyContext` từ `LivePosition` |
-| `support/binance_gateway` → `market_data`, `trading` | **Anticorruption Layer** dùng chung cho SDK | Chỉ gateway được dựng `binance.client.Client` (guard test đã có). Mỗi context bọc phần SDK **của nó** trong `adapters/` riêng: `market_data/adapters/binance/` (REST klines, market WS), `trading/adapters/binance/` (futures REST, user-data WS) |
-| `support/charting` ← mọi module có chart | **Conformist** (downstream chấp nhận model của upstream) | Module vẽ bằng `IChartHost` + `MarkerPoint`/`RegionSpan`/`InfoField` của charting — không dịch |
+| `market_data` → `strategy`, `trading`, `backtesting` | **Open Host Service + Published Language** | `IHistoricalKlines`, `IMarketStream`, `IMarketDataSync`, `IRangeCoverage`; the shared language is `core/vo` (`MarketData`, `TimeFrame`) and `MarketTickEvent` |
+| `trading` → `strategy` | **Customer/Supplier** — `trading` supplies, `strategy` consumes | `IOrderSubmission`, `ITradingSession`, `IAccountSnapshot`. `trading` **does not know** that `strategy` exists |
+| `strategy` → `backtesting` | **Customer/Supplier** — `strategy` supplies | `IStrategyCatalog`, `IStrategyEngineFactory`. `backtesting` **runs** strategies; a strategy does not know it is being backtested |
+| `backtesting` ⇄ `PaperExchange` versus `StrategyContext` | **Anticorruption Layer** inside `backtesting` | Today `domain/strategies/strategy_context.py` and three strategies import types from `domain/backtesting` (strategy → backtesting, **the wrong direction**). To be: `strategy` defines its own `StrategyContext` (candles plus the current position as a neutral value object); `backtesting/adapters/` translates `PaperExchange` into it. `trading` provides a `StrategyContext` from `LivePosition` in the same way |
+| `support/binance_gateway` → `market_data`, `trading` | **Anticorruption Layer**, shared, for the SDK | Only the gateway may construct `binance.client.Client` (an existing guard test). Each context wraps **its own** part of the SDK in its own `adapters/`: `market_data/adapters/binance/` (REST klines, market websocket), `trading/adapters/binance/` (futures REST, user-data websocket) |
+| `support/charting` ← every module with a chart | **Conformist** (the downstream accepts the upstream's model) | A module draws through `IChartHost` and charting's `MarkerPoint` / `RegionSpan` / `InfoField` types, without translation |
 
-## 2.4 Published Language — `core/vo`
+## 2.4 The Published Language — `core/vo`
 
-**Không gọi là "Shared Kernel"** (`architecture-rule.md` đã định nghĩa Shared Kernel = đúng 2 symbol
-Engine `IDomainEvent`, `BaseEvent`, có test khoá). `core/vo` là **Published Language**: value object
-trung tính về ngôn ngữ nghiệp vụ, immutable, mọi module đọc, **không module nào sở hữu**.
+**Do not call this a "Shared Kernel".** In this repository `architecture-rule.md` defines the Shared
+Kernel as exactly two Engine symbols, `IDomainEvent` and `BaseEvent`, and a test locks that
+definition. `core/vo` is a **Published Language**: value objects that are neutral with respect to any
+business language, immutable, readable by every module and **owned by none**.
 
-**Luật vào:** đã có ≥2 consumer ở ≥2 module khác nhau (đo, không đoán). Guard: `core/` không import
-`modules/*`, `support/*`, PySide6.
+**Admission rule.** A type enters `core/vo` only when it already has at least two consumers in at
+least two different modules — measured, not guessed. Guard: `core/` imports nothing from
+`modules/*`, `support/*` or PySide6.
 
-| VO | Consumer đo được (2026-09-11) | Vào `core/vo`? |
+| Value object | Consumers measured on 2026-09-11 | Into `core/vo`? |
 | :--- | :--- | :-: |
-| `TimeFrame` | cả 4 tầng, 5 package | ✅ |
+| `TimeFrame` | all four layers, five packages | ✅ |
 | `OrderSide`, `PositionSide` | application, domain, infrastructure, presentation | ✅ |
-| `MarketDataVenue`, `TradingVenue` | mọi tầng + composition root | ✅ |
-| `Currency`, `MarketType` | domain + presentation | ✅ |
-| `MarketData` (candle OHLCV, `domain/entities/market_data.py`) | MD, BT, ST, IND, CH | ✅ — đổi tên `Candle` là **ứng viên**, làm sau (rename storm, không phải refactor thuần) |
-| `PositionSizing`, `PositionSizingType` | BT, TR (`position_sizing_bridge`), ST | ✅ |
-| `ExchangeCredentials`, `VenueAlignment` | kernel + settings | ✅ (`core/vo` hoặc `support/binance_gateway/contracts`) |
-| `SignalAction`, `Signal`, `LiveStrategyConfig` | chỉ ST (+TR qua bridge) | ❌ → `strategy/contracts` |
-| `BrokerSimulationConfig`, `CommissionType` | chỉ BT | ❌ → `backtesting/domain` |
-| `ExchangeConnectionStatus`, `PositionMode`, `MarginType` | TR + settings | ❌ → `trading/contracts` (settings section là của trading góp) |
-| `Symbol` | **không tồn tại** — symbol là `str` thô khắp nơi | ❌ không phát minh trong epic này; ghi nhận ứng viên |
+| `MarketDataVenue`, `TradingVenue` | every layer plus the composition root | ✅ |
+| `Currency`, `MarketType` | domain and presentation | ✅ |
+| `MarketData` (the OHLCV candle, `domain/entities/market_data.py`) | market_data, backtesting, strategy, indicators, charting | ✅ — renaming it `Candle` is a **candidate** for later; a rename storm is not a pure refactor |
+| `PositionSizing`, `PositionSizingType` | backtesting, trading (`position_sizing_bridge`), strategy | ✅ |
+| `ExchangeCredentials`, `VenueAlignment` | kernel and settings | ✅ (`core/vo` or `support/binance_gateway/contracts`) |
+| `SignalAction`, `Signal`, `LiveStrategyConfig` | strategy only (plus trading through the bridge) | ❌ → `strategy/contracts` |
+| `BrokerSimulationConfig`, `CommissionType` | backtesting only | ❌ → `backtesting/domain` |
+| `ExchangeConnectionStatus`, `PositionMode`, `MarginType` | trading and settings | ❌ → `trading/contracts` (the settings section is contributed by trading) |
+| `Symbol` | **does not exist** — a symbol is a raw `str` everywhere | ❌ not invented in this epic; recorded as a candidate |
 
-## 2.5 Sự kiện vượt ranh giới (đo publisher/subscriber thật)
+## 2.5 Events that cross a boundary — measured publishers and subscribers
 
-Chỉ event **trong `contracts/`** mới tồn tại với bên ngoài. Bảng này là danh sách **đầy đủ** event
-cross-module sau khi cắt; event nào không có ở đây là internal của module.
+Only an event declared in `contracts/` exists for the outside world. The table below is the
+**complete** list of cross-module events after the split; anything not listed is internal to its
+module.
 
-| Event | Publisher (module) | Subscriber ngoài module | Ghi chú |
+| Event | Publisher (module) | Subscribers outside the module | Note |
 | :--- | :--- | :--- | :--- |
-| `MarketTickEvent` | `market_data` (market WS) | `strategy` (tick → engine), `trading` (chart live), surfaces | ✅ đã là bus event |
-| `SingleSyncProgressEvent` | `market_data` | `backtesting` (data_sync), surfaces | ✅ |
-| `SignalGeneratedEvent` | `strategy` | `backtesting` (log/marker), surfaces (card "last signal") | ✅ — `LiveTradingCoordinator` tiêu thụ **trong tiến trình** (không qua bus): giữ, là internal của `strategy` |
-| `LiveOrderBlockedEvent` | `strategy` (`LiveTradingCoordinator` — dời về strategy vì nó là "quyết định không gửi lệnh") | surfaces | ⚠️ hôm nay ở `application/services/` không chủ |
-| `OrderFilledEvent`, `PositionChangedEvent`, `PositionClosedEvent`, `EquitySampledEvent` | `trading` | `charting` (fill marker qua adapter của trading), surfaces | ✅ |
-| `TradingSessionChangedEvent` 🔵 | `trading` | surfaces (thay cho 3 Presenter đọc thẳng `TradingSessionState`) | mới — thay đổi **cơ chế**, không đổi nghiệp vụ |
-| `StrategyArmedEvent` / `StrategyDisarmedEvent` 🔵 | `strategy` | surfaces | mới — thay cho `LiveStrategySession` bị 2 Presenter đọc thẳng |
-| `BacktestCompletedEvent`, `BacktestFailedEvent` | `backtesting` | — | **internal** (chỉ screen backtest nghe) |
-| `OrderSubmittedEvent`, `OrderRejectedEvent` | **không ai** | **không ai** | chết — xoá ở Phase 1 |
+| `MarketTickEvent` | `market_data` (market websocket) | `strategy` (tick → engine), `trading` (live chart), surfaces | ✅ already a bus event |
+| `SingleSyncProgressEvent` | `market_data` | `backtesting` (data sync), surfaces | ✅ |
+| `SignalGeneratedEvent` | `strategy` | `backtesting` (log and markers), surfaces (the "last signal" card) | ✅ — `LiveTradingCoordinator` consumes it **in-process**, not over the bus; that stays internal to `strategy` |
+| `LiveOrderBlockedEvent` | `strategy` (`LiveTradingCoordinator` moves to strategy: it is "the decision not to send an order") | surfaces | ⚠️ today it lives in `application/services/` with no owner |
+| `OrderFilledEvent`, `PositionChangedEvent`, `PositionClosedEvent`, `EquitySampledEvent` | `trading` | `charting` (fill markers, through trading's adapter), surfaces | ✅ |
+| `TradingSessionChangedEvent` 🔵 | `trading` | surfaces (replacing three Presenters that read `TradingSessionState` directly) | new — a change of **mechanism**, not of business behaviour |
+| `StrategyArmedEvent` / `StrategyDisarmedEvent` 🔵 | `strategy` | surfaces | new — replacing `LiveStrategySession` being read directly by two Presenters |
+| `BacktestCompletedEvent`, `BacktestFailedEvent` | `backtesting` | — | **internal** (only the backtest screen listens) |
+| `OrderSubmittedEvent`, `OrderRejectedEvent` | **nobody** | **nobody** | dead — deleted in Phase 1 |
 | `BulkSyncProgressEvent` | `market_data` | — | internal |
 
-Mỗi event cross-module có **đúng một Feed** normalizing ở module sở hữu (`architecture-rule.md` §6),
-surface chỉ *hiển thị* qua widget module góp.
+Each cross-module event has **exactly one** normalising Feed in the owning module
+(`architecture-rule.md` §6); a surface only *displays* it through the widget the module contributes.

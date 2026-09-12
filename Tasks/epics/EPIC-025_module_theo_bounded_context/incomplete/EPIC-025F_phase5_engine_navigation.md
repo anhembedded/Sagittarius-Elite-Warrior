@@ -1,21 +1,23 @@
-# EPIC-025F — Phase 5: dựng trên Engine `EPIC-001D` (`NavigationService`, regions, screen lifecycle)
+# EPIC-025F — Phase 5: build on the Engine's `EPIC-001D` (`NavigationService`, regions, screen lifecycle)
 
-- **Trạng thái:** 🔴 Backlog — **chặn bởi ❓ O2** (ADR §3) và task bên repo Engine
-- **Repo:** Elite (consumer) · Engine (mechanism — task riêng, tham chiếu `EPIC-001D`)
-- **Chặn bởi:** E
-- **Đọc trước:** HLD §5 (bảng chia Engine/app); Engine `Tasks/epics/EPIC-001_ui_engine_foundation/
-  EPIC-001D_runtime_slot_registry.md`; `examples/student_management/docs/ui_extension_lifecycle.md`
-  bên Engine (ordering `QApplication` trước `boot()`).
+- **Status:** 🔴 Backlog — **blocked by ❓ O2** (ADR §3) and by the Engine-side task
+- **Repositories:** Elite (the consumer) · Engine (the mechanism — `TASK-043`, referencing `EPIC-001D`)
+- **Blocked by:** E
+- **Read first:** HLD §5 (the Engine / application split); the Engine's
+  `Tasks/epics/EPIC-001_ui_engine_foundation/incomplete/EPIC-001D_runtime_slot_registry.md`;
+  the Engine's `examples/student_management/docs/ui_extension_lifecycle.md` (the ordering:
+  `QApplication` before `boot()`).
 
-## 1. Việc cần làm (phía app)
+## 1. What to do (application side)
 
-1. Thay `ScreenRegistry` (`EPIC-016`) bằng `NavigationService` của Engine: route từ contribution
-   `screen`; phân biệt `restore_route` ≠ `user_intent_to_navigate` (`BUG-104`/`BUG-107`);
-   `can_leave()` guard cho action đang bay (`async-ui-action-rule` §1).
-2. `IContributionRegistry` của app đứng trên slot registry của Engine (app giữ **kind** = policy).
-3. Mỗi API Engine mới → `engine_capabilities.py` (`BOT-133`).
-4. Conformance suite screen của Engine chạy trên **mọi** surface của app.
+1. Replace `ScreenRegistry` (`EPIC-016`) with the Engine's `NavigationService`: routes come from
+   `screen` contributions; `RESTORE` is distinguished from `USER_INTENT` (`BUG-104` / `BUG-107`); a
+   `can_leave()` guard protects an action in flight (`async-ui-action-rule` §1).
+2. The application's `IContributionRegistry` is rebuilt on the Engine's slot registry (the
+   application keeps the **kinds** — that is policy).
+3. Every new Engine API is declared in `engine_capabilities.py` (`BOT-133`).
+4. The Engine's screen conformance suite runs against **every** surface of this application.
 
-## 2. Xong khi
+## 2. Done when
 
-- `main_window.py` không import screen nào; navigation dựng hoàn toàn từ self-description.
+- `main_window.py` imports no screen; navigation is built entirely from self-description.

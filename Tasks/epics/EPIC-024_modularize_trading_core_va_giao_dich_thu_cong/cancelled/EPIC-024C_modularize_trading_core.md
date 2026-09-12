@@ -1,29 +1,31 @@
 # EPIC-024C — Modularize Market Connector / Market Order / Strategy Engine
 
-> ## ❌ HUỶ 2026-09-11 — bị hấp thu vào [`EPIC-025`](../../EPIC-025_module_theo_bounded_context/README.md) (`PRO-004`)
+> ## ❌ CANCELLED 2026-09-11 — absorbed into [`EPIC-025`](../../EPIC-025_module_theo_bounded_context/README.md) (`PRO-004`)
 >
-> Task này đúng ở chẩn đoán (§2: *"không có khái niệm 'module' cho service phía sau UI trong toàn bộ
-> app"*) nhưng **sai ở phạm vi**. Bằng chứng mà `EPIC-024B` thu được (điều kiện kích hoạt §1) cho
-> thấy vấn đề lớn hơn 3 mảnh Market Connector / Market Order / Strategy Engine:
+> This task was right in its diagnosis (§2: *"there is no notion of a 'module' for services behind
+> the UI anywhere in the app"*) but **wrong in its scope**. The evidence that `EPIC-024B` produced
+> (the trigger condition in §1) shows a problem larger than the three pieces Market Connector /
+> Market Order / Strategy Engine:
 >
-> - `BUG-117`: không ai sở hữu read-model vị thế — là vấn đề của **cả** context Giao dịch;
-> - `BUG-112`: Trading phụ thuộc state của Strategy — là vấn đề **ranh giới giữa 2 context**;
-> - 59 tên method trùng giữa `screens/trading` và `screens/dashboard` — là vấn đề của **tầng UI**,
->   024C không chạm tới.
+> - `BUG-117`: nobody owns the positions read model — a problem of the **whole** Trading context;
+> - `BUG-112`: Trading depends on Strategy's state — a problem of the **boundary between two contexts**;
+> - 59 method names duplicated between `screens/trading` and `screens/dashboard` — a problem of the
+>   **UI layer**, which 024C never touched.
 >
-> Làm 024C riêng = dựng cơ chế module **lần 1** cho service, rồi `EPIC-025` dựng **lần 2** cho cả
-> app — đúng loại nhân bản cơ chế `ONBOARDING.md` §12.5.1 (*"luôn chọn general solution"*) cấm.
-> Mẫu "chép `AbstractScreenModule`" ở §2 cũng **không dùng nữa**: module nghiệp vụ đứng trên
-> `IExtension` của Engine (`EPIC-025` ADR D2), không phải một ABC app tự chế thứ ba.
+> Doing 024C on its own would build the module mechanism **once** for services and then let
+> `EPIC-025` build it a **second** time for the whole app — exactly the duplicated mechanism that
+> `ONBOARDING.md` §12.5.1 (*"always choose the general solution"*) forbids. The "copy
+> `AbstractScreenModule`" template in §2 is **no longer used** either: a business module stands on the
+> Engine's `IExtension` (`EPIC-025` ADR D2), not on a third home-made ABC.
 >
-> **Phần còn giá trị, đã mang sang:** 3 câu hỏi ở §3 được trả lời trong `EPIC-024B` §6 và trở thành
-> input cho HLD §3 (`modules/trading` contracts). Ràng buộc §4 (*"đổi ranh giới code, không đổi
-> logic nghiệp vụ"*) thành ADR D12 của `EPIC-025`.
+> **What keeps its value, carried over:** the three questions in §3 are answered in `EPIC-024B` §6
+> and became input for HLD §3 (the `modules/trading` contracts). The constraint in §4 (*"change
+> code boundaries, not business logic"*) became ADR D12 of `EPIC-025`.
 >
-> Đây không phải "bỏ vì ngại làm" — phạm vi được **mở rộng** thành epic riêng, không thu hẹp.
+> This is not "dropped because it was hard" — the scope was **widened** into its own epic, not narrowed.
 
 
-- **Trạng thái:** ❌ Huỷ 2026-09-11 — hấp thu vào `EPIC-025` (xem banner)
+- **Trạng thái:** ❌ Cancelled 2026-09-11 — absorbed into `EPIC-025` (see the banner above)
 - **Repo:** Elite
 - **Chặn bởi:** `B` phải merge xong trước — không bắt đầu chi tiết hoá file này trước đó.
 

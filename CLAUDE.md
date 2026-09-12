@@ -90,5 +90,9 @@ see the table above.
 
 `.agents/` rule documentation: **English**.
 Code, identifiers, docstrings, comments, commit subjects: **English**.
-Conversation with the user, task files, bug reports, `Tasks/` documents: **Vietnamese**.
+Conversation with the user: **Vietnamese** (or whatever language the user writes in).
+**Every `.md` document — `Tasks/`, `Docs/`, proposals, bug reports, ADRs — English**, written in the
+register of a self-study technical book (user decision 2026-09-12; `ONBOARDING.md` §10 says what
+that register means). Documents written in Vietnamese before that date are left as they are; new
+sections added to them are English.
 User-visible UI strings and log messages: **English**.
