@@ -47,6 +47,7 @@ it.
 | Anything in `src/domain/**` or `src/application/**`: truthful data, no collapsed trading semantics, a UI that promises only what the engine delivers | [`.agents/rules/domain-truth-rule.md`](.agents/rules/domain-truth-rule.md) |
 | Setting up the environment, or a tool is missing (install it — do not report "cannot verify") | [`.agents/rules/install-rule.md`](.agents/rules/install-rule.md) |
 | (Historical entry point, navigation only — the content lives in the 6 files above) | [`.agents/rules/code-rule.md`](.agents/rules/code-rule.md) |
+| **A word you do not know, or a word you are about to coin** (module, surface, place, seam, lease, probe…) — look it up first; a new term is added there in the same commit | [`Docs/VOCABULARY/README.md`](Docs/VOCABULARY/README.md) |
 | Where the system stands, which bugs are still open | [`Tasks/ROADMAP.md`](Tasks/ROADMAP.md) · [`Tasks/bug_report/README.md`](Tasks/bug_report/README.md) · [`Tasks/epics/README.md`](Tasks/epics/README.md) |
 
 ---

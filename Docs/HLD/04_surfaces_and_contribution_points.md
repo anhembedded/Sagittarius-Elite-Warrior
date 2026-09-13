@@ -122,25 +122,19 @@ module chooses places, it never invents layout.**
 
 ### 4.6.1 The vocabulary of places
 
-Every place has a name, a meaning, and a geometry rule. A module may only put UI in a named place.
-The list is deliberately short; adding a place is an HLD change, not a module change.
+Every place has a name, a meaning and a geometry rule, and a module may put UI only in a named
+place. The list is deliberately short, and adding a place is an HLD change, not a module change.
+**The canonical definition of every place — and of every other term this document uses — lives in
+[`Docs/VOCABULARY/README.md`](../VOCABULARY/README.md) §2**, which is also the specification of the
+`Place` enum in the SDD. It is not repeated here, so that there is one copy to keep true.
 
-| Place | Meaning | Who decides geometry | Exists today |
-| :--- | :--- | :--- | :--- |
-| `screen` | A navigation entry that opens a full page. For a workflow the user performs **for its own sake**, start to finish | the shell (`QStackedWidget`); the page is a `PageShell` | ✅ `ScreenRegistry`, `NavLocation.TOP_SECTION` / `BOTTOM_ACTION` |
-| `<surface>.header` | Actions that apply to the whole page (enable, reload, emergency stop) | `PageShell.set_header` — a row, fixed height | ✅ |
-| `<surface>.context_bar` | The current context the page works in (symbol, connection, status) | `PageShell.set_context_bar` | ✅ |
-| `<surface>.workspace` | The one large thing the page is about (a chart, a table, a form) | `PageShell.set_workspace(main, …)` — takes the remaining space | ✅ |
-| `<surface>.rail` | A column of **cards**, each self-contained, scrollable as a whole | `PageShell.set_workspace(…, rail)` — fixed width, cards stack in `order` | ✅ |
-| `<surface>.console` | Log and diagnostics for that page | `PageShell.set_console` — bottom, collapsible | ✅ |
-| `modal` | A dialog the page opens and closes; never a permanent resident | the overlay host (`kit/overlay.py`) — size from content, centred | ✅ |
-| `settings.section` | A form for the module's own configuration keys | the settings surface — one section per module, in `order` | 🔵 |
-| `status_tile` | A one-glance indicator (websocket pill, price ticker, health) | a surface header — small, fixed | 🔵 |
-| `dev_board.probes` | An API probe (§4.4) | the Dev Board rail, only under `dev.mode` | 🔵 |
-
-Two things are **not** places, on purpose: a free-form docking area (the user may rearrange later
-if the Engine adopts docking in Phase 5, but a module never asks for it), and "the sidebar"
-(navigation is derived from `screen` contributions; nothing else goes there).
+In one sentence each, so this section reads on its own: `SCREEN` is a navigation entry; inside a
+page, `HEADER` holds page-wide actions and status tiles, `CONTEXT_BAR` the current symbol and
+connection, `WORKSPACE` the one big thing, `RAIL` the column of cards, `CONSOLE` the log, `MODAL` a
+dialog the page opens; `SETTINGS_SECTION`, `STATUS_TILE` and `DEV_PROBE` are the three places
+outside the page shell. Two things are **not** places, on purpose: a free-form docking area (a
+module never asks for it, even if the Engine adopts docking in Phase 5) and "the sidebar"
+(navigation is derived from `SCREEN` contributions; nothing else goes there).
 
 ### 4.6.2 The three questions a new module answers, in order
 

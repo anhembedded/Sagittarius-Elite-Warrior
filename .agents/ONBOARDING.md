@@ -29,6 +29,7 @@ A map of the process, not a copy of the rules: it tells you *when* to read *whic
 | 11 | `.agents/rules/domain-truth-rule.md` | When touching `src/domain/`, `src/application/` |
 | 12 | `.agents/rules/ui-presentation-rule.md` | When touching `src/presentation/` (Python) |
 | 13 | `.agents/rules/qml-rule.md` | When touching `.qml` files |
+| — | `Docs/VOCABULARY/README.md` | **Look up any term** (architecture, UI places, per-context domain words); the only place a term is defined — add a new term there in the same commit that coins it |
 | — | `Tasks/ROADMAP.md` | Where the system stands, which tasks exist |
 | — | `Tasks/bug_report/README.md` | Bug Board — which bugs are open |
 | — | `Tasks/epics/README.md` | Epic list (each Epic has its own directory + README, §3) |
@@ -268,7 +269,10 @@ Note: **every rule file in both repos only lists PowerShell commands**. On Linux
   - Teach, don't just record. State *why* before *what*; a reader who was not in the conversation
     must be able to follow the reasoning and check it.
   - Define a term the first time it is used, then use it consistently (Bounded Context, Port,
-    Surface, Contribution point). Never introduce a name without saying what it is.
+    Surface, Contribution point). Never introduce a name without saying what it is — and the
+    definition lives in **one** place, `Docs/VOCABULARY/README.md`; a document links there rather
+    than redefining (user decision 2026-09-13: *"the vocabulary nên đưa vào 1 dir doc, để tra cứu
+    khi dev"* — "put the vocabulary in one doc directory, to look up while developing").
   - Prefer one worked example with real file paths and numbers over three adjectives. Evidence
     is `file:line` and a measured count, not "many" or "a lot".
   - Full sentences and short paragraphs; tables for comparisons and inventories, prose for

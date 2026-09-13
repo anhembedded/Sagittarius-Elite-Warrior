@@ -42,6 +42,10 @@ Follow SOLID wherever it's practical — apply it to improve clarity/testability
 
 ### 2.1 Contracts must be explicit — no implicit duck-typing
 
+> The names used in this file (Port, Contract, DTO, Published Language, Shared Kernel, Seam,
+> Variant, Surface, Place) are defined once in `Docs/VOCABULARY/README.md`. When a rule here and
+> that file disagree on a definition, the vocabulary is right and this file is fixed.
+
 > **Every contract that crosses a boundary (Presenter ↔ View, consumer ↔ port, module ↔ module) MUST be a
 > named type. A contract must never exist only as "call it and see whether the method is there".**
 
