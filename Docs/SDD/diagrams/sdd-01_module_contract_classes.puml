@@ -1,0 +1,123 @@
+@startuml sdd-01_module_contract_classes
+title SDD-01 — Module contract and contribution registry (class diagram, Phase 0 scope)
+skinparam classAttributeIconSize 0
+hide empty members
+
+package "sagittarius_engine (existing)" #WhiteSmoke {
+  abstract class "IExtension<TContext>" as IExt {
+    + name : str
+    + descriptor : ExtensionDescriptor
+    + {abstract} register(context)
+    + {abstract} boot(context)
+    + {abstract} shutdown(context)
+  }
+  class ExtensionDescriptor {
+    + name : str
+    + dependencies : list[str]
+    + priority : int
+    + enabled : bool
+  }
+  interface IContainer {
+    + singleton(abstract, instance_or_factory)
+    + bind(abstract, concrete)
+    + resolve(abstract)
+    + registrations() : Mapping[type, Registration]
+  }
+  class QtEventBridge {
+    + on(event_type, handler)
+    + off_all()
+  }
+  IExt ..> ExtensionDescriptor
+}
+
+package "core/contracts (app, lift-ready)" #LightYellow {
+  abstract class BoundedContextModule {
+    + {static} module_id : ClassVar[str]
+    + {static} dependencies : ClassVar[list[str]]
+    + {abstract} register(context)  <<no resolve(), no I/O, no Qt>>
+    + {abstract} boot(context)
+    + shutdown(context)
+    + contribute(registry : IContributionRegistry)
+    + subscribe(bridge : QtEventBridge)
+  }
+  enum Place {
+    SCREEN
+    HEADER
+    CONTEXT_BAR
+    WORKSPACE
+    RAIL
+    CONSOLE
+    MODAL
+    SETTINGS_SECTION
+    STATUS_TILE
+    DEV_PROBE
+  }
+  enum SizeHint {
+    COMPACT
+    REGULAR
+    TALL
+  }
+  class ContributionDescriptor <<frozen dataclass>> {
+    + module_id : str
+    + surface_id : str
+    + place : Place
+    + order : int
+    + size_hint : SizeHint
+    + title : str
+    + factory : Callable[[IContainer], QWidget]
+  }
+  class ScreenContribution <<frozen dataclass>> {
+    + route : str
+    + title : str
+    + icon : str
+    + section_key : str
+    + sequences
+    + factory : Callable[[IContainer], tuple[View, Presenter]]
+  }
+  interface IContributionRegistry {
+    + add(descriptor : ContributionDescriptor)
+    + add_screen(screen : ScreenContribution)
+    + for_place(surface_id, place) : tuple[ContributionDescriptor, ...]
+    + screens() : tuple[ScreenContribution, ...]
+    + ui_map() : Mapping[(surface_id, Place), tuple[str, ...]]
+  }
+  IExt <|-- BoundedContextModule
+  ContributionDescriptor --> Place
+  ContributionDescriptor --> SizeHint
+  IContributionRegistry o-- ContributionDescriptor
+  IContributionRegistry o-- ScreenContribution
+  BoundedContextModule ..> IContributionRegistry : contribute()
+  BoundedContextModule ..> QtEventBridge : subscribe()
+  BoundedContextModule ..> IContainer : register(): singleton/bind only
+}
+
+package "shell (app policy)" #LightGray {
+  class ModuleList {
+    + MODULES : tuple[type[BoundedContextModule], ...]  <<topological order>>
+  }
+  class ContributionRegistry {
+    - _by_place : dict
+    + add(descriptor)  <<validates place, rejects duplicates>>
+  }
+  class Surface {
+    + surface_id : str
+    + accepts : frozenset[Place]
+    + build(registry, container) : PageShell
+  }
+  class DoubleClaimCheck {
+    + run(container.registrations(), modules) : None  <<raises before boot>>
+  }
+  IContributionRegistry <|.. ContributionRegistry
+  Surface ..> IContributionRegistry : for_place()
+  ModuleList ..> BoundedContextModule
+  DoubleClaimCheck ..> IContainer
+}
+
+package "modules/market_data (Walking Skeleton)" #LightGreen {
+  class MarketDataModule {
+    + module_id = "market_data"
+    + dependencies = []
+  }
+  BoundedContextModule <|-- MarketDataModule
+}
+@enduml

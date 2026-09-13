@@ -25,13 +25,18 @@ that lives inside the widgets that modules own.
 
 | Surface | Slots | Gate | Default route |
 | :--- | :--- | :--- | :--- |
-| `trading` | `header` · `context_bar` · `workspace` (chart) · `rail` (cards) · `console` | always | ✅ **default** 🔵 (today Dev Board has `is_default=True`) |
-| `dev_board` | `header` · `system_controls` · `workspace` (several charts) · `rail` · `probes` 🔵 · `console` | **`dev.mode`** 🔵 (today it is **not gated**; measured, `dev.mode` is read only by the asset validator, the log filter and the FPS overlay) | no |
+| `welcome` 🔵 (ADR D13) | app name and version · environment banner · **Start** · developer-mode switch (ADR D14) | always | ✅ **default**; Start navigates to `trading` |
+| `trading` | `header` · `context_bar` · `workspace` (chart) · `rail` (cards) · `console` | always | no (reached from Welcome) |
+| `dev_board` | `header` · `system_controls` · `workspace` (several charts) · `rail` · `probes` 🔵 · `console` | **`dev.mode` at boot** (ADR D14; today it is **not gated** — measured, `dev.mode` is read only by the asset validator, the log filter and the FPS overlay) | no (today it is `is_default=True`) |
 | `settings` | `sections` | always | no |
 
-⚠️ These are two changes in **user-visible behaviour**, not pure refactoring: the default route
-becomes Trading, and Dev Board is hidden when `dev.mode` is false. They are stated here so the user
-sees them before they happen; each can be reversed with a one-line configuration change.
+⚠️ These are changes in **user-visible behaviour**, not pure refactoring, decided by the user on
+2026-09-13 (ADR D13, D14): the app opens on a Welcome screen; Dev Board and every API probe exist
+only when `dev.mode` was true at boot; the Welcome screen carries the developer-mode switch, which
+writes `user_config.json` and offers a restart. The Welcome screen is a **shell** surface (it is
+about the application, not about any bounded context) and its primary action is **Start** — not
+"Login" — until there is something to authenticate; the button raises one `StartRequested` intent
+so a real login can replace it later without moving anything else.
 
 **A widget contributed to a surface belongs to a module.** For example, `trading` contributes the
 `PositionsPanel` factory to both `trading.rail` and `dev_board.rail` — one class, two instances,
@@ -84,7 +89,7 @@ The user's definition: *"khi bạn dev nếu API nào của sàn chưa rõ, thì
 | :--- | :--- | :-: | :-: |
 | Chart card (one symbol) / chart list (n symbols) | `charting` (host) + `market_data` (feed) | 1 | n |
 | Positions table, open orders table (with cancel-one-order) | `trading` | ✅ | ✅ |
-| Manual order card | `trading` | 🔵 (today Dev Board only — the user decides whether Trading gets it; the mechanism allows it with one line) | ✅ |
+| Manual order card | `trading` | ❌ (user decision 2026-09-13, ADR D15: Dev Board only; adding `trading.rail` later is one line in `contribute()`, and the card depends only on trading's own ports so that line is all it takes) | ✅ |
 | Session card, Enable/Disable, Emergency stop, websocket pill | `trading` | ✅ | ✅ |
 | Equity chart | `trading` (adapter) + `charting` | ✅ | ✅ |
 | Strategy card, last-signal card, parameters dialog | `strategy` | ✅ | ✅ |
@@ -93,3 +98,105 @@ The user's definition: *"khi bạn dev nếu API nào của sàn chưa rõ, thì
 | System controls (market / symbol / date range / load / start / stop), symbol picker | `market_data` | a reduced context bar | ✅ |
 | API probes | each module | — | ✅ |
 | Log console | `ui_kit` | ✅ | ✅ |
+
+## 4.6 Where a new module's UI goes — the workbench rule 🔵 Proposed (2026-09-13)
+
+The user's concern, verbatim: *"lack of UI layout philosophy → it leads to: have no concept if we
+want to add a new module that has UI; the question is, how is the UI of this module put in?"* The
+sections above describe the surfaces that exist today; they do not tell the author of a **new**
+module where its widgets belong. This section is that rule. It is the "workbench" model that VS
+Code, Spyder and napari all converged on: **the shell owns a small, fixed vocabulary of places; a
+module chooses places, it never invents layout.**
+
+### 4.6.1 The vocabulary of places
+
+Every place has a name, a meaning, and a geometry rule. A module may only put UI in a named place.
+The list is deliberately short; adding a place is an HLD change, not a module change.
+
+| Place | Meaning | Who decides geometry | Exists today |
+| :--- | :--- | :--- | :--- |
+| `screen` | A navigation entry that opens a full page. For a workflow the user performs **for its own sake**, start to finish | the shell (`QStackedWidget`); the page is a `PageShell` | ✅ `ScreenRegistry`, `NavLocation.TOP_SECTION` / `BOTTOM_ACTION` |
+| `<surface>.header` | Actions that apply to the whole page (enable, reload, emergency stop) | `PageShell.set_header` — a row, fixed height | ✅ |
+| `<surface>.context_bar` | The current context the page works in (symbol, connection, status) | `PageShell.set_context_bar` | ✅ |
+| `<surface>.workspace` | The one large thing the page is about (a chart, a table, a form) | `PageShell.set_workspace(main, …)` — takes the remaining space | ✅ |
+| `<surface>.rail` | A column of **cards**, each self-contained, scrollable as a whole | `PageShell.set_workspace(…, rail)` — fixed width, cards stack in `order` | ✅ |
+| `<surface>.console` | Log and diagnostics for that page | `PageShell.set_console` — bottom, collapsible | ✅ |
+| `modal` | A dialog the page opens and closes; never a permanent resident | the overlay host (`kit/overlay.py`) — size from content, centred | ✅ |
+| `settings.section` | A form for the module's own configuration keys | the settings surface — one section per module, in `order` | 🔵 |
+| `status_tile` | A one-glance indicator (websocket pill, price ticker, health) | a surface header — small, fixed | 🔵 |
+| `dev_board.probes` | An API probe (§4.4) | the Dev Board rail, only under `dev.mode` | 🔵 |
+
+Two things are **not** places, on purpose: a free-form docking area (the user may rearrange later
+if the Engine adopts docking in Phase 5, but a module never asks for it), and "the sidebar"
+(navigation is derived from `screen` contributions; nothing else goes there).
+
+### 4.6.2 The three questions a new module answers, in order
+
+A module's author answers these once, in `module.contribute()`, and the answers are the whole of
+the module's UI footprint.
+
+1. **Does the module own a workflow the user performs for its own sake** — something with a start
+   and an end that is not "trading right now"? If yes, the module gets **its own `screen`**, built
+   as a `PageShell`, and it is the *owner surface* of that page. Examples: Backtest (run a test, read
+   the result), Data Management (sync, inspect, repair). A hypothetical `journal` module (review
+   past trades) would answer yes.
+2. **Does the module produce or consume something the trader needs while trading?** If yes, it
+   contributes **cards into `trading.rail`** (and, by the mirror rule below, `dev_board.rail`);
+   only `market_data` and `charting` may contribute to `workspace`, because a workspace holds one
+   thing. Examples: `trading` (positions, orders, session), `strategy` (the strategy card, the last
+   signal). A hypothetical `risk` module (exposure limits) would answer yes with one card.
+3. **Is the rest configuration or diagnostics?** Then `settings.section`, `status_tile`, and
+   `dev_board.probes` respectively. Every module with configuration keys answers yes to the first.
+
+A module may answer yes to several: Backtest has its own screen **and** a status tile. **When in
+doubt, start on Dev Board.** A card that is not yet proven goes to `dev_board.rail` first (gated by
+`dev.mode`) and is promoted to `trading.rail` when the user wants it there — a one-line change in
+`contribute()`. This is what "Dev Board is for testing and discovery" (ADR D4) means in practice.
+
+### 4.6.3 Five rules that keep the vocabulary honest
+
+1. **Geometry belongs to the place, content to the module.** A module never sets a width, a
+   height or a position. It declares `place`, `order` and a size *hint* (`compact` / `regular` /
+   `tall`); the place resolves it. This is the general form of the `BOT-128` lesson (two tables lost
+   four of seven columns because a screen hand-sized them) and of `EPIC-001D`'s "regions decide
+   geometry".
+2. **One widget, many places.** The same factory may be contributed to several surfaces; a module
+   never builds a "Trading version" and a "Dev Board version" of a widget. Trading and Dev Board
+   therefore **mirror by default**: a `trading.rail` card is also a `dev_board.rail` card unless the
+   module says otherwise. The reverse is not true — Dev Board holds things Trading does not.
+3. **Every screen is a surface.** A module's own screen is a `PageShell` like any other, and the
+   owner declares which of its slots accept contributions from other modules
+   (`accepts=("rail", "modal")`). That is how `strategy` puts its parameters dialog into Backtest
+   and `market_data` puts sync progress there, without Backtest importing either.
+4. **A module's UI footprint is readable in one place.** `module.contribute()` is the only method
+   that registers UI; reading it tells you everything the module puts on screen. A guard renders
+   the *UI map* — a table of surface × place × module — and fails on a widget that is contributed
+   nowhere or a place that does not exist.
+5. **The shell renders; modules never reach into another module's widgets.** Coordination between
+   two cards on the same rail happens through events and ports (§2.5, §3.4), never through the
+   surface handing one widget a reference to another.
+
+### 4.6.4 The existing modules, checked against the rule
+
+| Module | Q1 own screen | Q2 trading cards | Q3 config / diagnostics | Matches today? |
+| :--- | :--- | :--- | :--- | :--- |
+| `market_data` | ✅ Data Management | context bar (symbol), Dev Board system controls | settings section (venue, defaults); status tile (ticker) | ✅ |
+| `trading` | ❌ — Trading is a **surface**, not the module's screen | positions, orders, manual order, session, equity | settings section (venue, limits, credentials check); status tile (websocket); probe | ✅ once Trading is a surface (Phase 1) |
+| `strategy` | ❌ | strategy card, last signal; modal (parameters) | — | ✅ |
+| `backtesting` | ✅ Backtest | ❌ | status tile (run in progress) | ✅ |
+| `indicators` (support) | ❌ | Dev Board checklist card | — | ✅ |
+| `charting` (support) | ❌ | `workspace` of Trading, Dev Board, Backtest | — | ✅ |
+| *shell* (not a module): `welcome`, `settings` | — | — | — | the rule's own test: surfaces about the application itself belong to the shell, exactly as `welcome` does (ADR D13) |
+
+The check exposes the one place the current code disagrees with the rule: the Trading screen is
+owned by nobody today (it is a `screens/trading` package that rebuilds `trading`'s and
+`strategy`'s widgets), which is the 59-duplicate problem in another form. Under the rule it is a
+surface owned by the shell with no logic of its own, exactly as §4.2 says.
+
+### 4.6.5 What this settles for round 2 (❓ O1)
+
+The contribution-point kinds in §4.3 are the *places* above plus `cli_command`. The descriptor
+schema for every place-kind is the same four fields — `place`, `order`, `size_hint`, `factory` —
+plus `module_id` and, for `screen`, the navigation metadata `ScreenRegistry` already takes. That
+uniformity is the answer to O1: **one descriptor shape, a place enum, no per-kind schema** beyond
+`screen`.

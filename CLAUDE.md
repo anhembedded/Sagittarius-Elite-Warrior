@@ -32,7 +32,7 @@ it.
 
 | Task | File |
 | :--- | :--- |
-| **When to decide for yourself, when to ask** (doctrine: follow proven patterns, reference large projects, don't fear a redesign) | [`.agents/ONBOARDING.md`](.agents/ONBOARDING.md) §7 |
+| **When to decide for yourself, when to ask** (doctrine: survey existing solutions first and apply before you invent, follow proven patterns, reference large projects, don't fear a redesign) | [`.agents/ONBOARDING.md`](.agents/ONBOARDING.md) §7 · §12.5 |
 | Starting, or picking up work in progress | [`.agents/ONBOARDING.md`](.agents/ONBOARDING.md) — §12 is "picking up work in progress" |
 | Architecture: layers, Port/ABC, explicit contracts (no implicit duck-typing), Shared Kernel, event placement, abstraction | [`.agents/rules/architecture-rule.md`](.agents/rules/architecture-rule.md) |
 | Code quality: typing, magic numbers, cohesion, lazy imports | [`.agents/rules/code-quality-rule.md`](.agents/rules/code-quality-rule.md) |

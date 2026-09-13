@@ -49,6 +49,11 @@ data versus the model used for drawing).
   directories are the present state, and they are what caused the disease: nobody owns a context.
   Layers exist only **inside** a module (§3.2).
 - **Do not cut for elegance.** Every module must be able to point at C5: who uses it.
-- **Do not cut before a consumer exists.** Account/Equity stays inside `trading` until a second real
-  consumer appears. `EPIC-024C` was cancelled precisely because it planned to cut "Market Connector"
-  and "Market Order" ahead of any evidence.
+- **Do not cut before a consumer exists — but keep the seam open.** Account/Equity stays inside
+  `trading` until a second real consumer appears; `EPIC-024C` was cancelled precisely because it
+  planned to cut "Market Connector" and "Market Order" ahead of any evidence. This is a rule about
+  *where code lives*, not a licence for a closed design (`architecture-rule.md` §7.2.1): the
+  account read model already sits behind its own port (`IAccountSnapshot`) and its own DTO, so
+  moving it into a module of its own later is a directory move plus one line in `shell/modules.py`,
+  not a rewrite. Every "not yet" in this document must be checkable the same way — name the seam
+  that makes the later step local.

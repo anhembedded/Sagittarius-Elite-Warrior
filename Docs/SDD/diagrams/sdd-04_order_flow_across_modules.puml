@@ -1,0 +1,37 @@
+@startuml sdd-04_order_flow_across_modules
+title SDD-04 — One tick becomes one order: the cross-module path and the symbol lease
+autonumber
+participant "market_data\n(market websocket)" as MD
+participant "Event bus" as Bus
+participant "strategy\nMarketTickEventHandler → LiveTradingCoordinator" as ST
+participant "trading\nIOrderSubmission (impl)" as TRs
+participant "trading\nITradingSession (impl)" as TRt
+participant "binance_gateway\nITradingSessionFactory" as GW
+participant "Binance Futures" as BN
+participant "trading\nuser-data stream → Feed" as UDS
+participant "surfaces\n(positions card)" as UI
+
+== arm (once) ==
+ST -> TRt : claim_symbol("BTCUSDT", owner="strategy")
+note right of TRt : trading records the lease;\nit does not know what "strategy" is
+
+== every closed candle ==
+MD -> Bus : MarketTickEvent
+Bus -> ST : (subscribed in strategy.subscribe())
+ST -> ST : StrategyEngine.on_candle() → Signal
+ST -> TRs : preview(OrderIntent)  → OrderPreview
+ST -> TRs : execute(OrderIntent)
+TRs -> TRt : session enabled? limits? lease ok for owner?
+TRs -> GW : create_trading_client()
+GW -> BN : POST /fapi/v1/order
+BN --> TRs : order accepted
+BN -> UDS : ORDER_TRADE_UPDATE / ACCOUNT_UPDATE
+UDS -> Bus : OrderFilledEvent · PositionChangedEvent
+Bus -> UI : (via QtEventBridge, trading's feed)
+
+== manual order from Dev Board on the same symbol ==
+UI -> TRs : execute(OrderIntent(owner="manual"))
+TRs -> TRt : lease held by another owner?
+TRt --> TRs : yes → refuse (SYMBOL_LEASED)
+note over TRs, TRt : EPIC-024B §4.1.2's hard block, expressed without trading knowing strategy
+@enduml

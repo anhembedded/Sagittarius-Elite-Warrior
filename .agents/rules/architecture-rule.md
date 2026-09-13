@@ -135,9 +135,12 @@ The question is not "signal or bus", nor "bridging signals are technical debt", 
 - **Absurd** → a private truth (`history finished loading`, `my stream started`, `my indicator finished computing`): internal Qt signal inside the presenter/controller. Pushing it onto the bus is a **leak** — every screen can hear it and the coupling surface balloons.
 - **Reasonable** → a system truth (`health changed`, `background task died`, `sync progress`, `log`): onto the bus, with **exactly one** Feed listening and normalizing, and many screens *displaying*.
 
-### 6.3 Promote when a second consumer actually appears — never before
+### 6.3 Route to the bus when a second consumer actually appears — the seam exists from day one
 
-This is a rule about **routing**, not about whether to create an abstraction (see §7). Promoting late is cheap (the worker already emits *something*; changing where it emits to is a local edit); pushing everything onto the bus up front is expensive and nearly irreversible — afterwards nobody dares delete a subscriber because nobody knows who is still listening.
+This is a rule about **routing** (where a truth is delivered), not about whether to create an
+abstraction (see §7) and not a licence to build something that cannot be extended (§7.2.1). The
+event type and the Feed base class exist from the first consumer; what waits for the second
+consumer is only the decision to route through the bus. Promoting late is cheap (the worker already emits *something*; changing where it emits to is a local edit); pushing everything onto the bus up front is expensive and nearly irreversible — afterwards nobody dares delete a subscriber because nobody knows who is still listening.
 
 ### 6.4 Real evidence (measured 2026-08-25, `EPIC-008G`)
 
@@ -173,7 +176,49 @@ When adding a new class, ask in order: (1) **who will call it, and what do they 
 
 Abstraction here is **not** "spawn another middle layer for its own sake": it is that **a class's public surface must be programmable against**, and that any point known to be changeable has an abstract type representing it.
 
-> ⚠️ The old threshold *"only create an abstraction once there are ≥2 real needs"* (`EPIC-006`'s ADR §4) **was dropped on 2026-08-25**; `EPIC-006`'s ADR and `EPIC-007`'s design still cite it, so read them knowing it is no longer in force. The lesson that still holds: the 4 stub cards (`ActionCard`/`FormCard`/`StreamCard`/`TableCard`) were wrong not for lacking abstraction but for **guessing the wrong shape** of something that did not exist yet — favoring abstraction means designing the API of what you are writing now, not guessing at what nobody needs yet.
+> ⚠️ The old threshold *"only create an abstraction once there are ≥2 real needs"* (`EPIC-006`'s ADR §4) **was dropped on 2026-08-25**; `EPIC-006`'s ADR and `EPIC-007`'s design still cite it, so read them knowing it is no longer in force. The lesson that still holds: the 4 stub cards (`ActionCard`/`FormCard`/`StreamCard`/`TableCard`) were wrong not for lacking abstraction but for being four **speculative implementations** that guessed the wrong shape of something nobody had asked for. That lesson is about building *variants*, never about building *seams* — see §7.2.1.
+
+### 7.2.1 Design for extension always; build the extension only when it is needed
+
+> **User decision 2026-09-13**, in these words: *"khi dev luôn luôn phải cân nhắc các trường hợp có
+> thể mở rộng, có thể chuyển các design sao cho dễ mở rộng"* ("when developing, always consider
+> the cases that could be extended, and shape the design so it is easy to extend"). Raised
+> because the wording above and in §6.3 read as *"do not code what does not exist yet"*, which
+> contradicts the standing goal of extensibility.
+
+The two ideas were never in conflict; they apply to different things, and both have names:
+
+| | Applies to | Rule | Name |
+| :--- | :--- | :--- | :--- |
+| **Extensibility — mandatory** | the **seam**: the port, the base class, the place enum, the list a new case is added to | Build it now, on the first case | Open/Closed Principle (Meyer, Martin) |
+| **No speculation — mandatory** | the **variant**: the second implementation, the feature nobody asked for | Build it when a real case arrives | YAGNI (Beck) |
+
+So: the `BaseFeed` exists when the first Feed is written (seam); the second Feed is written when
+its truth exists (variant). `IOrderSubmission` exists when the strategy is the only caller (seam);
+the manual-order card is built when the user asks (variant). A place enum for UI contributions
+exists with the first surface (seam); a new surface is added when a module needs one (variant).
+
+**The procedure, at every design decision — a class, a port, a module, a screen:**
+
+1. **Enumerate the plausible extension cases** in writing (the docstring of the seam, or the task
+   file): a second exchange, a second caller, a second screen, a new strategy, a new venue, a new
+   contribution kind. "Plausible" means a case this domain is known to produce, not science
+   fiction; three to five cases is the normal count.
+2. **For each case, say what would change.** The design is acceptable only if every case is a
+   **local** change: one new file behind an existing seam, one line in a list, one new
+   implementation of an existing ABC. If a case would require editing several existing files,
+   the design is closed at that point — open it **now**, while it is cheap, by introducing the
+   seam.
+3. **Do not build the case itself.** A seam with one implementation is complete. Four stub cards
+   were four implementations; a `BaseCard` with one real card would have been the right shape.
+4. **Record the cases and the seam** where the next person will find them: the ABC's docstring
+   names the cases it was opened for (`§7.1`'s "extension recipe"), and a test locks the seam
+   (for example: constructing the widget outside its first host, proving the second host is one
+   line — `EPIC-025` ADR D15).
+
+**The tell that a design is closed:** *"to add X we would have to touch N existing files."* When
+that sentence is true for a plausible X, fix the design in the current task; do not file it as
+debt.
 
 ### 7.3 No wriggling out via docstrings
 
