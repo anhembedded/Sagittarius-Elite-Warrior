@@ -14,6 +14,8 @@
   [`as_is.puml`](../../Tasks/proposal/PRO-004_assets/as_is.puml) and
   [`to_be.puml`](../../Tasks/proposal/PRO-004_assets/to_be.puml).
 - **Language.** English, in the register of a self-study technical book (`ONBOARDING.md` §10).
+- **Terms.** Every term this document uses is defined once, in
+  [`Docs/VOCABULARY/README.md`](../VOCABULARY/README.md); look there first when a word is unfamiliar.
 
 ## How to read this document: five questions, five tools
 

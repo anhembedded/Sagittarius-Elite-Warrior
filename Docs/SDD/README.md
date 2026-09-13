@@ -25,7 +25,7 @@ inside a module, the workbench places, the Engine track).
 ### The contribution descriptor — one shape for every place (answers O1)
 
 ```python
-class Place(Enum):            # the workbench vocabulary, HLD §4.6.1 — adding a member is an HLD change
+class Place(Enum):            # canonical list: Docs/VOCABULARY/README.md §2 — adding a member is an HLD change
     SCREEN = "screen"; HEADER = "header"; CONTEXT_BAR = "context_bar"; WORKSPACE = "workspace"
     RAIL = "rail"; CONSOLE = "console"; MODAL = "modal"
     SETTINGS_SECTION = "settings_section"; STATUS_TILE = "status_tile"; DEV_PROBE = "dev_probe"
