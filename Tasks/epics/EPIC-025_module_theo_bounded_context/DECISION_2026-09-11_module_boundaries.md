@@ -185,3 +185,94 @@ Presenter and injected through the constructor — never DI-discovered (`async-u
   `support/ui_kit` or the kernel.
 - `EPIC-016`'s `ScreenRegistry` / `AbstractScreenModule` **stay unchanged** until Phase 5 — modules
   contribute screens through exactly that mechanism.
+
+---
+
+## 5. Addendum 2026-09-12/13 — build-or-buy survey (HLD §7) 🟢 User decision
+
+The user asked whether anything we plan to build already exists; HLD §7 records the survey, with
+`tach` and `import-linter` run against the real tree. The user's decision (2026-09-13): *"keep the
+plan the same, not substitute with lib"*. Consequences:
+
+- D11 stays as written — hand-written `ast` guards. The twelve violations the trial run found are
+  the Phase 0 allowlist. `TASK-043` item 4 (the Engine's generalised `import_boundary`) stays.
+- Everything surveyed is reference only: PySide6-QtAds (regions), ccxt (a second venue),
+  nautilus_trader (the backtest-equals-live reference), finplot (charting), lato and pluggy
+  (module patterns). None is a dependency of this epic.
+- The one small Engine addition without a dependency, `ScheduledJob.cancel()`, is noted on
+  `TASK-043`.
+
+---
+
+## 6. Round-2 decisions, 2026-09-13 🟢 User decision
+
+These answer the three questions HLD §4.2 and §4.5 had left open. Each is a change in
+**user-visible behaviour** and is therefore recorded as the user's decision, verbatim.
+
+### D13 — A Welcome (launch) screen is the first screen; it is owned by the shell
+
+Verbatim: *"thêm 1 module màn hình login đơn giản, hiện tên app đẹp đẹp, có cái nút 'login' hay
+start... gì đó là được. tôi muốn 1 màn hình giữ chân á mà."* ("add a simple login-screen module:
+show the app name nicely, with a 'login' or 'start' button or the like. I want a screen that
+greets and holds the user.")
+
+- A new surface `shell/surfaces/welcome/`: the app name and version, the environment banner
+  (venue), one primary action **Start**, and the dev-mode switch of D14. It is the **default
+  route**; Start navigates to Trading. Dev Board is no longer the default (it was
+  `is_default = True`).
+- By the workbench rule (HLD §4.6) this is a **shell surface, not a bounded-context module**: it
+  is about the application itself, like Settings; it owns no business language and no data.
+- The primary action is named **Start**, not "Login", until there is something to authenticate
+  (`domain-truth-rule.md`: the UI promises only what the engine delivers — there are no user
+  accounts today; exchange credentials live in `secrets.local.json`). The surface is designed so
+  that a real login (profile selection, credential unlock) can replace the button later without
+  moving anything else: the button dispatches a single `StartRequested` intent that the shell
+  handles.
+
+### D14 — Dev Board is hidden unless `dev.mode`; the Welcome screen has the switch; a restart applies it
+
+Verbatim: *"Dev Board ẩn khi dev mode, màn hình login có nút để switch dev mode, có thể cần
+restart để enable load module."* ("Dev Board is hidden by dev mode; the login screen has a button
+to switch dev mode; a restart may be needed to enable loading the module.")
+
+- The `dev_board` surface and every `dev_probe` are registered **only when `dev.mode` is true at
+  boot** (today `dev.mode` gates nothing on Dev Board — measured in HLD §4.2).
+- The Welcome screen shows a **Developer mode** toggle. Toggling writes `dev.mode` to the writable
+  `user_config.json` (the app's existing config mechanism, `BUG-117` follow-up) and shows "takes
+  effect after restart" with a **Restart now** button. Restart relaunches the same executable and
+  arguments (`QProcess.startDetached` + quit) — the standard desktop pattern; no hot-loading of
+  modules (ADR "deliberately out of scope": no hot reload).
+- `--dev` on the command line keeps working and still wins over the file for that run.
+
+### D15 — No manual-order card on Trading; the design keeps the door open
+
+Verbatim: *"không có nhé, nhưng phải thiết kế cân nhắc lỡ sau này có thể mở rộng."* ("no — but
+the design must allow extending it later.")
+
+- The manual-order card stays a `trading`-owned widget contributed to `dev_board.rail` only.
+- Extension later is **one line** in `modules/trading/module.py::contribute()` — adding
+  `trading.rail` as a second place — because of §4.6 rule 2 (one widget, many places). To keep
+  that true, the card depends only on `trading`'s own ports (`IOrderSubmission`, `ITradingSession`)
+  and never on anything Dev-Board-specific; a test constructs it outside Dev Board.
+
+### D16 — The Engine track is a harvest: build lift-ready in the app, lift on a written criterion 🔵 Proposed
+
+Raised by the user on 2026-09-13 (*"plan sao tui chưa thấy nói tới sẽ làm gì với engine nhỉ?"* —
+"why does the plan not say what will be done with the Engine?"). HLD §8 answers it:
+
+- The mechanism (`BoundedContextModule`, the contribution registry, the surface runtime,
+  navigation) is built inside the app under `core/contracts/` and `shell/workbench/` with **no
+  application import** and the Engine's package layout, then **lifted** into
+  `sagittarius_engine/extensions/workbench/` — Fowler's *Harvested Framework*, the pattern the
+  Engine's own `EPIC-001D` argues for when it warns against choosing abstractions early.
+- **Lift criterion** (all three): zero app imports (guard); used by ≥ 2 surfaces or ≥ 2 modules of
+  this app; API unchanged for one whole phase.
+- Engine schedule E0–E3 aligned with app phases (HLD §8.4): E0 `ScheduledJob.cancel()` now; E1
+  after Phase 1 (module base + registry + descriptors); E2 after Phase 2 (region host, per-place
+  models); E3 at Phase 5 (`NavigationService`, screen lifecycle, conformance suite).
+- Supersedes HLD §5.3's "until a second application needs it": the second *surface* of this
+  application is the evidence.
+
+The SDD for Phase 0 ([`Docs/SDD/`](../../../Docs/SDD/README.md)) fixes the descriptor shape (one
+`ContributionDescriptor` for every place, `ScreenContribution` as the sole exception) and the
+registry validation rules — this closes ❓ O1 pending the user's review.

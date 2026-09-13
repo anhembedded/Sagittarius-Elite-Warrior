@@ -59,6 +59,18 @@ most effective bug channel — it must not be lost). No change in business behav
 | **E** | [Phase 4 — `support/*`; dissolve `ui/common/`](incomplete/EPIC-025E_phase4_support_and_dissolve_common.md) | D | 🔴 |
 | **F** | [Phase 5 — Engine `EPIC-001D`: `NavigationService`, regions, screen lifecycle](incomplete/EPIC-025F_phase5_engine_navigation.md) | E · the Engine-side task | 🔴 |
 
+## 3.1 Engine milestones (HLD §8 — the harvest)
+
+| Step | Trigger | Content | Tracked in the Engine repository as |
+| :-: | :--- | :--- | :--- |
+| E0 | now | `ScheduledJob.cancel()` | note on `TASK-043` |
+| E1 | after **B** | lift `BoundedContextModule`, `IContributionRegistry`, descriptors, `Place`, `SizeHint` | `TASK-043` items 2, 5 |
+| E2 | after **C** | lift the surface runtime (region host, per-place models) | `EPIC-001D` objective 2 |
+| E3 | with **F** | `NavigationService`, screen lifecycle + conformance suite, `create_quick_widget(import_paths=)` | `TASK-043` items 1, 3; `EPIC-001D` objectives 3–5 |
+
+Each lift = one Engine PR (`b` bump) + one app PR (delete the copy, add the
+`RequiredEngineCapability`). The lift criterion is HLD §8.3; a lift that does not meet it waits.
+
 ## 4. Deliberately out of scope
 
 - No microservices or multiple processes; no hot reload; no third-party plugins (every module is

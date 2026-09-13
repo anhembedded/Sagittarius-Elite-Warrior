@@ -35,9 +35,24 @@ with measurements from this codebase, why it fits.
 1. [Criteria for cutting a module (C1–C6), applied to this application](01_cut_criteria.md)
 2. [Context map: four bounded contexts, four support packages, a kernel; distillation; integration patterns; the Published Language](02_context_map.md)
 3. [Module contracts: `BoundedContextModule`, the internal layout, each module's contracts, the mapping from today's code](03_module_contracts.md)
-4. [Surfaces and contribution points: Trading, Dev Board (`dev_probe`), Settings, CLI](04_surfaces_and_contribution_points.md)
+4. [Surfaces and contribution points: Trading, Dev Board (`dev_probe`), Settings, CLI — and §4.6, the workbench rule for where a new module's UI goes](04_surfaces_and_contribution_points.md)
 5. [Engine owns mechanism, application owns policy: the split with `EPIC-001D`](05_engine_app_split.md)
 6. [Enforcement and migration: three guards, the allowlist ratchet, six phases](06_enforcement_and_migration.md)
+7. [Build or buy: what already exists for each thing we plan to build (survey 2026-09-12)](07_build_vs_buy.md)
+8. [The Engine track: what the Engine gets, when, and by what criterion a piece moves there](08_engine_track.md)
+
+## Diagrams (PlantUML sources; syntax-checked)
+
+| # | File | Shows |
+| :-: | :--- | :--- |
+| HLD-01 | [`diagrams/hld-01_context_map.puml`](diagrams/hld-01_context_map.puml) | The context map: modules, support packages, `core/`, `shell/`, the Engine, and every allowed dependency (§2) |
+| HLD-02 | [`diagrams/hld-02_inside_a_module.puml`](diagrams/hld-02_inside_a_module.puml) | The layers inside one module and the allowed imports (§3.2) |
+| HLD-03 | [`diagrams/hld-03_workbench_places.puml`](diagrams/hld-03_workbench_places.puml) | The workbench: places, surfaces and which module contributes where (§4.6) |
+| HLD-04 | [`diagrams/hld-04_engine_track.puml`](diagrams/hld-04_engine_track.puml) | What lives in the app, what lifts to the Engine, and when (§8) |
+| as-is / to-be | [`../../Tasks/proposal/PRO-004_assets/`](../../Tasks/proposal/PRO-004_assets/) | The measured current structure and the target structure (from `PRO-004`) |
+
+The class, sequence and state diagrams of the Phase 0 design are in the
+[SDD](../SDD/README.md).
 
 ## Reading conventions
 

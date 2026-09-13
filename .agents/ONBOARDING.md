@@ -176,9 +176,20 @@ Applies to **every** technical decision, not just architecture:
 
 - **When several directions are all reasonable and there is no "absolutely right" answer → decide by proven best
   practice / design pattern / architecture pattern.**
-- **When in doubt, look at what large, community-vetted projects
-  do** — prefer a pattern **with a name and broad precedent** over inventing a
-  new shape nobody has vetted.
+- **Apply before you invent — survey first, every time (user decision 2026-09-13, in these
+  words: *"hãy refer xem các giải pháp có sẵn trên thế giới làm gì, tui ưu tiên áp dụng, ứng dụng
+  hơn sáng tạo"* — "look at what the existing solutions in the world do; I prefer applying and
+  adopting over inventing").** The moment you start considering a solution to a problem — an
+  architecture, a mechanism, a guard, a widget, a workflow — the **first** step is a survey: which
+  named pattern, which large community-vetted project, which library already solves this, and how.
+  Prefer **applying** that solution over creating one. When a ready-made solution is *not* adopted
+  (a dependency policy, a licence, a version constraint), still **apply its shape** — copy the
+  vetted design, not just the idea. Inventing is the last resort, and the document that proposes
+  the invention must say which existing options were surveyed and why each was rejected. Worked
+  examples: `Docs/HLD/07_build_vs_buy.md` (the survey for `EPIC-025`, with two tools run on the real
+  tree before deciding) and `Docs/HLD/04_surfaces_and_contribution_points.md` §4.6 (the UI
+  placement rule taken from the VS Code / Spyder / napari workbench model rather than designed from
+  scratch).
 - **Don't be afraid to redesign** an existing part if the current design is a *hard design*
   (rigid, patched together, hard to extend). **"It currently works" is not a reason to leave it
   alone.**
@@ -331,7 +342,7 @@ When you finish a sub-task: `git mv incomplete/EPIC-XXXY_*.md completed/`, write
 | Reporting a handler failure | `report_handler_failure` |
 | A logger when none is injected | `resolve_bus_logger` — **not** `NullLogger` |
 
-### 12.5 Four principles the user has settled, applying to every task
+### 12.5 Six principles the user has settled, applying to every task
 
 1. **Fix the mechanism, not a hot fix.** Fixing only the one place that was reported, when the same fault recurs in several places, is unacceptable. A fix you cannot explain — *why* the symptom disappeared — does not count as a fix (`bug-fix-rule.md`).
 
@@ -350,12 +361,26 @@ When you finish a sub-task: `git mv incomplete/EPIC-XXXY_*.md completed/`, write
    same defect armed in five other places.
 
    The counterweight is **scope**, not cost: a general mechanism must still be the general form
-   of *the reported problem*, not a speculative abstraction over problems nobody has (§7's "the
-   4 stub cards guessed the wrong shape"). Cost alone is never the reason to prefer local — say
+   of *the reported problem*, not a speculative *implementation* of problems nobody has (§7's "the
+   4 stub cards guessed the wrong shape"). That counterweight never forbids a **seam** — see
+   principle 6 below and `architecture-rule.md` §7.2.1 for the distinction. Cost alone is never the reason to prefer local — say
    that a general fix is larger and then do it anyway.
 2. **More files is better — one abstraction per file, and different abstractions don't even share a directory.** Splitting is the default; **merging is what needs a reason**. Two hard constraints: (a) two things at **different abstraction levels** must not share a file (Port vs implementation, base class vs subclass); (b) files at **different abstraction levels** must not share a `dir` — a directory is a layer, not a bucket (`interfaces/` holds no implementations, a shared `widgets/` holds no widget specific to one screen). The only counterweight is Single-Scope Cohesion in `code-quality-rule.md`, and it **only** wins when the definitions describe **the same lifecycle** (an FSM's enum + its matrix) — "same feature"/"same screen" does **not** count. Thresholds that force a split: **>400 lines/file** or **>15 public methods/class**. Quick arbitration: *does changing A force you to change B?* Yes → same file; no → split. Full text in [`rules/architecture-rule.md`](rules/architecture-rule.md) §5 "Abstraction-Level Separation".
 3. **Present the design before implementing** for any restructuring work: PlantUML class + component, as-is and to-be, stating clearly what is shared and what is per-screen — get it approved before writing the task file and the code.
 4. **No commit, no push unless the user asks** (§7).
+5. **Apply before you invent** (user decision 2026-09-13; full text in §7). Before designing
+   anything, survey what already exists — named patterns, large projects, libraries — and prefer
+   applying it. Not adopting a library is a legitimate outcome (the user kept `EPIC-025`'s
+   hand-written guards after seeing `tach` run), but the survey happens first and is written down,
+   and a rejected library's *shape* is still the reference for what we build.
+6. **Design for extension always; build the extension only when needed** (user decision
+   2026-09-13, in these words: *"khi dev luôn luôn phải cân nhắc các trường hợp có thể mở rộng, có
+   thể chuyển các design sao cho dễ mở rộng"* — "when developing, always consider the cases that
+   could be extended, and shape the design so it is easy to extend"). At every design decision,
+   write down the plausible extension cases, and make sure each one is a **local** change behind
+   a seam that exists now; do not build the cases themselves. The seam is Open/Closed; the
+   unbuilt variant is YAGNI; they are not in conflict. Full procedure and the "closed design" tell:
+   `architecture-rule.md` §7.2.1.
 
 ### 12.6 Traps when running the gate in the Engine repo
 

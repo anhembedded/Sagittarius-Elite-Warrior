@@ -62,7 +62,10 @@ definition. `core/vo` is a **Published Language**: value objects that are neutra
 business language, immutable, readable by every module and **owned by none**.
 
 **Admission rule.** A type enters `core/vo` only when it already has at least two consumers in at
-least two different modules — measured, not guessed. Guard: `core/` imports nothing from
+least two different modules — measured, not guessed. The rule decides *placement*, not shape: a value
+object that lives inside one module today is already immutable and free of that module's
+business logic, so promoting it later is a move plus an import rewrite, never a redesign
+(`architecture-rule.md` §7.2.1). Guard: `core/` imports nothing from
 `modules/*`, `support/*` or PySide6.
 
 | Value object | Consumers measured on 2026-09-11 | Into `core/vo`? |

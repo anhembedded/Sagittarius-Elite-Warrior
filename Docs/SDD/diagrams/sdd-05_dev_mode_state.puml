@@ -1,0 +1,29 @@
+@startuml sdd-05_dev_mode_state
+title SDD-05 — dev.mode: read once at boot; the Welcome switch changes the next run
+[*] --> Booting
+Booting --> UserMode : dev.mode == false\n(app_config default, user_config, or no --dev)
+Booting --> DevMode : dev.mode == true\n(--dev wins for this run, else user_config)
+
+state UserMode {
+  [*] --> Welcome_U
+  Welcome_U : Start → trading
+  Welcome_U : switch "Developer mode" OFF → ON
+  Welcome_U --> RestartPending_U : toggle writes user_config.json\n(dev.mode = true)
+  RestartPending_U : banner "takes effect after restart"
+  RestartPending_U : [Restart now] → QProcess.startDetached(argv); quit
+}
+
+state DevMode {
+  [*] --> Welcome_D
+  Welcome_D : Start → trading
+  Welcome_D : Dev Board visible in sidebar; probes registered
+  Welcome_D --> RestartPending_D : toggle writes user_config.json\n(dev.mode = false)
+}
+
+RestartPending_U --> [*] : quit; new process boots → DevMode
+RestartPending_D --> [*] : quit; new process boots → UserMode
+note bottom of DevMode
+  No hot reload: modules and surfaces are
+  registered only at boot (ADR D14, "out of scope: hot reload").
+end note
+@enduml

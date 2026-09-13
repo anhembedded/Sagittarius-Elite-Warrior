@@ -120,6 +120,11 @@ The selection rule: a port is public when it **has a consumer in another module*
 call-site table measured on 2026-09-11); otherwise it is internal, even if it is a port under
 `application/ports/` today. This list is the **minimum needed for the migration**. Adding a port
 means a real consumer has appeared, and the addition is recorded here in the same pull request.
+The rule is about **what is public**, not about what is designed for extension: every internal
+port is still an ABC with one implementation (§7.2 of `architecture-rule.md`), so making it public
+later is moving one file into `contracts/` — a local change. Each module's `contracts/` package
+exists from Phase 0 even where it is empty (`backtesting`), because the seam must be there before
+the second consumer, not after (`architecture-rule.md` §7.2.1).
 
 ### `market_data` (Supporting — an Open Host Service)
 

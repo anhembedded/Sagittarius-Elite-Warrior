@@ -1,0 +1,33 @@
+@startuml sdd-03_contribution_render
+title SDD-03 — A surface renders contributions; the same widget appears on two surfaces
+autonumber
+participant "TradingModule" as TM
+participant "ContributionRegistry" as Reg
+participant "Surface(trading)" as ST
+participant "Surface(dev_board)" as SD
+participant "PageShell" as PS
+participant "PositionsPanel\n(factory → widget)" as PP
+participant "LiveOrderBookCoordinator\n(trading-owned, one instance)" as LOB
+
+== contribute (once, at boot) ==
+TM -> Reg : add(Descriptor(surface="trading", place=RAIL, order=10, factory=make_positions_panel))
+TM -> Reg : add(Descriptor(surface="dev_board", place=RAIL, order=10, factory=make_positions_panel))
+note over TM, Reg : one factory, two places (§4.6 rule 2)
+
+== navigate to trading ==
+ST -> Reg : for_place("trading", RAIL)
+Reg --> ST : (positions@10, open_orders@20, session@30, strategy_card@40 …)
+loop descriptors sorted by order
+  ST -> PP : factory(container)
+  PP -> LOB : resolve(LiveOrderBookCoordinator)  <<singleton owned by trading>>
+  ST -> PS : rail.add(widget, size_hint)
+end
+note right of PS : geometry decided by the place:\nrail width fixed, cards stack, size_hint → min height
+
+== navigate to dev_board (dev.mode only) ==
+SD -> Reg : for_place("dev_board", RAIL)
+SD -> PP : factory(container)  <<second instance, same class>>
+PP -> LOB : resolve(...)  <<same coordinator; both panels update from one feed>>
+SD -> Reg : for_place("dev_board", DEV_PROBE)
+SD -> PS : probes.add(exchange_api_tester)
+@enduml

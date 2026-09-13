@@ -1,0 +1,73 @@
+@startuml sdd-06_market_data_contracts
+title SDD-06 — modules/market_data/contracts (the Walking Skeleton's public surface)
+skinparam classAttributeIconSize 0
+hide empty members
+
+package "core/vo (Published Language)" #LightGray {
+  class MarketData <<frozen>> {
+    + symbol : str
+    + open_time : datetime
+    + open, high, low, close, volume : Decimal
+  }
+  enum TimeFrame
+  enum MarketDataVenue
+}
+
+package "modules/market_data/contracts" #LightGreen {
+  interface IHistoricalKlines {
+    + load(symbol, timeframe : TimeFrame, start, end) : tuple[MarketData, ...]
+  }
+  interface ISymbolCatalog {
+    + list_symbols(quote_asset : str | None) : tuple[str, ...]
+  }
+  interface IMarketDataSync {
+    + sync(symbol, timeframe, start, end, owner_id : str) : SyncHandle
+    + cancel(handle : SyncHandle)
+  }
+  interface IMarketStream {
+    + start(symbol, timeframe, owner_id : str)
+    + stop(owner_id : str)
+  }
+  interface IRangeCoverage {
+    + coverage(symbol, timeframe, start, end) : RangeCoverageSnapshot
+  }
+  class RangeCoverageSnapshot <<frozen>>
+  class SyncProgress <<frozen>>
+  class MarketTickEvent <<BaseEvent>>
+  class SingleSyncProgressEvent <<BaseEvent>>
+  IHistoricalKlines ..> MarketData
+  IRangeCoverage ..> RangeCoverageSnapshot
+  SingleSyncProgressEvent ..> SyncProgress
+}
+
+package "modules/market_data/application (implements)" #White {
+  class HistoricalKlinesService
+  class SymbolCatalogService
+  class MarketDataSyncService
+  class MarketStreamService
+  class RangeCoverageService
+  IHistoricalKlines <|.. HistoricalKlinesService
+  ISymbolCatalog <|.. SymbolCatalogService
+  IMarketDataSync <|.. MarketDataSyncService
+  IMarketStream <|.. MarketStreamService
+  IRangeCoverage <|.. RangeCoverageService
+}
+
+package "consumers (other modules)" #LightYellow {
+  class "backtesting" as BT
+  class "trading (chart)" as TR
+  class "strategy (trade-once, tick)" as ST
+  BT ..> IHistoricalKlines
+  BT ..> IMarketDataSync
+  BT ..> IRangeCoverage
+  TR ..> IHistoricalKlines
+  TR ..> IMarketStream
+  TR ..> IMarketDataSync
+  ST ..> IHistoricalKlines
+  ST ..> MarketTickEvent
+}
+note bottom of IMarketStream
+  owner_id: the same lease idea as trading's symbol lease —
+  BOT-126/BUG-085 (two screens fighting over one stream) cannot recur.
+end note
+@enduml

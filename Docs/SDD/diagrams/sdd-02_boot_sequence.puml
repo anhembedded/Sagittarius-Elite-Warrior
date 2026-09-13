@@ -1,0 +1,48 @@
+@startuml sdd-02_boot_sequence
+title SDD-02 — Boot: from main() to the first surface (Phase 0)
+autonumber
+participant "main / shell" as Main
+participant "App (Engine)" as App
+participant "ExtensionManager" as EM
+participant "BoundedContextModule\n(each, in list order)" as Mod
+participant "IContainer" as DI
+participant "DoubleClaimCheck" as DC
+participant "ContributionRegistry" as Reg
+participant "QApplication /\nMainWindow" as Qt
+participant "Surface (welcome)" as Surf
+
+Main -> Main : load app_config.json + user_config.json\n(dev.mode read once, here)
+Main -> Qt : QApplication(sys.argv)  <<before boot — proven ordering>>
+Main -> App : create_app(config)
+loop for module_cls in MODULES (topological order)
+  Main -> App : app.use(module_cls())
+  App -> EM : register(extension)
+  EM -> Mod : register(context)
+  Mod -> DI : singleton(IPort, impl) / bind(...)
+  note right of Mod : never resolve(), never I/O, never Qt
+end
+Main -> DC : run(DI.registrations(), modules)
+DC --> Main : ok | raise "IPort claimed by two modules"
+Main -> App : boot()
+App -> EM : initialize_and_start()
+loop sorted extensions
+  EM -> Mod : boot(context)
+  Mod -> DI : resolve(...) allowed now
+  Mod -> Mod : start hosted services, scheduler jobs
+end
+loop modules
+  Main -> Mod : contribute(registry)
+  Mod -> Reg : add(ContributionDescriptor) / add_screen(...)
+  Reg -> Reg : validate place ∈ surface.accepts; reject duplicate (surface, place, factory)
+  Main -> Mod : subscribe(bridge)
+end
+alt dev.mode == false
+  Main -> Main : skip dev_board surface; DEV_PROBE contributions dropped with a log line
+end
+Main -> Qt : MainWindow(registry.screens(), sidebar)
+Qt -> Surf : build(registry, DI) for default route "welcome"
+Surf -> Reg : for_place("welcome", HEADER | WORKSPACE | ...)
+Surf -> Surf : factory(DI) for each descriptor, in `order`
+Surf --> Qt : PageShell
+Qt -> Qt : show()
+@enduml
