@@ -1,0 +1,80 @@
+@startuml hld-05b_trading_devboard_slots
+title HLD-05b — Trading and Dev Board, slot by slot: which module owns each widget\nGreen = trading · Gold = strategy · Blue = market_data · White = support · dotted line = the SAME factory in both surfaces
+skinparam componentStyle rectangle
+skinparam wrapWidth 160
+skinparam defaultTextAlignment center
+left to right direction
+
+component "Surface: trading  (shell-owned, 0 business logic)" as ST #LightGray {
+  component "header" as STH #WhiteSmoke {
+    component "Enable / Disable\nEmergency stop" as STH1 #LightGreen
+    component "status_tile:\nwebsocket pill" as STH2 #LightGreen
+    component "status_tile:\nprice ticker" as STH3 #LightBlue
+  }
+  component "context_bar" as STC #WhiteSmoke {
+    component "symbol picker\nconnection" as STC1 #LightBlue
+  }
+  component "workspace" as STW #WhiteSmoke {
+    component "ChartCard (1 symbol)\nhost: charting · feed: market_data" as STW1 #White
+  }
+  component "rail  (by order)" as STR #WhiteSmoke {
+    component "10 positions table" as STR1 #LightGreen
+    component "20 open orders\n(+ cancel one)" as STR2 #LightGreen
+    component "30 session card" as STR3 #LightGreen
+    component "40 equity chart" as STR4 #LightGreen
+    component "50 strategy card" as STR5 #Gold
+    component "60 last signal" as STR6 #Gold
+  }
+  component "console" as STL #WhiteSmoke {
+    component "AppLogPanel (ui_kit)" as STL1 #White
+  }
+}
+
+component "Surface: dev_board  (shell-owned, only when dev.mode)" as SD #LightGray {
+  component "header" as SDH #WhiteSmoke {
+    component "Enable / Disable\nEmergency stop" as SDH1 #LightGreen
+    component "status_tile:\nwebsocket pill" as SDH2 #LightGreen
+    component "status_tile:\nprice ticker" as SDH3 #LightBlue
+  }
+  component "system_controls" as SDS #WhiteSmoke {
+    component "market · symbol · date range\nload history · start / stop live" as SDS1 #LightBlue
+  }
+  component "workspace" as SDW #WhiteSmoke {
+    component "ChartCard × n symbols" as SDW1 #White
+  }
+  component "rail  (by order)" as SDR #WhiteSmoke {
+    component "10 positions table" as SDR1 #LightGreen
+    component "20 open orders" as SDR2 #LightGreen
+    component "30 session card" as SDR3 #LightGreen
+    component "40 equity chart" as SDR4 #LightGreen
+    component "50 strategy card" as SDR5 #Gold
+    component "60 last signal" as SDR6 #Gold
+    component "70 manual order card\n(Dev Board ONLY — D15)" as SDR7 #LightGreen
+    component "80 indicator script checklist" as SDR8 #White
+  }
+  component "probes  (dev_probe)" as SDX #WhiteSmoke {
+    component "Exchange API tester" as SDX1 #LightGreen
+  }
+  component "console" as SDL #WhiteSmoke {
+    component "AppLogPanel (ui_kit)" as SDL1 #White
+  }
+}
+
+STH1 .. SDH1
+STH2 .. SDH2
+STH3 .. SDH3
+STW1 .. SDW1
+STR1 .. SDR1
+STR2 .. SDR2
+STR3 .. SDR3
+STR4 .. SDR4
+STR5 .. SDR5
+STR6 .. SDR6
+
+note bottom of SD
+  Mirror rule (§4.6.3 rule 2): a trading.rail card is also a dev_board.rail card
+  unless the module says otherwise. Dev Board additionally holds what Trading does not
+  (system controls, the manual order card, the checklist, the probes).
+  Nothing here is coded twice: 59 duplicated names → 0.
+end note
+@enduml

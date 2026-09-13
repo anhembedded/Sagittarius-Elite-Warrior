@@ -1,0 +1,52 @@
+@startuml hld-05a_window_containment
+title HLD-05a — Containment: MainWindow ⊃ Sidebar + QStackedWidget ⊃ surfaces/screens ⊃ PageShell slots\nGrey = shell-owned · Wheat = module-owned screen · every slot is a `Place` a module may contribute to
+skinparam componentStyle rectangle
+skinparam wrapWidth 190
+skinparam defaultTextAlignment center
+skinparam linetype ortho
+
+component "shell/ContributionRegistry\n(surface_id, place) → descriptors" as REG #LightGray
+
+component "MainWindow  (QtWidgets, shell)" as WIN #LightGray {
+  component "Sidebar\nentries = registry.screens()\nnothing else is contributed here" as SIDE #LightGray
+  component "QStackedWidget  (PresenterManager, one page at a time)" as STACK #LightGray {
+    component "welcome  ← default route" as SW #LightGray {
+      component "PageShell: workspace" as SWP #WhiteSmoke
+    }
+    component "trading" as ST #LightGray {
+      component "PageShell: header · context_bar · workspace · rail · console" as STP #WhiteSmoke
+    }
+    component "dev_board  ← only when dev.mode at boot" as SD #LightGray {
+      component "PageShell: header · system_controls · workspace · rail · probes · console" as SDP #WhiteSmoke
+    }
+    component "settings" as SS #LightGray {
+      component "sections  (one per module, by order)" as SSP #WhiteSmoke
+    }
+    component "backtest  (owned by backtesting)\naccepts = rail, modal" as SB #Wheat {
+      component "PageShell: its own widgets + accepted slots" as SBP #WhiteSmoke
+    }
+    component "data_management  (owned by market_data)" as SDM #Wheat {
+      component "PageShell: its own widgets" as SDMP #WhiteSmoke
+    }
+  }
+  component "modal  (overlay host)\nopened/closed by the current page" as MOD #LightGray
+}
+
+SW -[hidden]down- ST
+ST -[hidden]down- SD
+SD -[hidden]down- SS
+SS -[hidden]down- SB
+SB -[hidden]down- SDM
+SIDE -[hidden]right- STACK
+
+REG ..> SIDE : screens()
+REG ..> STACK : for_place(surface_id, place)\nfor every slot of the page being built
+STP ..> MOD : opens
+SBP ..> MOD : opens
+
+note right of WIN
+  Rule of §4.6: a page never invents layout.
+  Every slot above is a Place; a module can
+  only ask "put my widget in <surface>.<place>".
+end note
+@enduml

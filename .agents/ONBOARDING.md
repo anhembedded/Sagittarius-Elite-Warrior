@@ -162,6 +162,7 @@ Architecture proposals that are not yet tasks (nobody has approved them) live in
 | Change code within the scope the user asked for | Free |
 | `git commit` | **Ask first.** Never commit spontaneously |
 | `git push` | **Only when the user explicitly asks**, and each repo (app / engine) is its own separate confirmation — 2 independent repos per §2, no longer coupled |
+| `git commit` / `push` / merge of a **documentation-only** change (`Docs/`, `Tasks/`, `.agents/`, `CLAUDE.md`) | **Free** — standing authorisation by the user, 2026-09-13 (*"update doc thì cứ merge as will"*). Any file outside those paths makes it a code change and the two rows above apply |
 | Change files outside the task's scope | No, unless the user asks |
 | Delete/overwrite the user's files | Read the content first, ask first |
 

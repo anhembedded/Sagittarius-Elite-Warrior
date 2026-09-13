@@ -1,5 +1,15 @@
 # §4 — Surfaces and contribution points
 
+- **Diagrams (component, PlantUML):**
+  [`hld-05a_window_containment.puml`](diagrams/hld-05a_window_containment.puml) — what contains
+  what: `MainWindow` ⊃ Sidebar + `QStackedWidget` ⊃ surfaces and module-owned screens ⊃ `PageShell`
+  slots, plus the registry that feeds every slot;
+  [`hld-05b_trading_devboard_slots.puml`](diagrams/hld-05b_trading_devboard_slots.puml) — Trading
+  and Dev Board slot by slot, each widget coloured by its owning module, dotted lines joining the
+  widgets that are the same factory on both surfaces;
+  [`hld-03_workbench_places.puml`](diagrams/hld-03_workbench_places.puml) — the vocabulary of
+  places (§4.6).
+
 ## 4.1 The problem, measured
 
 Trading (`screens/trading`) and Dev Board (`screens/dashboard`) build **one** set of business
@@ -84,6 +94,8 @@ The user's definition: *"khi bạn dev nếu API nào của sàn chưa rõ, thì
   factories never run.
 
 ## 4.5 Who owns which widget (Trading and Dev Board)
+
+The same table as a picture: [`hld-05b_trading_devboard_slots.puml`](diagrams/hld-05b_trading_devboard_slots.puml).
 
 | Widget | Owning module | Trading | Dev Board |
 | :--- | :--- | :-: | :-: |

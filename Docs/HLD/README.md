@@ -49,6 +49,8 @@ with measurements from this codebase, why it fits.
 | HLD-02 | [`diagrams/hld-02_inside_a_module.puml`](diagrams/hld-02_inside_a_module.puml) | The layers inside one module and the allowed imports (§3.2) |
 | HLD-03 | [`diagrams/hld-03_workbench_places.puml`](diagrams/hld-03_workbench_places.puml) | The workbench: places, surfaces and which module contributes where (§4.6) |
 | HLD-04 | [`diagrams/hld-04_engine_track.puml`](diagrams/hld-04_engine_track.puml) | What lives in the app, what lifts to the Engine, and when (§8) |
+| HLD-05a | [`diagrams/hld-05a_window_containment.puml`](diagrams/hld-05a_window_containment.puml) | Containment: window ⊃ sidebar + stacked widget ⊃ surfaces/screens ⊃ `PageShell` slots (§4) |
+| HLD-05b | [`diagrams/hld-05b_trading_devboard_slots.puml`](diagrams/hld-05b_trading_devboard_slots.puml) | Trading and Dev Board slot by slot, widgets coloured by owning module; same-factory links (§4.5) |
 | as-is / to-be | [`../../Tasks/proposal/PRO-004_assets/`](../../Tasks/proposal/PRO-004_assets/) | The measured current structure and the target structure (from `PRO-004`) |
 
 The class, sequence and state diagrams of the Phase 0 design are in the

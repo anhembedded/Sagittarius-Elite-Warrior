@@ -67,6 +67,13 @@ see the table above.
    commits, not permission to send them. Say what is unpushed and wait. Permission for one task
    ("commit and push this fix") does not carry to the next one.
 
+   **Standing exception — documentation only (user decision 2026-09-13: *"update doc thì cứ
+   merge as will"*).** A change that touches **only** `Docs/`, `Tasks/`, `.agents/` or `CLAUDE.md`
+   may be committed, pushed and merged into the default branch without asking, in the Elite
+   repository; the Engine repository's `Tasks/` likewise. The moment a change touches anything
+   under `src/`, `tests/`, `scripts/`, configuration or dependencies, the default rule above
+   applies again in full — a mixed commit is a code commit.
+
 2. **Don't trust the console — read the log file.** The mandatory gate is
    `pwsh -NoProfile -File scripts/ci-local.ps1 -Full`. It prints `LOG_FILE:`; you must `grep`
    that file for `FAILED|ERROR|Traceback|ResourceWarning` before you may call it green. In
